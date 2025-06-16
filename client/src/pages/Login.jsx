@@ -127,6 +127,10 @@ export default function Login() {
                 <p className='mt-3 text-center'>
                     Don't have an account? <Link to="/signup">Sign Up</Link>
                 </p>
+
+                <p className='mt-3 text-center'>
+                    Forget password? <Link>Reset password</Link>
+                </p>
             </form>
         </div>
     )

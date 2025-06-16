@@ -7,8 +7,16 @@ import NotFound from '../pages/NotFound';
 import Login from '../pages/Login';
 import Signup from '../pages/Signup';
 import LandingPage from '../pages/LandingPage';
-import Dashboard from '../pages/Dashboard';
+import DashboardHome from '../pages/DashboardHome';
 import LoadingSpinner from '../pages/LodingSpinner';
+
+//Importing Dashboard Sub-Component
+import Dashboard from '../pages/Dashboard';
+import Transactions from '../pages/Transactions';
+import Analytics from '../pages/Analytics';
+import Goals from '../pages/Goals';
+import Settings from '../pages/Settings';
+import Profile from '../pages/Profile';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -49,14 +57,26 @@ export default function AppRouter() {
                     </PublicRoute>
                 } 
             />
+            {/* Dashboard routes */}
             <Route 
                 path="/dashboard" 
                 element={
                     <ProtectedRoute>
-                        <Dashboard />
+                        <DashboardHome />
                     </ProtectedRoute>
                 } 
-            />
+            >
+                <Route index element={<Dashboard />} />
+
+                {/* Nested routes */}
+                <Route path="transactions" element={<Transactions />} />
+                <Route path="analytics" element={<Analytics />} />
+                <Route path="goals" element={<Goals />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="profile" element={<Profile />} />
+                {/* Redirect unknown dashboard routes to main dashboard */}
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
         </Routes>
     );
