@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { logoutUser } from '../app/authSlice';
+import { logoutUser, clearCredentials } from '../app/authSlice';
 
 export default function Navbar() {
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   
@@ -14,17 +15,25 @@ export default function Navbar() {
   const toggleNavbar = () => setIsNavOpen(prev => !prev);
   const closeNavbar = () => setIsNavOpen(false);
 
-  // Handle logout using Redux thunk
+  // Handle logout 
   const handleLogout = async () => {
+    if (isLoggingOut) return; // Prevent multiple logout attempts
+    
+    setIsLoggingOut(true);
+    closeNavbar();
+    
     try {
+      // Attempt to logout via API
       await dispatch(logoutUser()).unwrap();
-      closeNavbar();
-      navigate('/');
+      console.log('Logout successful');
     } catch (error) {
-      console.error('Logout failed:', error);
-      // Even if logout fails on server, Redux state will be cleared
-      closeNavbar();
-      navigate('/');
+      console.error('Logout API call failed:', error);
+      // Even if API logout fails, clear local state
+      dispatch(clearCredentials());
+    } finally {
+      setIsLoggingOut(false);
+      // Always navigate to home after logout attempt
+      navigate('/', { replace: true });
     }
   };
 
@@ -71,7 +80,7 @@ export default function Navbar() {
                 {user && (
                   <li className="nav-item">
                     <span className="nav-link text-muted">
-                      Welcome, {user.email || user.name || 'User'}
+                      Welcome, {user.email || user.name || user.username || 'User'}
                     </span>
                   </li>
                 )}
@@ -79,9 +88,9 @@ export default function Navbar() {
                   <button 
                     className="btn btn-outline-danger btn-sm"
                     onClick={handleLogout}
-                    disabled={loading}
+                    disabled={loading || isLoggingOut}
                   >
-                    {loading ? (
+                    {(loading || isLoggingOut) ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
                         Logging out...

@@ -13,5 +13,6 @@ router.post('/refresh', AuthController.refreshToken);
 router.post('/logout', authenticateToken, AuthController.logout);
 router.post('/logout-all', authenticateToken, AuthController.logoutAll);
 router.get('/profile', authenticateToken, AuthController.getProfile);
+router.get('/verify', authenticateToken, AuthController.verifyToken);
 
 module.exports = router;

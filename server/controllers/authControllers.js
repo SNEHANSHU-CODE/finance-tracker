@@ -178,6 +178,20 @@ class AuthController {
     }
   }
 
+  // Verify token 
+  static async verifyToken(req, res) {
+    try {
+      // If we reach here, the token is valid (middleware already verified it)
+      return ResponseUtils.success(res, {
+        user: req.user,
+        accessToken: req.headers.authorization?.split(' ')[1] // Return current token
+      }, 'Token is valid');
+    } catch (error) {
+      console.error('Token verification error:', error);
+      return ResponseUtils.forbidden(res, 'Token verification failed');
+    }
+  }
+
   // Logout user
   static async logout(req, res) {
     try {
@@ -191,7 +205,11 @@ class AuthController {
       }
 
       // Clear refresh token cookie
-      res.clearCookie('refreshToken');
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+      });
       
       return ResponseUtils.success(res, null, 'Logout successful');
 
@@ -222,7 +240,11 @@ class AuthController {
       });
 
       // Clear refresh token cookie
-      res.clearCookie('refreshToken');
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+      });
       
       return ResponseUtils.success(res, null, 'Logged out from all devices');
 
