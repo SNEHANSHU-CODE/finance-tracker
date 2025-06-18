@@ -13,7 +13,7 @@ export default function DashboardHome() {
       <div className="row">
         {/* Sidebar Toggle Button for Mobile */}
         <button
-          className="btn btn-dark d-md-none m-2"
+          className="btn btn-dark d-md-none"
           onClick={toggleSidebar}
         >
           {isSidebarOpen ? "Close Menu" : "Menu"}

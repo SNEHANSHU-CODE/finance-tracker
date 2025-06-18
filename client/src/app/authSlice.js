@@ -69,6 +69,28 @@ export const updateUserProfile = createAsyncThunk(
   }
 );
 
+export const updateUserPassword = createAsyncThunk(
+  'auth/updatePassword',
+  async (newPassword, { rejectWithValue }) => {
+    try {
+      return await authService.updateUserPassword(newPassword);
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const deleteUserAccount = createAsyncThunk(
+  'auth/deleteAccount',
+  async (accountData, { rejectWithValue }) => {
+    try {
+      return await authService.deleteUserAccount(accountData);
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const verifyAuthToken = createAsyncThunk(
   'auth/verify',
   async (_, { rejectWithValue }) => {
@@ -225,6 +247,41 @@ const authSlice = createSlice({
       })
       .addCase(updateUserProfile.rejected, (state, action) => {
         state.profileLoading = false;
+        state.error = action.payload;
+      })
+      // Update Password - Clear auth state on success (user needs to login again)
+      .addCase(updateUserPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateUserPassword.fulfilled, (state) => {
+        // Clear authentication state - user needs to login again with new password
+        state.user = null;
+        state.accessToken = null;
+        state.isAuthenticated = false;
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(updateUserPassword.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Delete Account - Clear all auth state on success
+      .addCase(deleteUserAccount.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteUserAccount.fulfilled, (state) => {
+        // Clear all authentication state - account is deleted
+        state.user = null;
+        state.accessToken = null;
+        state.isAuthenticated = false;
+        state.loading = false;
+        state.error = null;
+        state.profileLoading = false;
+      })
+      .addCase(deleteUserAccount.rejected, (state, action) => {
+        state.loading = false;
         state.error = action.payload;
       });
   },

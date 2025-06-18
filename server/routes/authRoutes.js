@@ -12,7 +12,9 @@ router.post('/refresh', AuthController.refreshToken);
 // Protected routes
 router.post('/logout', authenticateToken, AuthController.logout);
 router.post('/logout-all', authenticateToken, AuthController.logoutAll);
-router.get('/profile', authenticateToken, AuthController.getProfile);
+router.put('/profile', authenticateToken, AuthController.updateProfile);
+router.put('/updatepassword', authenticateToken, AuthController.updatePassword);
+router.put('/deleteaccount', authenticateToken, AuthController.deleteProfile)
 router.get('/verify', authenticateToken, AuthController.verifyToken);
 
 module.exports = router;

@@ -21,8 +21,8 @@ class AuthController {
       });
 
       if (existingUser) {
-        const message = existingUser.email === email.toLowerCase() 
-          ? 'Email already exists' 
+        const message = existingUser.email === email.toLowerCase()
+          ? 'Email already exists'
           : 'Username already exists';
         return ResponseUtils.error(res, message, 400);
       }
@@ -59,13 +59,13 @@ class AuthController {
 
     } catch (error) {
       console.error('Registration error:', error);
-      
+
       // Handle MongoDB duplicate key error
       if (error.code === 11000) {
         const field = Object.keys(error.keyValue)[0];
         return ResponseUtils.error(res, `${field} already exists`, 400);
       }
-      
+
       // Handle validation errors
       if (error.name === 'ValidationError') {
         const errors = Object.values(error.errors).map(err => err.message);
@@ -142,7 +142,7 @@ class AuthController {
 
       // Verify refresh token
       const decoded = JWTUtils.verifyRefreshToken(refreshToken);
-      
+
       if (decoded.type !== 'refresh') {
         return ResponseUtils.unauthorized(res, 'Invalid token type');
       }
@@ -196,7 +196,7 @@ class AuthController {
   static async logout(req, res) {
     try {
       const refreshToken = req.cookies.refreshToken;
-      
+
       if (refreshToken) {
         // Remove refresh token from user's tokens
         await User.findByIdAndUpdate(req.user._id, {
@@ -210,7 +210,7 @@ class AuthController {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict'
       });
-      
+
       return ResponseUtils.success(res, null, 'Logout successful');
 
     } catch (error) {
@@ -219,17 +219,222 @@ class AuthController {
     }
   }
 
-  // Get current user profile
-  static async getProfile(req, res) {
+  //Update profile
+  static async updateProfile(req, res) {
     try {
+      const { username, email } = req.body;
+      const userId = req.user._id;
+
+      // Find the current user
+      const user = await User.findById(userId);
+      if (!user) {
+        return ResponseUtils.notFound(res, 'User not found');
+      }
+
+      // Check if account is active
+      if (!user.isActive) {
+        return ResponseUtils.forbidden(res, 'Account is deactivated');
+      }
+
+      // Prepare update object
+      const updateData = {};
+
+      // Handle username update
+      if (username && username !== user.username) {
+        // Check if username is already taken
+        const existingUser = await User.findOne({
+          username,
+          _id: { $ne: userId }
+        });
+
+        if (existingUser) {
+          return ResponseUtils.error(res, 'Username already exists', 400);
+        }
+
+        updateData.username = username;
+      }
+
+      // Handle email update
+      if (email && email.toLowerCase() !== user.email) {
+        // Check if email is already taken
+        const existingUser = await User.findOne({
+          email: email.toLowerCase(),
+          _id: { $ne: userId }
+        });
+
+        if (existingUser) {
+          return ResponseUtils.error(res, 'Email already exists', 400);
+        }
+
+        updateData.email = email.toLowerCase();
+      }
+
+      // Check if there are any updates to make
+      if (Object.keys(updateData).length === 0) {
+        return ResponseUtils.error(res, 'No valid updates provided', 400);
+      }
+
+      // Update user
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        updateData,
+        {
+          new: true,
+          runValidators: true
+        }
+      );
+
       return ResponseUtils.success(res, {
-        user: req.user
-      }, 'Profile retrieved successfully');
+        user: updatedUser.toJSON()
+      }, 'Profile updated successfully');
+
     } catch (error) {
-      console.error('Profile error:', error);
-      return ResponseUtils.error(res, 'Server error retrieving profile');
+      console.error('Update profile error:', error);
+
+      // Handle MongoDB duplicate key error
+      if (error.code === 11000) {
+        const field = Object.keys(error.keyValue)[0];
+        return ResponseUtils.error(res, `${field} already exists`, 400);
+      }
+
+      // Handle validation errors
+      if (error.name === 'ValidationError') {
+        const errors = Object.values(error.errors).map(err => err.message);
+        return ResponseUtils.validationError(res, errors);
+      }
+
+      return ResponseUtils.error(res, 'Server error during profile update');
     }
   }
+
+
+  // Update password
+  static async updatePassword(req, res) {
+    try {
+      const { currentPassword, newPassword, confirmPassword } = req.body;
+      const userId = req.user._id;
+
+      // Validate required fields
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        return ResponseUtils.error(res, 'Current password, new password, and confirm password are required', 400);
+      }
+
+      // Check if new password matches confirmation
+      if (newPassword !== confirmPassword) {
+        return ResponseUtils.error(res, 'New password and confirm password do not match', 400);
+      }
+
+      // Validate new password strength (customize as needed)
+      if (newPassword.length < 8) {
+        return ResponseUtils.error(res, 'New password must be at least 8 characters long', 400);
+      }
+
+      // Find the current user
+      const user = await User.findById(userId);
+      if (!user) {
+        return ResponseUtils.notFound(res, 'User not found');
+      }
+
+      // Check if account is active
+      if (!user.isActive) {
+        return ResponseUtils.forbidden(res, 'Account is deactivated');
+      }
+
+      // Verify current password
+      const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+      if (!isCurrentPasswordValid) {
+        return ResponseUtils.unauthorized(res, 'Current password is incorrect');
+      }
+
+      // Check if new password is different from current password
+      const isSamePassword = await user.comparePassword(newPassword);
+      if (isSamePassword) {
+        return ResponseUtils.error(res, 'New password must be different from current password', 400);
+      }
+
+      // Update user password and clear all refresh tokens (logout from all devices)
+      // Password will be automatically hashed by the User model's pre-save middleware
+      user.password = newPassword;
+      user.refreshTokens = []; // Clear all refresh tokens to logout from all devices
+
+      await user.save();
+
+      // Clear refresh token cookie from current session
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+      });
+
+      // Log password change for security (optional)
+      console.log(`Password updated for user: ${user.email} at ${new Date()} - Logged out from all devices`);
+
+      return ResponseUtils.success(res, {
+        message: 'Password updated successfully. You have been logged out from all devices for security.'
+      }, 'Password updated successfully');
+
+    } catch (error) {
+      console.error('Update password error:', error);
+
+      // Handle validation errors
+      if (error.name === 'ValidationError') {
+        const errors = Object.values(error.errors).map(err => err.message);
+        return ResponseUtils.validationError(res, errors);
+      }
+
+      return ResponseUtils.error(res, 'Server error during password update');
+    }
+  }
+
+  // Delete profile
+  static async deleteProfile(req, res) {
+    try {
+      const { password, confirmDeletion } = req.body;
+      const userId = req.user._id;
+
+      // Validate required fields
+      if (!password) {
+        return ResponseUtils.error(res, 'Password is required to delete profile', 400);
+      }
+
+      if (!confirmDeletion || confirmDeletion !== 'DELETE') {
+        return ResponseUtils.error(res, 'Please type "DELETE" to confirm profile deletion', 400);
+      }
+
+      // Find the current user
+      const user = await User.findById(userId);
+      if (!user) {
+        return ResponseUtils.notFound(res, 'User not found');
+      }
+
+      // Verify password
+      const isPasswordValid = await user.comparePassword(password);
+      if (!isPasswordValid) {
+        return ResponseUtils.unauthorized(res, 'Incorrect password');
+      }
+
+      // Instead of hard deletion, you might want to soft delete (deactivate)
+      // For hard deletion, use the following:
+      await User.findByIdAndDelete(userId);
+
+      // Clear refresh token cookie
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+      });
+
+      // Log account deletion for audit purposes
+      console.log(`Account deleted for user: ${user.email} at ${new Date()}`);
+
+      return ResponseUtils.success(res, null, 'Profile deleted successfully');
+
+    } catch (error) {
+      console.error('Delete profile error:', error);
+      return ResponseUtils.error(res, 'Server error during profile deletion');
+    }
+  }
+
 
   // Logout from all devices
   static async logoutAll(req, res) {
@@ -245,7 +450,7 @@ class AuthController {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict'
       });
-      
+
       return ResponseUtils.success(res, null, 'Logged out from all devices');
 
     } catch (error) {

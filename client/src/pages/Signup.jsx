@@ -93,7 +93,7 @@ export default function Signup() {
     }
 
     return (
-        <div className="container mt-5" style={{ maxWidth: '500px' }}>
+        <div className="container mt-5 mb-4" style={{ maxWidth: '500px' }}>
             <h3 className="mb-4 text-center">Sign Up</h3>
             <form onSubmit={handleSubmit} className="p-4 border rounded shadow-sm bg-white">
                 {error && (

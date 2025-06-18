@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { deleteUserAccount, updateUserPassword } from '../app/authSlice';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -114,6 +115,36 @@ export const authService = {
                 error.message ||
                 'Failed to update profile'
             );
+        }
+    },
+
+    //Update user Password
+    updateUserPassword: async (newPassword) => {
+        try {
+            const response = await authApiClient.put('/auth/updatePassword', newPassword);
+            return response.data.data;
+        }
+        catch (error) {
+            throw new Error(
+                error.response?.data?.message ||
+                error.message || 
+                'Failed to update password'
+            )
+        }
+    },
+
+    //Delete user account
+    deleteUserAccount: async (accountData) => {
+        try {
+            const response = await authApiClient.put('/auth/deleteaccount', accountData);
+            return response.data.data;
+        }
+        catch (error) {
+            throw new Error(
+                error.response?.data?.message ||
+                error.message || 
+                'Failed to delete account'
+            )
         }
     },
 

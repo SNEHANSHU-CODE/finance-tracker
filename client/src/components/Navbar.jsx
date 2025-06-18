@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutUser, clearCredentials } from '../app/authSlice';
@@ -6,6 +6,7 @@ import { logoutUser, clearCredentials } from '../app/authSlice';
 export default function Navbar() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const navbarCollapseRef = useRef(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   
@@ -13,7 +14,31 @@ export default function Navbar() {
   const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
 
   const toggleNavbar = () => setIsNavOpen(prev => !prev);
-  const closeNavbar = () => setIsNavOpen(false);
+  
+  const closeNavbar = () => {
+    setIsNavOpen(false);
+    // Also ensure Bootstrap collapse is closed
+    if (navbarCollapseRef.current) {
+      navbarCollapseRef.current.classList.remove('show');
+    }
+  };
+
+  // Close navbar when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (navbarCollapseRef.current && !navbarCollapseRef.current.contains(event.target)) {
+        closeNavbar();
+      }
+    };
+
+    if (isNavOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNavOpen]);
 
   // Handle logout 
   const handleLogout = async () => {
@@ -61,6 +86,7 @@ export default function Navbar() {
         </button>
 
         <div 
+          ref={navbarCollapseRef}
           className={`collapse navbar-collapse justify-content-end ${isNavOpen ? 'show' : ''}`} 
           id="navbarContent"
         >
@@ -80,7 +106,7 @@ export default function Navbar() {
                 {user && (
                   <li className="nav-item">
                     <span className="nav-link text-muted">
-                      Welcome, {user.email || user.name || user.username || 'User'}
+                      Welcome, {user.username || user.email || "User"}
                     </span>
                   </li>
                 )}
