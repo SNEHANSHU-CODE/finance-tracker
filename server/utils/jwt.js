@@ -6,16 +6,16 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secre
 class JWTUtils {
   static generateAccessToken(userId) {
     return jwt.sign(
-      { userId, type: 'access' }, 
-      JWT_SECRET, 
+      { userId, type: 'access' },
+      JWT_SECRET,
       { expiresIn: '15m' }
     );
   }
 
   static generateRefreshToken(userId) {
     return jwt.sign(
-      { userId, type: 'refresh' }, 
-      JWT_REFRESH_SECRET, 
+      { userId, type: 'refresh' },
+      JWT_REFRESH_SECRET,
       { expiresIn: '7d' }
     );
   }
@@ -42,6 +42,22 @@ class JWTUtils {
       refreshToken: this.generateRefreshToken(userId)
     };
   }
+
+
+
+  static generatePasswordResetToken(email) {
+    return jwt.sign(
+      {
+        email: email,
+        type: 'password_reset'
+      },
+      JWT_SECRET,
+      {
+        expiresIn: '15m' // 15 minutes for password reset
+      }
+    );
+  }
+
 }
 
 module.exports = JWTUtils;

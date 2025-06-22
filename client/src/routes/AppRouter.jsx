@@ -3,12 +3,14 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useAuthInitialization } from '../hooks/useAuthInitialization';
 
-import NotFound from '../pages/NotFound';
+import NotFound from '../components/NotFound';
 import Login from '../pages/Login';
 import Signup from '../pages/Signup';
 import LandingPage from '../pages/LandingPage';
 import DashboardHome from '../pages/DashboardHome';
 import LoadingSpinner from '../pages/LodingSpinner';
+import ResetPassword from '../components/ResetPassword';
+
 
 //Importing Dashboard Sub-Component
 import Dashboard from '../pages/Dashboard';
@@ -54,6 +56,14 @@ export default function AppRouter() {
                 element={
                     <PublicRoute>
                         <Signup />
+                    </PublicRoute>
+                } 
+            />
+            <Route 
+                path="/resetpassword"
+                element={
+                    <PublicRoute>
+                        <ResetPassword />
                     </PublicRoute>
                 } 
             />

@@ -129,7 +129,7 @@ export default function Login() {
                 </p>
 
                 <p className='mt-3 text-center'>
-                    Forget password? <Link>Reset password</Link>
+                    Forget password? <Link to="/resetpassword">Reset password</Link>
                 </p>
             </form>
         </div>
