@@ -2,9 +2,9 @@
 const mongoose = require('mongoose');
 
 const goalSchema = new mongoose.Schema({
-  profileId: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Profile',
+    ref: 'User',
     required: [true, 'Profile ID is required'],
     index: true
   },

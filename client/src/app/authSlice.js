@@ -119,7 +119,10 @@ const authSlice = createSlice({
       state.error = null;
     },
     setCredentials: (state, action) => {
-      state.user = action.payload.user;
+      state.user = {
+        ...action.payload.user,
+        userId: action.payload.user._id,
+      };
       state.accessToken = action.payload.accessToken;
       state.isAuthenticated = true;
       state.isInitialized = true;
@@ -151,7 +154,10 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user;
+        state.user = {
+          ...action.payload.user,
+          userId: action.payload.user._id,
+        };
         state.accessToken = action.payload.accessToken;
         state.isAuthenticated = true;
         state.isInitialized = true;
@@ -168,7 +174,10 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user;
+        state.user = {
+          ...action.payload.user,
+          userId: action.payload.user._id,
+        };
         state.accessToken = action.payload.accessToken;
         state.isAuthenticated = true;
         state.isInitialized = true;
@@ -183,7 +192,10 @@ const authSlice = createSlice({
         // Don't set loading for refresh to avoid UI flicker
       })
       .addCase(refreshToken.fulfilled, (state, action) => {
-        state.user = action.payload.user;
+        state.user = {
+          ...action.payload.user,
+          userId: action.payload.user._id,
+        };
         state.accessToken = action.payload.accessToken;
         state.isAuthenticated = true;
         state.isInitialized = true;
@@ -215,7 +227,10 @@ const authSlice = createSlice({
       })
       // Verify token
       .addCase(verifyAuthToken.fulfilled, (state, action) => {
-        state.user = action.payload.user;
+        state.user = {
+          ...action.payload.user,
+          userId: action.payload.user._id,
+        };
         state.accessToken = action.payload.accessToken;
         state.isAuthenticated = true;
         state.isInitialized = true;
@@ -287,10 +302,10 @@ const authSlice = createSlice({
   },
 });
 
-export const { 
-  clearError, 
-  setCredentials, 
-  clearCredentials, 
+export const {
+  clearError,
+  setCredentials,
+  clearCredentials,
   setLoading,
   setInitialized,
   updateUser,

@@ -10,6 +10,7 @@ import LandingPage from '../pages/LandingPage';
 import DashboardHome from '../pages/DashboardHome';
 import LoadingSpinner from '../pages/LodingSpinner';
 import ResetPassword from '../components/ResetPassword';
+import AuthorsNote from '../components/AuthorsNote';
 
 
 //Importing Dashboard Sub-Component
@@ -64,6 +65,14 @@ export default function AppRouter() {
                 element={
                     <PublicRoute>
                         <ResetPassword />
+                    </PublicRoute>
+                } 
+            />
+            <Route 
+                path="/authorsnote"
+                element={
+                    <PublicRoute>
+                        <AuthorsNote />
                     </PublicRoute>
                 } 
             />

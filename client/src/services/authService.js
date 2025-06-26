@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { deleteUserAccount, updateUserPassword } from '../app/authSlice';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -19,6 +18,18 @@ let getCurrentToken = null;
 // Method to set token getter (called from store setup)
 export const setTokenGetter = (tokenGetter) => {
     getCurrentToken = tokenGetter;
+};
+
+// Request retry logic
+const retryRequest = async (fn, retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === retries - 1 || error.response?.status < 500) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+    }
+  }
 };
 
 // Request interceptor to add auth token

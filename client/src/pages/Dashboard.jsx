@@ -309,33 +309,6 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
-
-          {/* Quick Actions */}
-          <div className="card border-0 shadow-sm">
-            <div className="card-header bg-transparent border-0 pt-3">
-              <h5 className="mb-0">Quick Actions</h5>
-            </div>
-            <div className="card-body pt-2">
-              <div className="d-grid gap-2">
-                <button className="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2">
-                  <FaArrowUp size={14} />
-                  Add Income
-                </button>
-                <button className="btn btn-outline-danger d-flex align-items-center justify-content-center gap-2">
-                  <FaArrowDown size={14} />
-                  Add Expense
-                </button>
-                <button className="btn btn-outline-info d-flex align-items-center justify-content-center gap-2">
-                  <FaExchangeAlt size={14} />
-                  Transfer Funds
-                </button>
-                <button className="btn btn-outline-success d-flex align-items-center justify-content-center gap-2">
-                  {/* <FaTarget size={14} /> */}
-                  Create Goal
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 

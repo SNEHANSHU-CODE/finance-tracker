@@ -1,18 +1,21 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
-import resetPasswordSlice from './resetPasswordSlice';
-import transactionSlice from './transactionSlice';
+import resetPasswordReducer from './resetPasswordSlice';
+import transactionReducer from './transactionSlice';
+import goalReducer from './goalSlice';
 
 // Import setTokenGetter from all services
 import { setTokenGetter as setAuthTokenGetter } from '../services/authService';
 import { setTokenGetter as setResetPasswordTokenGetter } from '../services/resetPasswordService';
+import { setTokenGetter as setGoalTokenGetter } from '../services/goalService';
 import { setTokenGetter as setTransactionTokenGetter } from '../services/transactionService';
 
 const store = configureStore({
     reducer: {
         auth: authReducer,
-        passwordReset: resetPasswordSlice,
-        transaction: transactionSlice
+        passwordReset: resetPasswordReducer,
+        transaction: transactionReducer,
+        goals: goalReducer
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
@@ -31,6 +34,7 @@ const tokenGetter = () => {
 // Set up token getter for all services
 setAuthTokenGetter(tokenGetter);
 setResetPasswordTokenGetter(tokenGetter);
+setGoalTokenGetter(tokenGetter);
 setTransactionTokenGetter(tokenGetter);
 
 export { store };

@@ -26,7 +26,6 @@ const authenticateToken = async (req, res, next) => {
     if (!user.isActive) {
       return ResponseUtils.forbidden(res, 'Account is deactivated');
     }
-
     req.user = user;
     req.userId = user._id;
     next();

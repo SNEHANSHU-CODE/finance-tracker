@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from 'react-router-dom';
+
 import {
   FaPlus,
   FaSearch,
@@ -26,11 +28,14 @@ import {
 
 export default function Transactions() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const userId = useSelector(state => state.auth.user?.userId);
+  const searchTimeoutRef = useRef(null);
 
   // Redux state
   const {
-    transactions,
-    pagination,
+    transactions = [],
+    pagination = {},
     loading,
     error,
     filters
@@ -56,32 +61,56 @@ export default function Transactions() {
 
   // Fetch transactions on component mount and when filters change
   useEffect(() => {
-    const params = {
-      page: pagination.currentPage,
-      limit: pagination.itemsPerPage,
-      ...filters
-    };
-    dispatch(fetchTransactions(params));
-  }, [dispatch, filters, pagination.currentPage]);
+    if (userId) {
+      const params = {
+        userId,
+        page: pagination.currentPage || 1,
+        limit: pagination.itemsPerPage || 10,
+        ...filters
+      };
+      dispatch(fetchTransactions(params));
+    }
+  }, [dispatch, userId, filters, pagination.currentPage]);
 
   // Clear error when component unmounts
   useEffect(() => {
     return () => {
       dispatch(clearError());
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
     };
   }, [dispatch]);
 
   const handleFilterChange = (newFilters) => {
-    dispatch(setFilters(newFilters));
+    const transformedFilters = { 
+      ...newFilters, 
+      currentPage: 1 
+    };
+    
+    // Transform type filter to match backend expectations
+    if (transformedFilters.type && transformedFilters.type !== 'all') {
+      transformedFilters.type = transformedFilters.type === 'income' ? 'Income' : 'Expense';
+    } else if (transformedFilters.type === 'all') {
+      delete transformedFilters.type;
+    }
+    
+    dispatch(setFilters(transformedFilters));
   };
 
-  const handleSearch = (searchTerm) => {
-    handleFilterChange({ searchTerm, currentPage: 1 });
-  };
-
-  const handleSort = (sortBy) => {
-    const newSortOrder = filters.sortBy === sortBy && filters.sortOrder === 'asc' ? 'desc' : 'asc';
-    handleFilterChange({ sortBy, sortOrder: newSortOrder });
+  // Direct search handler with timeout
+  const handleSearch = (e) => {
+    const searchTerm = e.target.value;
+    
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Set new timeout for debounced search
+    searchTimeoutRef.current = setTimeout(() => {
+      handleFilterChange({ searchTerm });
+    }, 300);
   };
 
   const getSortIcon = (key) => {
@@ -91,7 +120,12 @@ export default function Transactions() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title || !formData.amount) return;
+    
+    // Validate required fields
+    if (!formData.title || !formData.amount) {
+      console.error('Title and amount are required');
+      return;
+    }
 
     const transactionData = {
       description: formData.title,
@@ -111,13 +145,17 @@ export default function Transactions() {
       } else {
         await dispatch(createTransaction(transactionData)).unwrap();
       }
+      
       resetForm();
-      // Refresh transactions after successful operation
+     
       dispatch(fetchTransactions({
+        userId,
         page: pagination.currentPage,
         limit: pagination.itemsPerPage,
         ...filters
       }));
+      console.log(editingTransaction ? 'Transaction updated successfully' : 'Transaction created successfully');
+      
     } catch (error) {
       console.error('Transaction operation failed:', error);
     }
@@ -139,12 +177,12 @@ export default function Transactions() {
   const handleEdit = (transaction) => {
     setEditingTransaction(transaction);
     setFormData({
-      title: transaction.title,
+      title: transaction.description || "",
       amount: Math.abs(transaction.amount).toString(),
-      type: transaction.type,
-      category: transaction.category,
-      date: transaction.date.split('T')[0],
-      description: transaction.description || ""
+      type: transaction.type === 'Income' ? 'income' : 'expense',
+      category: transaction.category || "",
+      date: transaction.date ? transaction.date.split('T')[0] : "",
+      description: transaction.notes || ""
     });
     setShowAddModal(true);
   };
@@ -155,6 +193,7 @@ export default function Transactions() {
         await dispatch(deleteTransaction(id)).unwrap();
         // Refresh transactions after successful deletion
         dispatch(fetchTransactions({
+          userId,
           page: pagination.currentPage,
           limit: pagination.itemsPerPage,
           ...filters
@@ -167,6 +206,7 @@ export default function Transactions() {
 
   const handlePageChange = (page) => {
     dispatch(fetchTransactions({
+      userId,
       page,
       limit: pagination.itemsPerPage,
       ...filters
@@ -197,7 +237,7 @@ export default function Transactions() {
       {/* Error Alert */}
       {error && (
         <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          {error}
+          {error?.message}
           <button
             type="button"
             className="btn-close"
@@ -241,15 +281,15 @@ export default function Transactions() {
                       type="text"
                       className="form-control border-start-0"
                       placeholder="Search transactions..."
-                      value={filters.searchTerm}
-                      onChange={(e) => handleSearch(e.target.value)}
+                      defaultValue={filters.searchTerm || ''}
+                      onChange={handleSearch}
                     />
                   </div>
                 </div>
                 <div className="col-lg-2 col-md-3 col-sm-6">
                   <select
                     className="form-select"
-                    value={filters.type}
+                    value={filters.type === 'Income' ? 'income' : filters.type === 'Expense' ? 'expense' : 'all'}
                     onChange={(e) => handleFilterChange({ type: e.target.value })}
                   >
                     <option value="all">All Types</option>
@@ -260,7 +300,7 @@ export default function Transactions() {
                 <div className="col-lg-2 col-md-3 col-sm-6">
                   <select
                     className="form-select"
-                    value={filters.category}
+                    value={filters.category || ''}
                     onChange={(e) => handleFilterChange({ category: e.target.value })}
                   >
                     <option value="">All Categories</option>
@@ -274,7 +314,7 @@ export default function Transactions() {
                     type="date"
                     className="form-control"
                     placeholder="Start Date"
-                    value={filters.startDate}
+                    value={filters.startDate || ''}
                     onChange={(e) => handleFilterChange({ startDate: e.target.value })}
                   />
                 </div>
@@ -283,7 +323,7 @@ export default function Transactions() {
                     type="date"
                     className="form-control"
                     placeholder="End Date"
-                    value={filters.endDate}
+                    value={filters.endDate || ''}
                     onChange={(e) => handleFilterChange({ endDate: e.target.value })}
                   />
                 </div>
@@ -310,7 +350,7 @@ export default function Transactions() {
             <div className="card-header bg-white border-0 py-3">
               <div className="d-flex justify-content-between align-items-center">
                 <h6 className="mb-0">
-                  All Transactions ({pagination.totalItems})
+                  All Transactions ({pagination.totalItems || 0})
                   {loading && <FaSpinner className="fa-spin ms-2" />}
                 </h6>
                 <div className="d-flex align-items-center gap-2">
@@ -318,21 +358,30 @@ export default function Transactions() {
                   <div className="btn-group btn-group-sm">
                     <button
                       className={`btn ${filters.sortBy === 'date' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                      onClick={() => handleSort('date')}
+                      onClick={() => {
+                        const newSortOrder = filters.sortBy === 'date' && filters.sortOrder === 'asc' ? 'desc' : 'asc';
+                        handleFilterChange({ sortBy: 'date', sortOrder: newSortOrder });
+                      }}
                     >
                       Date {getSortIcon('date')}
                     </button>
                     <button
                       className={`btn ${filters.sortBy === 'amount' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                      onClick={() => handleSort('amount')}
+                      onClick={() => {
+                        const newSortOrder = filters.sortBy === 'amount' && filters.sortOrder === 'asc' ? 'desc' : 'asc';
+                        handleFilterChange({ sortBy: 'amount', sortOrder: newSortOrder });
+                      }}
                     >
                       Amount {getSortIcon('amount')}
                     </button>
                     <button
-                      className={`btn ${filters.sortBy === 'title' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                      onClick={() => handleSort('title')}
+                      className={`btn ${filters.sortBy === 'description' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      onClick={() => {
+                        const newSortOrder = filters.sortBy === 'description' && filters.sortOrder === 'asc' ? 'desc' : 'asc';
+                        handleFilterChange({ sortBy: 'description', sortOrder: newSortOrder });
+                      }}
                     >
-                      Title {getSortIcon('title')}
+                      Title {getSortIcon('description')}
                     </button>
                   </div>
                 </div>
@@ -351,24 +400,24 @@ export default function Transactions() {
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions.map((transaction) => (
+                    {Array.isArray(transactions) && transactions.map((transaction) => (
                       <tr key={transaction._id}>
                         <td className="border-0 ps-4">
                           <div className="d-flex align-items-center">
-                            <div className={`p-2 rounded me-3 ${transaction.type === 'income'
+                            <div className={`p-2 rounded me-3 ${transaction.type === 'Income'
                                 ? 'bg-success bg-opacity-10'
                                 : 'bg-danger bg-opacity-10'
                               }`}>
-                              {transaction.type === 'income'
+                              {transaction.type === 'Income'
                                 ? <FaArrowUp className="text-success" size={14} />
                                 : <FaArrowDown className="text-danger" size={14} />
                               }
                             </div>
                             <div>
-                              <div className="fw-medium">{transaction.title}</div>
+                              <div className="fw-medium">{transaction.description}</div>
                               <small className="text-muted text-capitalize">{transaction.type}</small>
-                              {transaction.description && (
-                                <div className="small text-muted">{transaction.description}</div>
+                              {transaction.notes && (
+                                <div className="small text-muted">{transaction.notes}</div>
                               )}
                             </div>
                           </div>

@@ -1,14 +1,13 @@
-// controllers/transactionController.js
 const transactionService = require('../services/transactionService');
 
 class TransactionController {
   // Create a new transaction
   async createTransaction(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id; // Assuming user has profileId
+      const userId = req.userId;
       const transactionData = req.body;
 
-      const result = await transactionService.createTransaction(profileId, transactionData);
+      const result = await transactionService.createTransaction(userId, transactionData);
       
       res.status(201).json(result);
     } catch (error) {
@@ -23,7 +22,9 @@ class TransactionController {
   // Get all transactions with filters and pagination
   async getTransactions(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id;
+      const userId = (req.userId || req.query.userId)?.toString();;
+      
+      console.log("userId received in controller:", userId);
       const options = {
         page: parseInt(req.query.page) || 1,
         limit: parseInt(req.query.limit) || 20,
@@ -37,7 +38,7 @@ class TransactionController {
         sortOrder: req.query.sortOrder || 'desc'
       };
 
-      const result = await transactionService.getTransactions(profileId, options);
+      const result = await transactionService.getTransactions(userId, options);
       
       res.status(200).json(result);
     } catch (error) {
@@ -52,10 +53,10 @@ class TransactionController {
   // Get single transaction by ID
   async getTransactionById(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id;
+      const userId = req.userId;
       const { id } = req.params;
 
-      const result = await transactionService.getTransactionById(id, profileId);
+      const result = await transactionService.getTransactionById(id, userId);
       
       res.status(200).json(result);
     } catch (error) {
@@ -70,11 +71,11 @@ class TransactionController {
   // Update transaction
   async updateTransaction(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id;
+      const userId = req.userId;
       const { id } = req.params;
       const updateData = req.body;
 
-      const result = await transactionService.updateTransaction(id, profileId, updateData);
+      const result = await transactionService.updateTransaction(id, userId, updateData);
       
       res.status(200).json(result);
     } catch (error) {
@@ -89,10 +90,10 @@ class TransactionController {
   // Delete transaction
   async deleteTransaction(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id;
+      const userId = req.userId;
       const { id } = req.params;
 
-      const result = await transactionService.deleteTransaction(id, profileId);
+      const result = await transactionService.deleteTransaction(id, userId);
       
       res.status(200).json(result);
     } catch (error) {
@@ -107,7 +108,7 @@ class TransactionController {
   // Get monthly summary
   async getMonthlySummary(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id;
+      const userId = req.userId;
       const { month, year } = req.params;
 
       if (!month || !year) {
@@ -118,7 +119,7 @@ class TransactionController {
       }
 
       const result = await transactionService.getMonthlySummary(
-        profileId, 
+        userId, 
         parseInt(month), 
         parseInt(year)
       );
@@ -136,7 +137,7 @@ class TransactionController {
   // Get category analysis
   async getCategoryAnalysis(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id;
+      const userId = req.userId;
       const { startDate, endDate } = req.query;
 
       if (!startDate || !endDate) {
@@ -146,7 +147,7 @@ class TransactionController {
         });
       }
 
-      const result = await transactionService.getCategoryAnalysis(profileId, startDate, endDate);
+      const result = await transactionService.getCategoryAnalysis(userId, startDate, endDate);
       
       res.status(200).json(result);
     } catch (error) {
@@ -161,10 +162,10 @@ class TransactionController {
   // Get recent transactions
   async getRecentTransactions(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id;
+      const userId = req.userId;
       const limit = parseInt(req.query.limit) || 5;
 
-      const result = await transactionService.getRecentTransactions(profileId, limit);
+      const result = await transactionService.getRecentTransactions(userId, limit);
       
       res.status(200).json(result);
     } catch (error) {
@@ -179,9 +180,9 @@ class TransactionController {
   // Get dashboard statistics
   async getDashboardStats(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id;
+      const userId = req.userId;
 
-      const result = await transactionService.getDashboardStats(profileId);
+      const result = await transactionService.getDashboardStats(userId);
       
       res.status(200).json(result);
     } catch (error) {
@@ -196,7 +197,7 @@ class TransactionController {
   // Set transaction as recurring
   async setRecurring(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id;
+      const userId = req.userId;
       const { id } = req.params;
       const { frequency, endDate } = req.body;
 
@@ -207,7 +208,7 @@ class TransactionController {
         });
       }
 
-      const result = await transactionService.setRecurring(id, profileId, frequency, endDate);
+      const result = await transactionService.setRecurring(id, userId, frequency, endDate);
       
       res.status(200).json(result);
     } catch (error) {
@@ -222,7 +223,7 @@ class TransactionController {
   // Bulk delete transactions
   async bulkDeleteTransactions(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id;
+      const userId = req.userId;
       const { transactionIds } = req.body;
 
       if (!transactionIds || !Array.isArray(transactionIds) || transactionIds.length === 0) {
@@ -232,7 +233,7 @@ class TransactionController {
         });
       }
 
-      const result = await transactionService.bulkDeleteTransactions(transactionIds, profileId);
+      const result = await transactionService.bulkDeleteTransactions(transactionIds, userId);
       
       res.status(200).json(result);
     } catch (error) {
@@ -247,9 +248,9 @@ class TransactionController {
   // Get spending trends
   async getSpendingTrends(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id;
+      const userId = req.userId;
 
-      const result = await transactionService.getSpendingTrends(profileId);
+      const result = await transactionService.getSpendingTrends(userId);
       
       res.status(200).json(result);
     } catch (error) {
@@ -264,12 +265,12 @@ class TransactionController {
   // Get current month summary (convenience endpoint)
   async getCurrentMonthSummary(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id;
+      const userId = req.userId;
       const currentDate = new Date();
       const month = currentDate.getMonth() + 1;
       const year = currentDate.getFullYear();
 
-      const result = await transactionService.getMonthlySummary(profileId, month, year);
+      const result = await transactionService.getMonthlySummary(userId, month, year);
       
       res.status(200).json(result);
     } catch (error) {
@@ -284,7 +285,7 @@ class TransactionController {
   // Export transactions (CSV format)
   async exportTransactions(req, res) {
     try {
-      const profileId = req.user.profileId || req.user.id;
+      const userId = req.userId;
       const { startDate, endDate, format = 'json' } = req.query;
 
       const options = {
@@ -295,7 +296,7 @@ class TransactionController {
         limit: 10000 // Large limit for export
       };
 
-      const result = await transactionService.getTransactions(profileId, options);
+      const result = await transactionService.getTransactions(userId, options);
       
       if (format === 'csv') {
         // Set headers for CSV download

@@ -52,10 +52,8 @@ const initialState = {
   passwordResetSuccess: false,
   // Data
   email: null,
-  resetToken: null,
-  // Additional state for better UX
   lastEmailSentTime: null,
-  resendAllowed: true,
+  resendAllowed: true
 };
 
 // Password Reset Slice
@@ -67,7 +65,7 @@ const resetPasswordSlice = createSlice({
       state.error = null;
     },
     resetFlow: (state) => {
-      // ✅ Fixed: Return the actual initial state
+      // Reset to initial state
       return { ...initialState };
     },
     setCurrentStep: (state, action) => {
@@ -91,14 +89,11 @@ const resetPasswordSlice = createSlice({
         if (state.currentStep === 1) {
           state.emailSent = false;
           state.codeVerified = false;
-          state.resetToken = null;
         } else if (state.currentStep === 2) {
           state.codeVerified = false;
-          state.resetToken = null;
         }
       }
     },
-    // ✅ New action to handle resend timer
     setResendAllowed: (state, action) => {
       state.resendAllowed = action.payload;
     },
@@ -106,6 +101,13 @@ const resetPasswordSlice = createSlice({
     completePasswordReset: (state) => {
       return { ...initialState };
     },
+    cleanup: (state) => {
+    // Clear any pending timers or intervals
+    if (state.resendTimer) {
+      clearTimeout(state.resendTimer);
+      state.resendTimer = null;
+    }
+  }
   },
   extraReducers: (builder) => {
     builder
@@ -126,8 +128,6 @@ const resetPasswordSlice = createSlice({
         if (action.payload?.email) {
           state.email = action.payload.email;
         }
-        
-        // ✅ Removed setTimeout - handle this in component instead
       })
       .addCase(sendPasswordReset.rejected, (state, action) => {
         state.loading = false;
@@ -146,11 +146,7 @@ const resetPasswordSlice = createSlice({
         state.codeVerified = true;
         state.currentStep = 3;
         state.error = null;
-        
-        // Store reset token if returned from API
-        if (action.payload?.resetToken || action.payload?.token) {
-          state.resetToken = action.payload.resetToken || action.payload.token;
-        }
+        // resetToken is now handled as HTTP-only cookie, no need to store in state
       })
       .addCase(verifyPasswordReset.rejected, (state, action) => {
         state.loading = false;

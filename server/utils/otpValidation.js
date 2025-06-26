@@ -73,37 +73,11 @@ const validateVerifyOTPRequest = (req, res, next) => {
 };
 
 const validateSetNewPasswordRequest = (req, res, next) => {
-  const { token, newPassword, confirmPassword } = req.body;
-
-  // Check if token is provided
-  if (!token) {
-    return res.status(400).json({
-      success: false,
-      message: 'Reset token is required',
-    });
-  }
-
-  // Check if new password is provided
+  const { newPassword } = req.body;
   if (!newPassword) {
     return res.status(400).json({
       success: false,
       message: 'New password is required',
-    });
-  }
-
-  // Check if confirm password is provided
-  if (!confirmPassword) {
-    return res.status(400).json({
-      success: false,
-      message: 'Confirm password is required',
-    });
-  }
-
-  // Check if passwords match
-  if (newPassword !== confirmPassword) {
-    return res.status(400).json({
-      success: false,
-      message: 'New password and confirm password do not match',
     });
   }
 
@@ -115,16 +89,17 @@ const validateSetNewPasswordRequest = (req, res, next) => {
     });
   }
 
-  // Additional password strength validation (optional)
   if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
     return res.status(400).json({
       success: false,
-      message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+      message:
+        'Password must contain at least one uppercase letter, one lowercase letter, and one number',
     });
   }
 
   next();
 };
+
 
 module.exports = {
   validateSendOTPRequest,

@@ -1,23 +1,24 @@
 import axios from 'axios';
 
-// Import store after it's created to avoid circular dependency
-let store;
+// Cache for store to avoid multiple dynamic imports
+let storeCache = null;
 
-const getStore = () => {
-    if (!store) {
+const getStore = async () => {
+    if (!storeCache) {
         // Dynamic import to avoid circular dependency
-        store = require('../app/store').store;
+        const module = await import('../app/store');
+        storeCache = module.store;
     }
-    return store;
+    return storeCache;
 };
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Create axios instance
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
     timeout: 10000, // 10 seconds timeout
-    withCredentials: true, // Include cookies in requests (for refresh token)
+    withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -25,13 +26,23 @@ const apiClient = axios.create({
 
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
-    (config) => {
-        const currentStore = getStore();
-        const state = currentStore.getState();
-        const token = state.auth.accessToken;
+    async (config) => {
+        const useCookieAuth = config.url?.includes('/transaction') || config.headers['X-Cookie-Auth'];
+        
+        if (useCookieAuth) {
+            return config;
+        }
+        
+        try {
+            const currentStore = await getStore();
+            const state = currentStore.getState();
+            const token = state.auth.accessToken;
 
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        } catch (error) {
+            console.warn('Could not get store in request interceptor:', error);
         }
 
         return config;
@@ -63,7 +74,7 @@ apiClient.interceptors.response.use(
 
                 // Dynamic import to avoid circular dependency
                 const { setCredentials } = await import('../app/authSlice');
-                const currentStore = getStore();
+                const currentStore = await getStore();
 
                 // Update Redux store with new token
                 currentStore.dispatch(setCredentials({ accessToken, user }));
@@ -75,7 +86,7 @@ apiClient.interceptors.response.use(
             } catch (refreshError) {
                 // Dynamic import to avoid circular dependency
                 const { clearCredentials } = await import('../app/authSlice');
-                const currentStore = getStore();
+                const currentStore = await getStore();
 
                 // Refresh failed, clear auth state
                 currentStore.dispatch(clearCredentials());

@@ -131,31 +131,39 @@ class OtpService {
         throw new Error('Reset token and new password are required');
       }
 
+      console.log('Incoming token:', token);
+
       if (newPassword.length < 6) {
         throw new Error('Password must be at least 6 characters long');
       }
 
+      console.log('password test pass');
+
       // Verify the reset token
       let decoded;
       try {
-        decoded = JWTUtils.verifyPasswordResetToken(token);
+        decoded = JWTUtils.verifyResetToken(token);
       } catch (error) {
         throw new Error('Invalid or expired reset token');
       }
 
-      const email = decoded.email;
+      const email = decoded.email.toLowerCase().trim();
+      console.log('Decoded email from token:', email);
 
       // Check if token exists in Redis
       const storedToken = await redisService.get(this.getResetTokenKey(email));
+      console.log('Redis key:', this.getResetTokenKey(email));
+      console.log(storedToken , token);
       if (!storedToken || storedToken !== token) {
         throw new Error('Invalid or expired reset token');
       }
 
       // Find user
-      const user = await User.findOne({ email: email.toLowerCase() });
+      const user = await User.findOne({ email });
       if (!user) {
         throw new Error('User not found');
       }
+      console.log('User found', user);
 
       // Check if account is active
       if (!user.isActive) {

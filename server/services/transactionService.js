@@ -1,16 +1,15 @@
-// services/transactionService.js
 const Transaction = require('../models/transactionModel');
-const user = require('../models/userModel');
+const User = require('../models/userModel'); // Fixed import name
 const mongoose = require('mongoose');
 
 class TransactionService {
   // Create a new transaction
-  async createTransaction(profileId, transactionData) {
+  async createTransaction(userId, transactionData) {
     try {
-      // Validate profile exists
-      const profileExists = await user.findById(profileId);
-      if (!profileExists) {
-        throw new Error('Profile not found');
+      // Validate user exists
+      const userExists = await User.findById(userId);
+      if (!userExists) {
+        throw new Error('User not found');
       }
 
       // Ensure amount has correct sign based on type
@@ -21,13 +20,13 @@ class TransactionService {
       }
 
       const transaction = new Transaction({
-        profileId,
+        userId,
         ...transactionData
       });
 
       await transaction.save();
       await transaction.populate('goalId', 'name category');
-      
+
       return {
         success: true,
         message: 'Transaction created successfully',
@@ -39,8 +38,12 @@ class TransactionService {
     }
   }
 
-  // Get transactions by profile with filters
-  async getTransactions(profileId, options = {}) {
+  // Get transactions by user with filters
+  async getTransactions(userId, options = {}) {
+
+
+    console.log("userId received in Service:", userId);
+
     try {
       const {
         page = 1,
@@ -55,15 +58,36 @@ class TransactionService {
         sortOrder = 'desc'
       } = options;
 
-      const query = { profileId };
+      console.log("getting options", options);
+
+      const { ObjectId } = require('mongoose').Types;
+
+      if (!userId || typeof userId !== 'string' || !ObjectId.isValid(userId)) {
+        throw new Error('Invalid or missing userId');
+      }
+
+      const query = { userId: new ObjectId(userId) };
 
       // Apply filters
-      if (type) query.type = type;
-      if (category) query.category = category;
-      if (paymentMethod) query.paymentMethod = paymentMethod;
-      if (tags && tags.length > 0) query.tags = { $in: tags };
+      const isValid = (val) => val !== undefined && val !== null && val !== '';
 
-      if (startDate && endDate) {
+      if (type === 'Income' || type === 'Expense') {
+        query.type = type;
+      }
+
+      if (isValid(category)) {
+        query.category = category;
+      }
+
+      if (isValid(paymentMethod)) {
+        query.paymentMethod = paymentMethod;
+      }
+
+      if (Array.isArray(tags) && tags.length > 0) {
+        query.tags = { $in: tags };
+      }
+
+      if (isValid(startDate) && isValid(endDate)) {
         query.date = {
           $gte: new Date(startDate),
           $lte: new Date(endDate)
@@ -101,11 +125,11 @@ class TransactionService {
   }
 
   // Get single transaction by ID
-  async getTransactionById(transactionId, profileId) {
+  async getTransactionById(transactionId, userId) {
     try {
       const transaction = await Transaction.findOne({
         _id: transactionId,
-        profileId
+        userId
       }).populate('goalId', 'name category');
 
       if (!transaction) {
@@ -123,7 +147,7 @@ class TransactionService {
   }
 
   // Update transaction
-  async updateTransaction(transactionId, profileId, updateData) {
+  async updateTransaction(transactionId, userId, updateData) {
     try {
       // Ensure amount has correct sign based on type
       if (updateData.type === 'Expense' && updateData.amount > 0) {
@@ -133,7 +157,7 @@ class TransactionService {
       }
 
       const transaction = await Transaction.findOneAndUpdate(
-        { _id: transactionId, profileId },
+        { _id: transactionId, userId },
         updateData,
         { new: true, runValidators: true }
       ).populate('goalId', 'name category');
@@ -154,11 +178,11 @@ class TransactionService {
   }
 
   // Delete transaction
-  async deleteTransaction(transactionId, profileId) {
+  async deleteTransaction(transactionId, userId) {
     try {
       const transaction = await Transaction.findOneAndDelete({
         _id: transactionId,
-        profileId
+        userId
       });
 
       if (!transaction) {
@@ -176,10 +200,10 @@ class TransactionService {
   }
 
   // Get monthly summary
-  async getMonthlySummary(profileId, month, year) {
+  async getMonthlySummary(userId, month, year) {
     try {
-      const summary = await Transaction.getMonthlySummary(profileId, month, year);
-      
+      const summary = await Transaction.getMonthlySummary(userId, month, year);
+
       return {
         success: true,
         data: summary
@@ -191,10 +215,10 @@ class TransactionService {
   }
 
   // Get category analysis
-  async getCategoryAnalysis(profileId, startDate, endDate) {
+  async getCategoryAnalysis(userId, startDate, endDate) {
     try {
-      const analysis = await Transaction.getCategoryAnalysis(profileId, startDate, endDate);
-      
+      const analysis = await Transaction.getCategoryAnalysis(userId, startDate, endDate);
+
       return {
         success: true,
         data: analysis
@@ -206,10 +230,10 @@ class TransactionService {
   }
 
   // Get recent transactions
-  async getRecentTransactions(profileId, limit = 5) {
+  async getRecentTransactions(userId, limit = 5) {
     try {
-      const transactions = await Transaction.getRecent(profileId, limit);
-      
+      const transactions = await Transaction.getRecent(userId, limit);
+
       return {
         success: true,
         data: transactions
@@ -221,35 +245,35 @@ class TransactionService {
   }
 
   // Get dashboard stats
-  async getDashboardStats(profileId) {
+  async getDashboardStats(userId) {
     try {
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth() + 1;
       const currentYear = currentDate.getFullYear();
-      
+
       // Get current month summary
-      const monthlyStats = await this.getMonthlySummary(profileId, currentMonth, currentYear);
-      
+      const monthlyStats = await this.getMonthlySummary(userId, currentMonth, currentYear);
+
       // Get recent transactions
-      const recentTransactions = await this.getRecentTransactions(profileId, 5);
-      
+      const recentTransactions = await this.getRecentTransactions(userId, 5);
+
       // Get year-to-date stats
       const yearStart = new Date(currentYear, 0, 1);
       const yearEnd = new Date(currentYear, 11, 31);
-      
+
       const yearlyTransactions = await Transaction.find({
-        profileId,
+        userId,
         date: { $gte: yearStart, $lte: yearEnd }
       });
-      
+
       const yearlyIncome = yearlyTransactions
         .filter(t => t.type === 'Income')
         .reduce((sum, t) => sum + t.amount, 0);
-        
+
       const yearlyExpenses = yearlyTransactions
         .filter(t => t.type === 'Expense')
         .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-      
+
       return {
         success: true,
         data: {
@@ -270,11 +294,11 @@ class TransactionService {
   }
 
   // Set transaction as recurring
-  async setRecurring(transactionId, profileId, frequency, endDate = null) {
+  async setRecurring(transactionId, userId, frequency, endDate = null) {
     try {
       const transaction = await Transaction.findOne({
         _id: transactionId,
-        profileId
+        userId
       });
 
       if (!transaction) {
@@ -295,11 +319,11 @@ class TransactionService {
   }
 
   // Bulk delete transactions
-  async bulkDeleteTransactions(transactionIds, profileId) {
+  async bulkDeleteTransactions(transactionIds, userId) {
     try {
       const result = await Transaction.deleteMany({
         _id: { $in: transactionIds },
-        profileId
+        userId
       });
 
       return {
@@ -314,7 +338,7 @@ class TransactionService {
   }
 
   // Get spending trends (last 6 months)
-  async getSpendingTrends(profileId) {
+  async getSpendingTrends(userId) {
     try {
       const currentDate = new Date();
       const trends = [];
@@ -323,8 +347,8 @@ class TransactionService {
         const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
         const month = date.getMonth() + 1;
         const year = date.getFullYear();
-        
-        const summary = await Transaction.getMonthlySummary(profileId, month, year);
+
+        const summary = await Transaction.getMonthlySummary(userId, month, year);
         trends.push({
           month: date.toLocaleString('default', { month: 'long' }),
           year,

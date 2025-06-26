@@ -4,10 +4,14 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 const { redisService } = require('./config/redis');
+const emailService = require('./services/emailService');
+
+// Importing all Routes
 const authRoutes = require('./routes/authRoutes');
 const resetPasswordRoutes = require('./routes/resetPasswordRoute');
 const transactionRoutes = require('./routes/transactionRoutes');
-const emailService = require('./services/emailService');
+const goalRouter = require('./routes/goalRoutes');
+const analyticsRouter = require('./routes/analyticsRoutes');
 
 // Load .env
 dotenv.config();
@@ -19,7 +23,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'https://finance-tracker-ialp.onrender.com'],
   credentials: true
 }));
 app.use(express.json());
@@ -29,6 +33,8 @@ app.use(cookieParser());
 app.use('/api/auth', authRoutes);
 app.use('/api/reset', resetPasswordRoutes);
 app.use('/api/transaction', transactionRoutes);
+app.use('/api/goals', goalRouter);
+app.use('/api/analytics', analyticsRouter);
 
 // Initialize Redis and start server
 async function initializeRedis() {

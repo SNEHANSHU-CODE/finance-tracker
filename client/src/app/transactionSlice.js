@@ -4,9 +4,11 @@ import transactionService from '../services/transactionService';
 // Async thunks for API calls
 export const fetchTransactions = createAsyncThunk(
   'transaction/fetchTransactions',
-  async (params = {}, { rejectWithValue }) => {
+  async (params = {}, { getState, rejectWithValue }) => {
     try {
-      const response = await transactionService.getTransactions(params);
+      const userId = getState().auth.user?.userId;
+      if (!userId) return rejectWithValue({ message: 'Missing userId' });
+      const response = await transactionService.getTransactions({...params, userId});
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);
@@ -177,7 +179,12 @@ const transactionSlice = createSlice({
       .addCase(createTransaction.fulfilled, (state, action) => {
         state.loading = false;
         state.transactions.unshift(action.payload);
-      })
+        // Update pagination
+        state.pagination.totalItems += 1;
+        if (state.transactions.length > state.pagination.itemsPerPage) {
+          state.transactions.pop();
+        }
+        })
       .addCase(createTransaction.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
@@ -208,6 +215,8 @@ const transactionSlice = createSlice({
       .addCase(deleteTransaction.fulfilled, (state, action) => {
         state.loading = false;
         state.transactions = state.transactions.filter(t => t._id !== action.payload);
+        // Update pagination
+        state.pagination.totalItems = Math.max(0, state.pagination.totalItems - 1);
       })
       .addCase(deleteTransaction.rejected, (state, action) => {
         state.loading = false;

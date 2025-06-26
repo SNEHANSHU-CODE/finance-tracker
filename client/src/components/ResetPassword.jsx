@@ -24,8 +24,7 @@ const ResetPassword = () => {
     emailSent,
     codeVerified,
     passwordResetSuccess,
-    email: reduxEmail,
-    resetToken
+    email: reduxEmail
   } = useSelector(state => state.passwordReset);
 
   // Local state
@@ -266,14 +265,6 @@ const ResetPassword = () => {
   const handleResetPassword = async (e) => {
     e.preventDefault();
 
-    // ✅ Check if reset token exists
-    if (!resetToken) {
-      setPasswordErrors({
-        general: 'Session expired. Please start the password reset process again.'
-      });
-      return;
-    }
-
     const errors = {};
 
     // Validate new password
@@ -304,7 +295,6 @@ const ResetPassword = () => {
 
     try {
       await dispatch(setNewPassword({
-        resetToken: resetToken,
         newPassword: passwords.newPassword
       })).unwrap();
     } catch (error) {
