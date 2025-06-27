@@ -11,6 +11,8 @@ import DashboardHome from '../pages/DashboardHome';
 import LoadingSpinner from '../pages/LodingSpinner';
 import ResetPassword from '../components/ResetPassword';
 import AuthorsNote from '../components/AuthorsNote';
+import PrivacyPolicy from '../components/PrivacyPolicy';
+import TermsOfService from '../components/TermOfService';
 
 
 //Importing Dashboard Sub-Component
@@ -20,6 +22,7 @@ import Analytics from '../pages/Analytics';
 import Goals from '../pages/Goals';
 import Settings from '../pages/Settings';
 import Profile from '../pages/Profile';
+import Reminders from '../pages/Reminders';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -44,39 +47,15 @@ export default function AppRouter() {
     return (
         <Routes>
             <Route path="/" element={<LandingPage />} />
-            <Route 
-                path="/login" 
-                element={
-                    <PublicRoute>
-                        <Login />
-                    </PublicRoute>
-                } 
-            />
-            <Route 
-                path="/signup" 
-                element={
-                    <PublicRoute>
-                        <Signup />
-                    </PublicRoute>
-                } 
-            />
-            <Route 
-                path="/resetpassword"
-                element={
-                    <PublicRoute>
-                        <ResetPassword />
-                    </PublicRoute>
-                } 
-            />
-            <Route 
-                path="/authorsnote"
-                element={
-                    <PublicRoute>
-                        <AuthorsNote />
-                    </PublicRoute>
-                } 
-            />
+            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+            <Route path="/resetpassword" element={<PublicRoute><ResetPassword /></PublicRoute>} />
+            <Route path="/privacy" element={<PublicRoute><PrivacyPolicy /></PublicRoute>} />
+            <Route path="/service" element={<PublicRoute><TermsOfService /></PublicRoute>} />
+            <Route path="/authorsnote" element={<PublicRoute><AuthorsNote /></PublicRoute>} />
+
             {/* Dashboard routes */}
+            
             <Route 
                 path="/dashboard" 
                 element={
@@ -91,6 +70,7 @@ export default function AppRouter() {
                 <Route path="transactions" element={<Transactions />} />
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="goals" element={<Goals />} />
+                <Route path="reminders" element={<Reminders />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="profile" element={<Profile />} />
                 {/* Redirect unknown dashboard routes to main dashboard */}

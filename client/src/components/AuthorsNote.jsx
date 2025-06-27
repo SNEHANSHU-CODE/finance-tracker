@@ -157,7 +157,7 @@ return (
                 <div className="col-md-2 text-center mb-3 mb-md-0">
                   <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto"
                     style={{ width: '80px', height: '80px', fontSize: '2rem', fontWeight: 'bold' }}>
-                    AK
+                    SSJ
                   </div>
                 </div>
                 <div className="col-md-6">

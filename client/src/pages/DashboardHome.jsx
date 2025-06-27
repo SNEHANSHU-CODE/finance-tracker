@@ -39,6 +39,9 @@ export default function DashboardHome() {
               <Link className="nav-link text-white" to="/dashboard/goals">Goals</Link>
             </li>
             <li className="nav-item">
+              <Link className="nav-link text-white" to="/dashboard/reminders">Reminders</Link>
+            </li>
+            <li className="nav-item">
               <Link className="nav-link text-white" to="/dashboard/settings">Settings</Link>
             </li>
             <li className="nav-item">

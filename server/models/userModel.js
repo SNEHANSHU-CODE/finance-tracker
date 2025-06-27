@@ -43,6 +43,10 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  googleRefreshToken: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

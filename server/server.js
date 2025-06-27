@@ -12,6 +12,8 @@ const resetPasswordRoutes = require('./routes/resetPasswordRoute');
 const transactionRoutes = require('./routes/transactionRoutes');
 const goalRouter = require('./routes/goalRoutes');
 const analyticsRouter = require('./routes/analyticsRoutes');
+const reminderRouter = require('./routes/reminderRoutes');
+const googleRouter = require('./routes/googleRoutes');
 
 // Load .env
 dotenv.config();
@@ -35,6 +37,8 @@ app.use('/api/reset', resetPasswordRoutes);
 app.use('/api/transaction', transactionRoutes);
 app.use('/api/goals', goalRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/reminders', reminderRouter);
+app.use('/api/google', googleRouter);
 
 // Initialize Redis and start server
 async function initializeRedis() {
