@@ -15,10 +15,25 @@ export default function Footer() {
         <div className="row gy-4">
           {/* Brand Section */}
           <div className="col-md-3">
-            <h4 className="text-success mb-3">Finance Tracker</h4>
-            <p className="text-light small">
+            <div className="d-flex align-items-center mb-3">
+              <img 
+                src="/favicon.png" 
+                alt="Finance Tracker Logo"
+                className="navbar-brand-img me-2"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  objectFit: 'contain',
+                  objectPosition: 'center'
+                }}
+          />
+              <h4 className="text-success mb-0">Finance Tracker</h4>
+            </div>
+            <div className="d-flex align-items-center">
+              <p className="text-light small">
               Empower your financial life with powerful insights, expense tracking, and goal setting—all in one place.
             </p>
+            </div>
           </div>
 
           {/* Quick Links */}
@@ -37,8 +52,8 @@ export default function Footer() {
             <h6 className="text-uppercase fw-semibold mb-3">Support</h6>
             <ul className="list-unstyled">
               <li><Link to="/profile" className="text-light text-decoration-none">Profile</Link></li>
-              <li><Link to="/settings" className="text-light text-decoration-none">Settings</Link></li>
-              <li><Link to="/help" className="text-light text-decoration-none">Help Center</Link></li>
+              <li><Link to="/service" className="text-light text-decoration-none">Term of Service</Link></li>
+              <li><Link to="/privacy" className="text-light text-decoration-none">Privacy Policy</Link></li>
               <li><Link to="/authorsnote" className="text-light text-decoration-none">Author's Note</Link></li>
             </ul>
           </div>

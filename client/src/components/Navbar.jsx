@@ -67,10 +67,21 @@ export default function Navbar() {
       <div className="container">
         {/* Logo */}
         <Link 
-          className="navbar-brand fw-bold text-primary" 
+          className="navbar-brand fw-bold text-primary d-flex align-items-center" 
           to="/" 
           onClick={closeNavbar}
         >
+          <img 
+            src="/favicon.png" 
+            alt="Finance Tracker Logo"
+            className="navbar-brand-img me-2"
+            style={{
+              width: '40px',
+              height: '40px',
+              objectFit: 'contain',
+              objectPosition: 'center'
+            }}
+          />
           Finance Tracker
         </Link>
 
