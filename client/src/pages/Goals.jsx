@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { 
-  FaPlus, 
-  FaEdit, 
-  FaTrash, 
-  // FaTarget, 
-  FaDollarSign, 
+import {
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaDollarSign,
   FaCalendarAlt,
   FaCheckCircle,
   FaExclamationTriangle,
@@ -33,10 +32,10 @@ import {
   selectDashboardStats,
 } from '../utils/goalSelectors';
 
-
 export default function Goals() {
   const dispatch = useDispatch();
 
+  const auth = useSelector(state => state.auth);
   const userId = useSelector(state => state.auth.user?.userId);
   const goals = useSelector(selectGoals);
   const activeGoals = useSelector(selectActiveGoals);
@@ -61,15 +60,66 @@ export default function Goals() {
   const categories = ["Savings", "Travel", "Technology", "Transportation", "Education", "Health", "Home", "Other"];
   const priorityColors = {
     High: "danger",
-    Medium: "warning", 
+    Medium: "warning",
     Low: "success"
   };
 
+  useEffect(() => {
+  if (showAddModal && !editingGoal) {
+    const tomorrow = new Date(Date.now() + 86400000);
+    setFormData(prev => ({
+      ...prev,
+      targetDate: tomorrow.toISOString().split('T')[0]
+    }));
+  }
+}, [showAddModal, editingGoal]);
+
   // Load data on component mount
   useEffect(() => {
-    dispatch(fetchGoals());
-    dispatch(fetchDashboardStats());
-  }, [dispatch]);
+  console.log('=== Goals Fetch Debug ===');
+  console.log('userId:', userId);
+  console.log('Auth state:', auth); // Add this to see full auth state
+  
+  if (!userId) {
+    console.log('No userId available, skipping fetch');
+    return;
+  }
+
+  // Clear any previous errors
+  dispatch(clearError());
+  
+  const fetchData = async () => {
+    try {
+      console.log('Starting to fetch goals...');
+      
+      // Test the goals fetch separately first
+      const goalsResult = await dispatch(fetchGoals()).unwrap();
+      console.log('Goals fetch successful:', goalsResult);
+      
+      console.log('Starting to fetch dashboard stats...');
+      const statsResult = await dispatch(fetchDashboardStats()).unwrap();
+      console.log('Dashboard stats fetch successful:', statsResult);
+      
+      console.log('All data loaded successfully');
+    } catch (error) {
+      console.error('=== Detailed Error Info ===');
+      console.error('Error object:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // If it's a network error, log more details
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        console.error('Response headers:', error.response.headers);
+      } else if (error.request) {
+        console.error('Request made but no response:', error.request);
+      }
+    }
+  };
+
+  fetchData();
+}, [dispatch, userId, auth.isAuthenticated]);
 
   // Clear error when component unmounts
   useEffect(() => {
@@ -79,7 +129,7 @@ export default function Goals() {
   }, [dispatch]);
 
   const getProgressPercentage = (saved, target) => {
-    return goalService.getProgressPercentage(saved, target);
+    return goalService.getProgressPercentage(saved || 0, target || 1);
   };
 
   const getProgressColor = (percentage) => {
@@ -87,12 +137,13 @@ export default function Goals() {
   };
 
   const getDaysRemaining = (targetDate) => {
+    if (!targetDate) return 0;
     return goalService.getDaysRemaining(targetDate);
   };
 
   const getStatusIcon = (goal) => {
     const iconName = goalService.getStatusIcon(goal);
-    
+
     switch (iconName) {
       case 'check-circle':
         return <FaCheckCircle className="text-success" />;
@@ -104,32 +155,44 @@ export default function Goals() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.targetAmount) return;
+  e.preventDefault();
+  if (!formData.name || !formData.targetAmount) return;
 
-    // Validate form data
-    const validationErrors = goalService.validateGoalData(formData);
-    if (validationErrors.length > 0) {
-      alert(validationErrors.join('\n'));
-      return;
-    }
+  // Validate form data
+  const validationErrors = goalService.validateGoalData(formData);
+  if (validationErrors.length > 0) {
+    alert(validationErrors.join('\n'));
+    return;
+  }
 
-    const goalData = {
-      ...formData,
-      targetAmount: parseFloat(formData.targetAmount),
-    };
-
-    try {
-      if (editingGoal) {
-        await dispatch(updateGoal({ ...goalData, userId })).unwrap();
-      } else {
-        await dispatch(createGoal(goalData)).unwrap();
-      }
-      resetForm();
-    } catch (error) {
-      console.error('Error saving goal:', error);
-    }
+  const goalData = {
+    ...formData,
+    targetAmount: parseFloat(formData.targetAmount),
+    userId // Ensure userId is included
   };
+
+  try {
+    if (editingGoal) {
+      await dispatch(updateGoal({
+        id: editingGoal._id,
+        goalData
+      })).unwrap();
+    } else {
+      console.log("Form values:", formData);
+      console.log("Final goal data:", goalData);
+      await dispatch(createGoal(goalData)).unwrap();
+    }
+    
+    resetForm();
+    
+    // Refresh data after successful operation
+    dispatch(fetchGoals());
+    dispatch(fetchDashboardStats());
+  } catch (error) {
+    console.error('Error saving goal:', error.errors);
+    // Error is already handled by Redux, just log it
+  }
+};
 
   const resetForm = () => {
     setFormData({
@@ -146,11 +209,11 @@ export default function Goals() {
   const handleEdit = (goal) => {
     setEditingGoal(goal);
     setFormData({
-      name: goal.name,
-      targetAmount: goal.targetAmount.toString(),
+      name: goal.name || "",
+      targetAmount: goal.targetAmount ? goal.targetAmount.toString() : "",
       targetDate: goal.targetDate ? goal.targetDate.split('T')[0] : '',
-      priority: goal.priority,
-      category: goal.category
+      priority: goal.priority || "Medium",
+      category: goal.category || ""
     });
     setShowAddModal(true);
   };
@@ -176,13 +239,13 @@ export default function Goals() {
     if (!addFundsAmount || parseFloat(addFundsAmount) <= 0) return;
 
     const amount = parseFloat(addFundsAmount);
-    
+
     try {
-      await dispatch(addContribution({ 
-        goalId: selectedGoal._id, 
-        amount 
+      await dispatch(addContribution({
+        goalId: selectedGoal._id,
+        amount
       })).unwrap();
-      
+
       setShowAddFundsModal(false);
       setSelectedGoal(null);
       setAddFundsAmount("");
@@ -192,10 +255,11 @@ export default function Goals() {
   };
 
   const formatCurrency = (amount) => {
-    return goalService.formatCurrency(amount);
+    return goalService.formatCurrency(amount || 0);
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'No date set';
     return goalService.formatDate(dateString);
   };
 
@@ -218,9 +282,9 @@ export default function Goals() {
       {error && (
         <div className="alert alert-danger alert-dismissible fade show" role="alert">
           <strong>Error:</strong> {error}
-          <button 
-            type="button" 
-            className="btn-close" 
+          <button
+            type="button"
+            className="btn-close"
             onClick={() => dispatch(clearError())}
           ></button>
         </div>
@@ -234,7 +298,7 @@ export default function Goals() {
               <h4 className="mb-1">Financial Goals</h4>
               <p className="text-muted mb-0">Track your savings goals and progress</p>
             </div>
-            <button 
+            <button
               className="btn btn-primary d-flex align-items-center gap-2"
               onClick={() => setShowAddModal(true)}
               disabled={loading}
@@ -253,10 +317,10 @@ export default function Goals() {
             <div className="card-body text-center">
               <div className="mb-3">
                 <div className="p-3 bg-primary bg-opacity-10 rounded-circle d-inline-flex">
-                  {/* <FaTarget className="text-primary" size={24} /> */}
+                  <FaDollarSign className="text-primary" size={24} />
                 </div>
               </div>
-              <h5 className="fw-bold">{dashboardStats.totalGoals}</h5>
+              <h5 className="fw-bold">{dashboardStats.totalGoals || 0}</h5>
               <p className="text-muted mb-0">Total Goals</p>
             </div>
           </div>
@@ -269,7 +333,7 @@ export default function Goals() {
                   <FaCheckCircle className="text-success" size={24} />
                 </div>
               </div>
-              <h5 className="fw-bold">{dashboardStats.completedGoals}</h5>
+              <h5 className="fw-bold">{dashboardStats.completedGoals || 0}</h5>
               <p className="text-muted mb-0">Completed</p>
             </div>
           </div>
@@ -292,7 +356,7 @@ export default function Goals() {
             <div className="card-body text-center">
               <div className="mb-3">
                 <div className="p-3 bg-warning bg-opacity-10 rounded-circle d-inline-flex">
-                  {/* <FaTarget className="text-warning" size={24} /> */}
+                  <FaDollarSign className="text-warning" size={24} />
                 </div>
               </div>
               <h5 className="fw-bold">{formatCurrency(dashboardStats.totalTargetAmount)}</h5>
@@ -303,7 +367,7 @@ export default function Goals() {
       </div>
 
       {/* Active Goals */}
-      {activeGoals.length > 0 && (
+      {activeGoals && activeGoals.length > 0 && (
         <div className="row mb-4">
           <div className="col-12">
             <h5 className="mb-3">Active Goals</h5>
@@ -312,7 +376,7 @@ export default function Goals() {
                 const percentage = getProgressPercentage(goal.savedAmount, goal.targetAmount);
                 const daysRemaining = getDaysRemaining(goal.targetDate);
                 const progressColor = getProgressColor(percentage);
-                
+
                 return (
                   <div key={goal._id} className="col-lg-6 col-xl-4">
                     <div className="card border-0 shadow-sm h-100">
@@ -364,9 +428,9 @@ export default function Goals() {
                             <span className="fw-medium">{percentage.toFixed(1)}%</span>
                           </div>
                           <div className="progress" style={{ height: '8px' }}>
-                            <div 
+                            <div
                               className={`progress-bar bg-${progressColor}`}
-                              style={{ width: `${percentage}%` }}
+                              style={{ width: `${Math.min(percentage, 100)}%` }}
                             ></div>
                           </div>
                         </div>
@@ -393,9 +457,9 @@ export default function Goals() {
                           </div>
                           <div className={`text-${daysRemaining < 30 ? 'danger' : 'muted'}`}>
                             <small>
-                              {daysRemaining > 0 
+                              {daysRemaining > 0
                                 ? `${daysRemaining} days left`
-                                : daysRemaining === 0 
+                                : daysRemaining === 0
                                   ? 'Due today'
                                   : `${Math.abs(daysRemaining)} days overdue`
                               }
@@ -413,7 +477,7 @@ export default function Goals() {
       )}
 
       {/* Completed Goals */}
-      {completedGoals.length > 0 && (
+      {completedGoals && completedGoals.length > 0 && (
         <div className="row">
           <div className="col-12">
             <h5 className="mb-3 text-success">Completed Goals 🎉</h5>
@@ -479,16 +543,16 @@ export default function Goals() {
       )}
 
       {/* Empty State */}
-      {goals.length === 0 && !loading && (
+      {(!goals || goals.length === 0) && !loading && (
         <div className="row">
           <div className="col-12">
             <div className="text-center py-5">
               <div className="mb-4">
-                {/* <FaTarget size={64} className="text-muted opacity-50" /> */}
+                <FaDollarSign size={64} className="text-muted opacity-50" />
               </div>
               <h5>No Goals Yet</h5>
               <p className="text-muted mb-4">Start by creating your first financial goal to track your progress.</p>
-              <button 
+              <button
                 className="btn btn-primary"
                 onClick={() => setShowAddModal(true)}
               >
@@ -509,8 +573,8 @@ export default function Goals() {
                 <h5 className="modal-title">
                   {editingGoal ? 'Edit Goal' : 'Add New Goal'}
                 </h5>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn-close"
                   onClick={resetForm}
                 ></button>
@@ -524,7 +588,7 @@ export default function Goals() {
                         type="text"
                         className="form-control"
                         value={formData.name}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         placeholder="e.g., Emergency Fund, New Car, Vacation"
                         required
                       />
@@ -539,7 +603,7 @@ export default function Goals() {
                           min="0.01"
                           className="form-control"
                           value={formData.targetAmount}
-                          onChange={(e) => setFormData({...formData, targetAmount: e.target.value})}
+                          onChange={(e) => setFormData({ ...formData, targetAmount: e.target.value })}
                           required
                         />
                       </div>
@@ -550,7 +614,7 @@ export default function Goals() {
                         type="date"
                         className="form-control"
                         value={formData.targetDate}
-                        onChange={(e) => setFormData({...formData, targetDate: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
                         min={new Date().toISOString().split('T')[0]}
                         required
                       />
@@ -560,7 +624,7 @@ export default function Goals() {
                       <select
                         className="form-select"
                         value={formData.priority}
-                        onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                       >
                         <option value="Low">Low</option>
                         <option value="Medium">Medium</option>
@@ -572,7 +636,7 @@ export default function Goals() {
                       <select
                         className="form-select"
                         value={formData.category}
-                        onChange={(e) => setFormData({...formData, category: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                         required
                       >
                         <option value="">Select Category</option>
@@ -584,15 +648,15 @@ export default function Goals() {
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="btn btn-secondary"
                     onClick={resetForm}
                   >
                     Cancel
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     className="btn btn-primary"
                     disabled={loading}
                   >
@@ -619,8 +683,8 @@ export default function Goals() {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Add Funds</h5>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn-close"
                   onClick={() => setShowAddFundsModal(false)}
                 ></button>
@@ -651,15 +715,15 @@ export default function Goals() {
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="btn btn-secondary"
                     onClick={() => setShowAddFundsModal(false)}
                   >
                     Cancel
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     className="btn btn-primary"
                     disabled={loading}
                   >

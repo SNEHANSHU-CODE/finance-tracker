@@ -50,7 +50,7 @@ class GoalController {
         });
       }
 
-      const goals = await goalService.getGoals(req.user.userId, req.query);
+      const goals = await goalService.getGoals(req.userId, req.query);
 
       res.json({
         success: true,
@@ -177,7 +177,7 @@ class GoalController {
 
       const goal = await goalService.addContribution(
         req.params.id,
-        req.user.profileId,
+        req.user.userId,
         req.body.amount
       );
 
@@ -288,7 +288,7 @@ class GoalController {
   async getGoalsByCategory(req, res) {
     try {
       const goals = await goalService.getGoalsByCategory(
-        req.user.profileId,
+        req.user.userId,
         req.params.category
       );
 
@@ -310,7 +310,7 @@ class GoalController {
   async getGoalsByPriority(req, res) {
     try {
       const goals = await goalService.getGoalsByPriority(
-        req.user.profileId,
+        req.user.userId,
         req.params.priority
       );
 

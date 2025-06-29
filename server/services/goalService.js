@@ -28,6 +28,7 @@ class GoalService {
       } = filters;
 
       const query = { userId };
+      console.log('Fetching goals with query:', query);
 
       // Apply filters
       if (status) query.status = status;

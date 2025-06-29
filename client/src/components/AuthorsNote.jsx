@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import './styles/AuthorsNote.css';
 import {
   FaUser,
   FaCalendarAlt,
@@ -112,7 +114,7 @@ const AuthorsNote = () => {
 
 return (
   <div className="container-fluid py-5" style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)' }}>
-    <div className="container">
+    <div className="container nav-top-margin">
       {/* Header Section */}
       <div className="row mb-5">
         <div className="col-12">
@@ -434,17 +436,6 @@ return (
         </div>
       </div>
 
-      <style jsx>{`
-  .enhancement-card {
-    transition: all 0.3s ease;
-    cursor: pointer;
-  }
-  
-  .enhancement-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
-  }
-`}</style>
       {/* Call to Action */}
       <div className="row">
         <div className="col-12">
@@ -475,21 +466,14 @@ return (
 
                 {/* Social Links */}
                 <div className="d-flex justify-content-center gap-3 mb-4">
-                  <a href="https://github.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-outline-light btn-lg rounded-pill">
-                    <FaGithub className="me-2" />
-                    GitHub
-                  </a>
-                  <a href="https://linkedin.com"
+                  <Link to="https://www.linkedin.com/in/snehanshu-sekhar-jena-5365841a1/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn btn-outline-light btn-lg rounded-pill">
                     <FaLinkedin className="me-2" />
                     LinkedIn
-                  </a>
-                  <a href="mailto:developer@example.com"
+                  </Link>
+                  <a href="mailto:snehanshusekhar99@gmail.com"
                     className="btn btn-light btn-lg rounded-pill text-primary">
                     <FaEnvelope className="me-2" />
                     Get In Touch
@@ -508,44 +492,6 @@ return (
         </div>
       </div>
     </div>
-
-    <style jsx>{`
-        @keyframes fadeIn {
-          from { 
-            opacity: 0; 
-            transform: translateY(30px); 
-          }
-          to { 
-            opacity: 1; 
-            transform: translateY(0); 
-          }
-        }
-        
-        .card {
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        
-        .card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
-        }
-        
-        .btn {
-          transition: all 0.3s ease;
-        }
-        
-        .btn:hover {
-          transform: translateY(-2px);
-        }
-        
-        .badge {
-          transition: all 0.3s ease;
-        }
-        
-        .badge:hover {
-          transform: scale(1.05);
-        }
-      `}</style>
   </div>
 );
 };

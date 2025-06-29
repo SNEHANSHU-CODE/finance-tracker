@@ -14,6 +14,7 @@ const goalRouter = require('./routes/goalRoutes');
 const analyticsRouter = require('./routes/analyticsRoutes');
 const reminderRouter = require('./routes/reminderRoutes');
 const googleRouter = require('./routes/googleRoutes');
+const settingsRouter = require('./routes/settingsRoutes');
 
 // Load .env
 dotenv.config();
@@ -39,6 +40,7 @@ app.use('/api/goals', goalRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/reminders', reminderRouter);
 app.use('/api/google', googleRouter);
+app.use('/api/settings', settingsRouter);
 
 // Initialize Redis and start server
 async function initializeRedis() {

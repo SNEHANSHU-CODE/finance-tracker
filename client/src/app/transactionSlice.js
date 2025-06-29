@@ -16,6 +16,20 @@ export const fetchTransactions = createAsyncThunk(
   }
 );
 
+export const recentTransactions = createAsyncThunk(
+  'transaction/recent',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const userId = getState().auth.user?.userId;
+      if (!userId) return rejectWithValue({ message: 'Missing userId' });
+      const response = await transactionService.getRecentTransactions({ userId });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
 export const createTransaction = createAsyncThunk(
   'transaction/createTransaction',
   async (transactionData, { rejectWithValue }) => {

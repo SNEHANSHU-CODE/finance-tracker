@@ -72,6 +72,7 @@ goalRouter.get('/:id',
 );
 
 goalRouter.put('/:id', 
+  handleValidationErrors,
   validateGoalUpdate,
   sanitizeGoalData,
   validateAmountConsistency,

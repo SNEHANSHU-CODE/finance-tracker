@@ -3,7 +3,7 @@ import { FaShieldAlt, FaCalendarAlt, FaDollarSign, FaLock, FaUserShield, FaEnvel
 
 const PrivacyPolicy = () => {
   return (
-    <div className="container-fluid bg-light min-vh-100">
+    <div className="container-fluid bg-light min-vh-100 nav-top-margin">
       <div className="container py-5">
         <div className="row justify-content-center">
           <div className="col-lg-10">

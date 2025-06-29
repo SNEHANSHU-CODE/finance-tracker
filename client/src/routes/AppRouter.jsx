@@ -8,7 +8,7 @@ import Login from '../pages/Login';
 import Signup from '../pages/Signup';
 import LandingPage from '../pages/LandingPage';
 import DashboardHome from '../pages/DashboardHome';
-import LoadingSpinner from '../pages/LodingSpinner';
+import LoadingSpinner from '../components/LodingSpinner';
 import ResetPassword from '../components/ResetPassword';
 import AuthorsNote from '../components/AuthorsNote';
 import PrivacyPolicy from '../components/PrivacyPolicy';
@@ -50,9 +50,9 @@ export default function AppRouter() {
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
             <Route path="/resetpassword" element={<PublicRoute><ResetPassword /></PublicRoute>} />
-            <Route path="/privacy" element={<PublicRoute><PrivacyPolicy /></PublicRoute>} />
-            <Route path="/service" element={<PublicRoute><TermsOfService /></PublicRoute>} />
-            <Route path="/authorsnote" element={<PublicRoute><AuthorsNote /></PublicRoute>} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/service" element={<TermsOfService />} />
+            <Route path="/authorsnote" element={<AuthorsNote />} />
 
             {/* Dashboard routes */}
             

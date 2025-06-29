@@ -1,7 +1,7 @@
 // middleware/analytics.js
 const { body, query, param, validationResult } = require('express-validator');
 const { AppError } = require('../utils/errorHandler');
-const { rateLimiter } = require('../utils/rateLimiterUtils');
+const { rateLimiter } = require('./rateLimiter');
 
 // Validation middleware
 const validateAnalyticsQuery = [

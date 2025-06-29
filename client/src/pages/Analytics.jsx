@@ -30,6 +30,8 @@ import {
   FaClipboardList
 } from "react-icons/fa";
 
+import Catagory from "../components/Catagory";
+
 export default function AnalyticsReports() {
   const [reportPeriod, setReportPeriod] = useState("thisMonth");
   const [reportType, setReportType] = useState("overview");
@@ -285,43 +287,8 @@ export default function AnalyticsReports() {
           </div>
 
           {/* Category Analysis */}
-          <div className="card border-0 shadow-sm">
-            <div className="card-header bg-transparent border-0 pt-3">
-              <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">Category Analysis</h5>
-                <button className="btn btn-outline-primary btn-sm">
-                  <FaFilter size={12} className="me-1" />
-                  Filter
-                </button>
-              </div>
-            </div>
-            <div className="card-body pt-2">
-              {analyticsData.categoryBreakdown.map((category, index) => (
-                <div key={index} className="mb-4">
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <div className="d-flex align-items-center gap-2">
-                      <span className="fw-medium">{category.category}</span>
-                      {getTrendIcon(category.trend)}
-                      <small className={`${category.trend > 0 ? 'text-danger' : 'text-success'}`}>
-                        {Math.abs(category.trend)}%
-                      </small>
-                    </div>
-                    <div className="text-end">
-                      <span className="fw-bold">{formatCurrency(category.amount)}</span>
-                      <small className="text-muted d-block">{category.percentage}% of total</small>
-                    </div>
-                  </div>
-                  <div className="progress" style={{ height: '8px' }}>
-                    <div 
-                      className={`progress-bar bg-${category.color}`}
-                      style={{ width: `${category.percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+          <Catagory catagoryData = {analyticsData.categoryBreakdown}/>
+          </div >
 
         {/* Sidebar */}
         <div className="col-lg-4">

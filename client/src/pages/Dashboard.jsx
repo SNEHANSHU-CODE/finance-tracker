@@ -1,4 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { useDispatch } from "react-redux";
+
 import { 
   FaDollarSign, 
   FaArrowUp, 
@@ -21,8 +24,11 @@ import {
   // FaTrendingUp,
   FaExchangeAlt
 } from "react-icons/fa";
+import Catagory from "../components/Catagory";
+import { recentTransactions } from "../app/transactionSlice";
 
 export default function Dashboard() {
+  const dispatch = useDispatch();
   const [filterPeriod, setFilterPeriod] = useState("thisMonth");
   
   // Sample data
@@ -34,58 +40,20 @@ export default function Dashboard() {
     savingsRate: 32.1
   };
 
-  const recentTransactions = [
-    {
-      id: 1,
-      description: "Grocery Shopping",
-      category: "Food",
-      amount: -85.50,
-      date: "2025-06-15",
-      type: "expense",
-      icon: FaUtensils,
-      color: "warning"
-    },
-    {
-      id: 2,
-      description: "Salary Deposit",
-      category: "Income",
-      amount: 4200.00,
-      date: "2025-06-14",
-      type: "income",
-      icon: FaArrowUp,
-      color: "success"
-    },
-    {
-      id: 3,
-      description: "Gas Station",
-      category: "Transportation",
-      amount: -65.20,
-      date: "2025-06-13",
-      type: "expense",
-      icon: FaCar,
-      color: "info"
-    },
-    {
-      id: 4,
-      description: "Netflix Subscription",
-      category: "Entertainment",
-      amount: -15.99,
-      date: "2025-06-12",
-      type: "expense",
-      icon: FaGamepad,
-      color: "secondary"
-    },
-    {
-      id: 5,
-      description: "Emergency Fund",
-      category: "Savings",
-      amount: -500.00,
-      date: "2025-06-11",
-      type: "transfer",
-      icon: FaPiggyBank,
-      color: "primary"
+  const [ recentTransaction, setRecentTransaction ] = useState([]);
+
+  useEffect(()=>{
+    const fetchData = async () => {
+    try {
+      const result = await dispatch(recentTransactions()).unwrap();
+      setRecentTransaction(result);
+    } catch (error) {
+      console.error("Failed to load recent transactions:", error);
     }
-  ];
+  };
+  fetchData();
+  },[]);
+      
 
   const categorySpending = [
     { category: "Food", amount: 485.30, percentage: 35, color: "warning" },
@@ -111,8 +79,9 @@ export default function Dashboard() {
   };
 
   const getTransactionIcon = (transaction) => {
-    const IconComponent = transaction.icon;
-    return <IconComponent className={`text-${transaction.color}`} size={16} />;
+    return transaction.type === 'Income'
+    ? <FaArrowUp className="text-success" /> 
+    : <FaArrowDown className="text-danger" />;
   };
 
   return (
@@ -137,10 +106,6 @@ export default function Dashboard() {
                 <option value="last3Months">Last 3 Months</option>
                 <option value="thisYear">This Year</option>
               </select>
-              <button className="btn btn-outline-primary btn-sm d-flex align-items-center gap-2">
-                <FaDownload size={12} />
-                Export
-              </button>
             </div>
           </div>
         </div>
@@ -228,18 +193,18 @@ export default function Dashboard() {
             <div className="card-header bg-transparent border-0 pt-3">
               <div className="d-flex justify-content-between align-items-center">
                 <h5 className="mb-0">Recent Transactions</h5>
-                <button className="btn btn-outline-primary btn-sm">
+                <Link to="/dashboard/transactions" className="btn btn-outline-primary btn-sm">
                   <FaEye size={12} className="me-1" />
                   View All
-                </button>
+                </Link>
               </div>
             </div>
             <div className="card-body pt-2">
               <div className="table-responsive">
                 <table className="table table-hover align-middle">
                   <tbody>
-                    {recentTransactions.map((transaction) => (
-                      <tr key={transaction.id}>
+                    {recentTransaction && recentTransaction.map((transaction) => (
+                      <tr key={transaction._id}>
                         <td style={{ width: '50px' }}>
                           <div className={`p-2 bg-${transaction.color} bg-opacity-10 rounded-circle d-inline-flex`}>
                             {getTransactionIcon(transaction)}
@@ -258,8 +223,8 @@ export default function Dashboard() {
                           </small>
                         </td>
                         <td className="text-end">
-                          <span className={`fw-bold ${transaction.amount > 0 ? 'text-success' : 'text-danger'}`}>
-                            {transaction.amount > 0 ? '+' : '-'}{formatCurrency(transaction.amount)}
+                          <span className={`fw-bold ${transaction.displayAmount > 0 ? 'text-success' : 'text-danger'}`}>
+                            {transaction.amount > 0 ? '+' : '-'}{formatCurrency(transaction.displayAmount)}
                           </span>
                         </td>
                         <td style={{ width: '40px' }}>
@@ -287,28 +252,7 @@ export default function Dashboard() {
         {/* Category Spending & Quick Actions */}
         <div className="col-lg-4">
           {/* Category Spending */}
-          <div className="card border-0 shadow-sm mb-4">
-            <div className="card-header bg-transparent border-0 pt-3">
-              <h5 className="mb-0">Spending by Category</h5>
-            </div>
-            <div className="card-body pt-2">
-              {categorySpending.map((category, index) => (
-                <div key={index} className="mb-3">
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="fw-medium">{category.category}</span>
-                    <span className="text-muted">{formatCurrency(category.amount)}</span>
-                  </div>
-                  <div className="progress" style={{ height: '6px' }}>
-                    <div 
-                      className={`progress-bar bg-${category.color}`}
-                      style={{ width: `${category.percentage}%` }}
-                    ></div>
-                  </div>
-                  <small className="text-muted">{category.percentage}% of total spending</small>
-                </div>
-              ))}
-            </div>
-          </div>
+          <Catagory catagoryData={categorySpending}/>
         </div>
       </div>
 

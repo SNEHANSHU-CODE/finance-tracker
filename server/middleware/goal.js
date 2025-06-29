@@ -26,7 +26,7 @@ const validateGoalCreate = [
   body('category')
     .notEmpty()
     .withMessage('Goal category is required')
-    .isIn(['Savings', 'Travel', 'Transportation', 'Technology', 'Emergency', 'Investment', 'Other'])
+    .isIn(['Savings', 'Travel', 'Transportation', 'Technology', 'Emergency', 'Investment', 'Home', 'Education', 'Health', 'Other'])
     .withMessage('Invalid goal category'),
   
   body('priority')

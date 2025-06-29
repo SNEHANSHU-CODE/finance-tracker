@@ -3,16 +3,13 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #ffffff;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Reset & Layout */
 * {
   box-sizing: border-box;
 }
@@ -20,4 +17,168 @@
 html, body {
   max-width: 100%;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.nav-top-margin{
+  padding-top: 5.2rem;
+}
+
+/* === DARK MODE  === */
+
+/* NAVBAR */
+body.dark .navbar {
+  background-color: #1e1e1e !important;
+  color: #f8f9fa;
+  border-bottom: 1px solid #333;
+}
+
+body.dark .navbar a,
+body.dark .navbar-brand,
+body.dark .navbar-nav .nav-link {
+  color: #e4e6eb !important;
+}
+
+/* SIDEBAR */
+body.dark .sidebar {
+  background-color: #1a1a1a;
+  border-right: 1px solid #333;
+}
+
+body.dark .sidebar a {
+  color: #ddd;
+}
+
+body.dark .sidebar a:hover {
+  background-color: #2a2a2a;
+  color: #fff;
+}
+
+/* CARDS & DASHBOARD WIDGETS */
+body.dark .card {
+  background-color: #1e1e1e;
+  color: #f1f1f1;
+  border: 1px solid #333;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* TABLES */
+body.dark .table {
+  background-color: #1e1e1e;
+  color: #e4e6eb;
+  border-color: #444;
+}
+
+body.dark .table thead {
+  background-color: #2c2c2c;
+  color: #f8f9fa;
+}
+
+body.dark .table-striped > tbody > tr:nth-of-type(odd) {
+  background-color: #181818;
+}
+
+body.dark .table-bordered {
+  border: 1px solid #444;
+}
+
+/* FORMS: INPUTS, SELECTS, FILTERS */
+body.dark input,
+body.dark select,
+body.dark textarea,
+body.dark .form-control {
+  background-color: #2c2c2c;
+  color: #f1f1f1;
+  border: 1px solid #444;
+}
+
+body.dark input::placeholder,
+body.dark select option {
+  color: #aaa;
+}
+
+/* BUTTONS */
+body.dark .btn {
+  background-color: #0d6efd;
+  color: #fff;
+  border: none;
+}
+
+body.dark .btn:hover {
+  background-color: #0b5ed7;
+}
+
+body.dark .btn-outline-secondary {
+  background-color: transparent;
+  color: #f1f1f1;
+  border-color: #ccc;
+}
+
+body.dark .btn-outline-secondary:hover {
+  background-color: #2c2c2c;
+  color: #fff;
+}
+
+/* CUSTOM BUTTON */
+body.dark .btn-custom {
+  background-color: #0d6efd;
+  color: #ffffff;
+  border: none;
+}
+
+body.dark .btn-custom:hover {
+  background-color: #0b5ed7;
+}
+
+/* PAGINATION */
+body.dark .pagination .page-link {
+  background-color: #2c2c2c;
+  color: #f1f1f1;
+  border: 1px solid #444;
+}
+
+body.dark .pagination .page-link:hover {
+  background-color: #444;
+}
+
+/* FOOTER */
+body.dark .footer {
+  background-color: #1b1b1b;
+  color: #ccc;
+  border-top: 1px solid #444;
+}
+
+body.dark .footer a {
+  color: #aaa;
+}
+
+body.dark .footer a:hover {
+  color: #fff;
+}
+
+/* DASHBOARD CHART/ANALYSIS */
+body.dark .progress {
+  background-color: #2c2c2c;
+}
+
+body.dark .progress-bar {
+  background-color: #0d6efd;
+}
+
+/* HR, DIVIDERS */
+body.dark hr {
+  border-color: #444;
+}
+
+/* TRANSITIONS */
+.card,
+.form-control,
+.btn,
+.table,
+.navbar,
+.sidebar,
+footer,
+input,
+select {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }

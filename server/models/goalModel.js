@@ -1,11 +1,10 @@
-// models/goalModel.js
 const mongoose = require('mongoose');
 
 const goalSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Profile ID is required'],
+    required: [true, 'User ID is required'],
     index: true
   },
   name: {
@@ -17,7 +16,7 @@ const goalSchema = new mongoose.Schema({
   category: {
     type: String,
     required: [true, 'Goal category is required'],
-    enum: ['Savings', 'Travel', 'Transportation', 'Technology', 'Emergency', 'Investment', 'Other']
+    enum: ['Savings', 'Travel', 'Transportation', 'Technology', 'Emergency', 'Investment', 'Home', 'Education', 'Health', 'Other']
   },
   priority: {
     type: String,
@@ -54,10 +53,10 @@ const goalSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for better performance
-goalSchema.index({ profileId: 1, status: 1 });
-goalSchema.index({ profileId: 1, targetDate: 1 });
-goalSchema.index({ profileId: 1, category: 1 });
+// Fixed indexes to use 'userId' instead of 'profileId'
+goalSchema.index({ userId: 1, status: 1 });
+goalSchema.index({ userId: 1, targetDate: 1 });
+goalSchema.index({ userId: 1, category: 1 });
 
 // Virtual for progress percentage
 goalSchema.virtual('progressPercentage').get(function() {
@@ -99,16 +98,16 @@ goalSchema.methods.isAchieved = function() {
   return this.savedAmount >= this.targetAmount;
 };
 
-// Static method to get goals by profile
-goalSchema.statics.getByProfile = function(profileId, status = null) {
-  const query = { profileId };
+// Fixed static method to use 'userId' instead of 'profileId'
+goalSchema.statics.getByProfile = function(userId, status = null) {
+  const query = { userId };
   if (status) query.status = status;
   return this.find(query).sort({ targetDate: 1 });
 };
 
-// Static method to get goal summary by profile
-goalSchema.statics.getSummaryByProfile = async function(profileId) {
-  const goals = await this.find({ profileId });
+// Fixed static method to use 'userId' instead of 'profileId'
+goalSchema.statics.getSummaryByProfile = async function(userId) {
+  const goals = await this.find({ userId });
   
   return {
     totalGoals: goals.length,

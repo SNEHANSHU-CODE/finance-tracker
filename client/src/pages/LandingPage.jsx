@@ -1,53 +1,9 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const FinanceProLanding = () => {
   return (
     <div className="overflow-hidden">
-      {/* Custom Styles */}
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
-        
-        .hover-lift {
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        
-        .hover-lift:hover {
-          transform: translateY(-10px);
-          box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
-        }
-        
-        .transition-all {
-          transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .duration-1000 {
-          transition-duration: 1000ms;
-        }
-        
-        .duration-500 {
-          transition-duration: 500ms;
-        }
-        
-        .delay-300 {
-          transition-delay: 300ms;
-        }
-
-        .animated-bg {
-          position: absolute;
-          border-radius: 50%;
-          opacity: 0.1;
-          background: rgba(255,255,255,0.1);
-          animation: float 15s ease-in-out infinite;
-        }
-
-        .testimonial-card {
-          transition: all 0.5s ease;
-        }
-      `}</style>
-
       {/* Hero Section */}
       <section 
         className="position-relative overflow-hidden" 
@@ -296,14 +252,10 @@ const FinanceProLanding = () => {
                 Start your journey today - completely free!
               </p>
               <div className="d-flex flex-column flex-sm-row gap-3 justify-content-center">
-                <a href="/signup" className="btn btn-warning btn-lg px-5 py-3 fw-semibold" style={{borderRadius: '50px'}}>
+                <Link to="/signup" className="btn btn-warning btn-lg px-5 py-3 fw-semibold" style={{borderRadius: '50px'}}>
                   Start Free Today
                   <i className="fas fa-arrow-right ms-2"></i>
-                </a>
-                <button className="btn btn-outline-light btn-lg px-5 py-3 fw-semibold" style={{borderRadius: '50px'}}>
-                  <i className="fas fa-question-circle me-2"></i>
-                  Learn More
-                </button>
+                </Link>
               </div>
             </div>
           </div>

@@ -1,4 +1,3 @@
-// models/userModel.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -47,6 +46,23 @@ const userSchema = new mongoose.Schema({
   googleRefreshToken: {
     type: String,
     default: null
+  },
+  preferences: {
+    currency: {
+      type: String,
+      enum: ['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD'],
+      default: 'INR'
+    },
+    language: {
+      type: String,
+      enum: ['en', 'hi', 'es', 'fr', 'de', 'it'],
+      default: 'en'
+    },
+    theme: {
+      type: String,
+      enum: ['light', 'dark', 'auto'],
+      default: 'light'
+    }
   }
 }, {
   timestamps: true
@@ -69,6 +85,26 @@ userSchema.pre('save', async function(next) {
 userSchema.methods.comparePassword = async function(candidatePassword) {
   try {
     return await bcrypt.compare(candidatePassword, this.password);
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Update user preferences method
+userSchema.methods.updatePreferences = async function(newPreferences) {
+  try {
+    // Only update provided preference fields
+    if (newPreferences.currency !== undefined) {
+      this.preferences.currency = newPreferences.currency;
+    }
+    if (newPreferences.language !== undefined) {
+      this.preferences.language = newPreferences.language;
+    }
+    if (newPreferences.theme !== undefined) {
+      this.preferences.theme = newPreferences.theme;
+    }
+    
+    return await this.save();
   } catch (error) {
     throw error;
   }

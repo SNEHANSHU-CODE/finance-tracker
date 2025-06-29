@@ -81,6 +81,12 @@ const transactionService = {
     return response.data;
   },
 
+  //Get resent transaction
+  async getRecentTransactions() {
+    const response = await apiClient.get('transaction/recent');
+    return response.data;
+  },
+
   // Get monthly summary
   async getMonthlySummary(month, year) {
     const response = await apiClient.get(`/transaction/summary/${month}/${year}`);

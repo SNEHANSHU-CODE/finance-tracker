@@ -20,6 +20,8 @@ googleRouter.get('/callback', authenticateToken, async (req, res) => {
     const { tokens } = await oauth2Client.getToken(code);
 
     const userId = req.userId;
+    console.log('User ID from token:', req.userId);
+
     oauth2Client.setCredentials(tokens);
 
     // ✅ Save access_token in Redis

@@ -7,8 +7,10 @@ export const fetchGoals = createAsyncThunk(
   async (filters = {}, { getState, rejectWithValue }) => {
     try {
       const userId = getState().auth.user?.userId;
+      console.log('goalSlice', userId);
       const response = await goalService.getGoals({...filters, userId});
-      return response.data;
+      console.log('goalSlice', response);
+      return response.data?.data || response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Failed to fetch goals' });
     }
@@ -20,7 +22,7 @@ export const createGoal = createAsyncThunk(
   async (goalData, { rejectWithValue }) => {
     try {
       const response = await goalService.createGoal(goalData);
-      return response.data;
+      return response.data?.data || response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Failed to create goal' });
     }
@@ -32,7 +34,7 @@ export const updateGoal = createAsyncThunk(
   async ({ id, goalData }, { rejectWithValue }) => {
     try {
       const response = await goalService.updateGoal(id, goalData);
-      return response.data;
+      return response.data?.data || response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Failed to update goal' });
     }
@@ -56,7 +58,7 @@ export const addContribution = createAsyncThunk(
   async ({ goalId, amount }, { rejectWithValue }) => {
     try {
       const response = await goalService.addContribution(goalId, amount);
-      return response.data;
+      return response.data?.data || response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Failed to add contribution' });
     }
@@ -68,7 +70,7 @@ export const markGoalComplete = createAsyncThunk(
   async (goalId, { rejectWithValue }) => {
     try {
       const response = await goalService.markGoalComplete(goalId);
-      return response.data;
+      return response.data?.data || response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Failed to mark goal complete' });
     }
@@ -80,7 +82,7 @@ export const pauseGoal = createAsyncThunk(
   async (goalId, { rejectWithValue }) => {
     try {
       const response = await goalService.pauseGoal(goalId);
-      return response.data;
+      return response.data?.data || response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Failed to pause goal' });
     }
@@ -92,7 +94,7 @@ export const resumeGoal = createAsyncThunk(
   async (goalId, { rejectWithValue }) => {
     try {
       const response = await goalService.resumeGoal(goalId);
-      return response.data;
+      return response.data?.data || response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Failed to resume goal' });
     }
@@ -104,7 +106,7 @@ export const fetchDashboardStats = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await goalService.getDashboardStats();
-      return response.data;
+      return response.data?.data || response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Failed to fetch dashboard stats' });
     }
@@ -116,7 +118,7 @@ export const bulkDeleteGoals = createAsyncThunk(
   async (goalIds, { rejectWithValue }) => {
     try {
       const response = await goalService.bulkDeleteGoals(goalIds);
-      return { goalIds, deletedCount: response.data.deletedCount };
+      return { goalIds, deletedCount: response.data?.data.deletedCount || response.data.deletedCount };
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Failed to delete goals' });
     }

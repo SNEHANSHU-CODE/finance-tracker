@@ -11,6 +11,7 @@ import { setTokenGetter as setResetPasswordTokenGetter } from '../services/reset
 import { setTokenGetter as setGoalTokenGetter } from '../services/goalService';
 import { setTokenGetter as setTransactionTokenGetter } from '../services/transactionService';
 import { setTokenGetter as setReminderTokenGetter } from '../services/reminderService';
+import { setTokenGetter as setSettingsTokenGetter } from '../services/settingsService';
 
 const store = configureStore({
     reducer: {
@@ -40,5 +41,6 @@ setResetPasswordTokenGetter(tokenGetter);
 setGoalTokenGetter(tokenGetter);
 setTransactionTokenGetter(tokenGetter);
 setReminderTokenGetter(tokenGetter);
+setSettingsTokenGetter(tokenGetter);
 
 export { store };

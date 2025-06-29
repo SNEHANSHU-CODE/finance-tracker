@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-// Reusable OTP Input Component
 const OtpInput = ({ 
   length = 6, 
   onComplete, 
