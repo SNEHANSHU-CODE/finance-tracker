@@ -115,7 +115,7 @@ const validateGoalUpdate = [
   
   body('category')
     .optional()
-    .isIn(['Savings', 'Travel', 'Transportation', 'Technology', 'Emergency', 'Investment', 'Other'])
+    .isIn(['Savings', 'Travel', 'Transportation', 'Technology', 'Emergency', 'Investment', 'Home', 'Education', 'Health', 'Other'])
     .withMessage('Invalid goal category'),
   
   body('priority')
@@ -239,7 +239,7 @@ const validateGoalQuery = [
   
   query('category')
     .optional()
-    .isIn(['Savings', 'Travel', 'Transportation', 'Technology', 'Emergency', 'Investment', 'Other'])
+    .isIn(['Savings', 'Travel', 'Transportation', 'Technology', 'Emergency', 'Investment', 'Home', 'Education', 'Health', 'Other'])
     .withMessage('Invalid goal category'),
   
   query('priority')
@@ -273,7 +273,7 @@ const validateGoalQuery = [
 // Validation for category parameter
 const validateCategoryParam = [
   param('category')
-    .isIn(['Savings', 'Travel', 'Transportation', 'Technology', 'Emergency', 'Investment', 'Other'])
+    .isIn(['Savings', 'Travel', 'Transportation', 'Technology', 'Emergency', 'Investment', 'Home', 'Education', 'Health', 'Other'])
     .withMessage('Invalid goal category'),
 
   handleValidationErrors
@@ -361,11 +361,29 @@ const validateDateRange = [
   handleValidationErrors
 ];
 
-// Check if user owns the goal
+// Check if user owns the goal - FIXED VERSION
 const checkGoalOwnership = async (req, res, next) => {
   try {
+    const goalId = req.params.id; // Fixed: use 'id' instead of '_id'
+    console.log('Checking ownership for goal ID:', goalId);
+    console.log('User ID from request:', req.user?.userId);
+    
+    if (!goalId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Goal ID is required'
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(goalId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid goal ID format'
+      });
+    }
+
     const Goal = require('../models/goalModel');
-    const goal = await Goal.findById(req.params.id);
+    const goal = await Goal.findById(goalId);
     
     if (!goal) {
       return res.status(404).json({
@@ -374,19 +392,39 @@ const checkGoalOwnership = async (req, res, next) => {
       });
     }
     
-    if (goal.userId.toString() !== req.user.userId.toString()) {
+    // Get userId from different possible locations in req.user
+    const userId = req.user?.userId || req.user?.id || req.user?._id;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+    
+    // Convert both to strings for comparison
+    const goalUserId = goal.userId.toString();
+    const requestUserId = userId.toString();
+    
+    console.log('Goal user ID:', goalUserId);
+    console.log('Request user ID:', requestUserId);
+    
+    if (goalUserId !== requestUserId) {
       return res.status(403).json({
         success: false,
         message: 'Access denied: You do not own this goal'
       });
     }
     
+    // Attach goal to request for use in subsequent middleware
     req.goal = goal;
     next();
   } catch (error) {
+    console.error('Error in checkGoalOwnership:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error while checking goal ownership'
+      message: 'Server error while checking goal ownership',
+      error: error.message
     });
   }
 };
@@ -485,10 +523,20 @@ const validateBulkOperation = async (req, res, next) => {
     const { goalIds } = req.body;
     const Goal = require('../models/goalModel');
     
+    // Get userId from different possible locations
+    const userId = req.user?.userId || req.user?.id || req.user?._id;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+    
     // Check if all goals belong to the user
     const goals = await Goal.find({
       _id: { $in: goalIds },
-      userId: req.user.userId
+      userId: userId
     });
     
     if (goals.length !== goalIds.length) {
@@ -501,9 +549,11 @@ const validateBulkOperation = async (req, res, next) => {
     req.bulkGoals = goals;
     next();
   } catch (error) {
+    console.error('Error in validateBulkOperation:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during bulk operation validation'
+      message: 'Server error during bulk operation validation',
+      error: error.message
     });
   }
 };
@@ -511,8 +561,8 @@ const validateBulkOperation = async (req, res, next) => {
 // Log goal activity
 const logGoalActivity = (action) => {
   return (req, res, next) => {
-    // Add logging logic here
-    console.log(`Goal ${action} action by user ${req.user.userId} at ${new Date()}`);
+    const userId = req.user?.userId || req.user?.id || req.user?._id;
+    console.log(`Goal ${action} action by user ${userId} at ${new Date()}`);
     next();
   };
 };
@@ -521,7 +571,16 @@ const logGoalActivity = (action) => {
 const checkGoalLimits = async (req, res, next) => {
   try {
     const Goal = require('../models/goalModel');
-    const goalCount = await Goal.countDocuments({ userId: req.user.userId });
+    const userId = req.user?.userId || req.user?.id || req.user?._id;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+    
+    const goalCount = await Goal.countDocuments({ userId: userId });
     
     const MAX_GOALS = 100; // Set your limit
     
@@ -534,9 +593,11 @@ const checkGoalLimits = async (req, res, next) => {
     
     next();
   } catch (error) {
+    console.error('Error in checkGoalLimits:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error while checking goal limits'
+      message: 'Server error while checking goal limits',
+      error: error.message
     });
   }
 };

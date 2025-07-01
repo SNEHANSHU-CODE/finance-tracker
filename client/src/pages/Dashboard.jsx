@@ -42,6 +42,7 @@ export default function Dashboard() {
 
   const [ recentTransaction, setRecentTransaction ] = useState([]);
 
+  // Get recent transaction on page lodad
   useEffect(()=>{
     const fetchData = async () => {
     try {
@@ -56,11 +57,11 @@ export default function Dashboard() {
       
 
   const categorySpending = [
-    { category: "Food", amount: 485.30, percentage: 35, color: "warning" },
-    { category: "Transportation", amount: 320.15, percentage: 25, color: "info" },
-    { category: "Entertainment", amount: 180.50, percentage: 15, color: "secondary" },
-    { category: "Shopping", amount: 245.80, percentage: 18, color: "danger" },
-    { category: "Utilities", amount: 95.00, percentage: 7, color: "dark" }
+      { category: "Food & Dining", amount: 485.30, percentage: 35, trend: -5.2, color: "warning" },
+      { category: "Transportation", amount: 320.15, percentage: 25, trend: 2.1, color: "info" },
+      { category: "Shopping", amount: 245.80, percentage: 18, trend: 8.5, color: "danger" },
+      { category: "Entertainment", amount: 180.50, percentage: 15, trend: -2.8, color: "secondary" },
+      { category: "Utilities", amount: 95.00, percentage: 7, trend: 0.5, color: "dark" }
   ];
 
   const formatCurrency = (amount) => {
@@ -223,9 +224,10 @@ export default function Dashboard() {
                           </small>
                         </td>
                         <td className="text-end">
-                          <span className={`fw-bold ${transaction.displayAmount > 0 ? 'text-success' : 'text-danger'}`}>
-                            {transaction.amount > 0 ? '+' : '-'}{formatCurrency(transaction.displayAmount)}
+                          <span className={`fw-bold ${transaction.type === 'Income' ? 'text-success' : 'text-danger'}`}>
+                            {transaction.displayAmount}
                           </span>
+
                         </td>
                         <td style={{ width: '40px' }}>
                           <div className="dropdown">

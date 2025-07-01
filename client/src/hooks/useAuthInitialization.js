@@ -11,7 +11,6 @@ export const useAuthInitialization = () => {
       if (!isInitialized) {
         try {
           // Try to refresh token on app startup
-          // This will work if user has valid httpOnly refresh cookie
           await dispatch(refreshToken()).unwrap();
         } catch (error) {
           // No valid refresh token, user needs to login

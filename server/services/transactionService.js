@@ -54,6 +54,7 @@ class TransactionService {
         endDate,
         paymentMethod,
         tags,
+        searchTerm,
         sortBy = 'date',
         sortOrder = 'desc'
       } = options;
@@ -92,6 +93,22 @@ class TransactionService {
           $gte: new Date(startDate),
           $lte: new Date(endDate)
         };
+      }
+
+      // Add search functionality
+      if (isValid(searchTerm)) {
+        const searchRegex = new RegExp(searchTerm, 'i'); // Case-insensitive search
+        query.$or = [
+          { description: searchRegex },
+          { notes: searchRegex },
+          { category: searchRegex },
+          { paymentMethod: searchRegex }
+        ];
+
+        // If search term is a number, also search in amount
+        if (!isNaN(searchTerm)) {
+          query.$or.push({ amount: parseFloat(searchTerm) });
+        }
       }
 
       const skip = (page - 1) * limit;

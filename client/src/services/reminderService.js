@@ -1,5 +1,5 @@
+// services/reminderService.js (Frontend - Fixed)
 import axios from 'axios';
-import { googleConnect } from '../app/reminderSlice';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -23,15 +23,36 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Add response interceptor for better error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Error:', error.response?.data || error.message);
+    return Promise.reject(error);
+  }
+);
+
 const reminderService = {
   async getReminders() {
     const response = await apiClient.get('/reminders');
     return response.data;
   },
+  
   async createReminder(data) {
     const response = await apiClient.post('/reminders', data);
     return response.data;
   },
+  
+  async deleteReminder(id) {
+    const response = await apiClient.delete(`/reminders/${id}`);
+    return response.data;
+  },
+  
+  async updateReminder(id, data) { // Fixed: Added id parameter
+    const response = await apiClient.put(`/reminders/${id}`, data);
+    return response.data;
+  },
+  
   async googleConnect() {
     const response = await apiClient.post('/google');
     return response.data;

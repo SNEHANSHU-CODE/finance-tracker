@@ -34,6 +34,7 @@ class TransactionController {
         endDate: req.query.endDate,
         paymentMethod: req.query.paymentMethod,
         tags: req.query.tags ? req.query.tags.split(',') : undefined,
+        searchTerm: req.query.searchTerm || req.query.search,
         sortBy: req.query.sortBy || 'date',
         sortOrder: req.query.sortOrder || 'desc'
       };

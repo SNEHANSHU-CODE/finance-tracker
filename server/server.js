@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 const { redisService } = require('./config/redis');
 const emailService = require('./services/emailService');
+const startCustomReminderCron = require('./utils/reminderCron');
 
 // Importing all Routes
 const authRoutes = require('./routes/authRoutes');
@@ -66,6 +67,9 @@ redisService.setupGracefulShutdown();
 
 // Initialize Redis when server starts
 initializeRedis();
+
+//Send reminder in every 5 min
+startCustomReminderCron();
 
 // Start Server
 const PORT = process.env.PORT || 5000;

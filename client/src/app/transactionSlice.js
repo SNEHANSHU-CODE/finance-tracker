@@ -16,6 +16,20 @@ export const fetchTransactions = createAsyncThunk(
   }
 );
 
+export const searchTransactions = createAsyncThunk(
+  'transaction/searchTransactions',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const userId = getState().auth.user?.userId;
+      if (!userId) return rejectWithValue({ message: 'Missing userId' });
+      const response = await transactionService.getTransactions({...params, userId});
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
 export const recentTransactions = createAsyncThunk(
   'transaction/recent',
   async (_, { getState, rejectWithValue }) => {
@@ -161,11 +175,23 @@ const transactionSlice = createSlice({
     clearFilters: (state) => {
       state.filters = initialState.filters;
     },
+    setSearchTerm: (state, action) => {
+      state.filters.searchTerm = action.payload;
+    },
+    clearSearch: (state) => {
+      state.filters.searchTerm = '';
+      state.searchResults = [];
+      state.searchError = null;
+    },
     clearError: (state) => {
       state.error = null;
     },
     setLoading: (state, action) => {
       state.loading = action.payload;
+    },
+    resetTransactions: (state) => {
+      state.transactions = [];
+      state.pagination = initialState.pagination;
     }
   },
   extraReducers: (builder) => {

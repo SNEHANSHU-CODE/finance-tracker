@@ -44,7 +44,10 @@ export default function Transactions() {
   // Local component state
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState(null);
   const [selectedTransactions, setSelectedTransactions] = useState([]);
+  const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState({
     title: "",
     amount: "",
@@ -83,34 +86,44 @@ export default function Transactions() {
   }, [dispatch]);
 
   const handleFilterChange = (newFilters) => {
-    const transformedFilters = { 
-      ...newFilters, 
-      currentPage: 1 
+    const transformedFilters = {
+      ...newFilters,
+      currentPage: 1
     };
-    
+
     // Transform type filter to match backend expectations
     if (transformedFilters.type && transformedFilters.type !== 'all') {
       transformedFilters.type = transformedFilters.type === 'income' ? 'Income' : 'Expense';
     } else if (transformedFilters.type === 'all') {
       delete transformedFilters.type;
     }
-    
+
     dispatch(setFilters(transformedFilters));
+
+    // Explicitly fetch with new filters
+    if (userId) {
+      dispatch(fetchTransactions({
+        userId,
+        page: 1,
+        limit: pagination.itemsPerPage || 10,
+        ...transformedFilters
+      }));
+    }
   };
 
   // Direct search handler with timeout
   const handleSearch = (e) => {
     const searchTerm = e.target.value;
-    
+
     // Clear existing timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
+
     // Set new timeout for debounced search
     searchTimeoutRef.current = setTimeout(() => {
       handleFilterChange({ searchTerm });
-    }, 300);
+    }, 200);
   };
 
   const getSortIcon = (key) => {
@@ -120,10 +133,10 @@ export default function Transactions() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate required fields
-    if (!formData.title || !formData.amount) {
-      console.error('Title and amount are required');
+    if (!formData.title || !formData.amount || !formData.category) {
+      setFormError('Title, amount, and category are required');
       return;
     }
 
@@ -145,9 +158,9 @@ export default function Transactions() {
       } else {
         await dispatch(createTransaction(transactionData)).unwrap();
       }
-      
+
       resetForm();
-     
+
       dispatch(fetchTransactions({
         userId,
         page: pagination.currentPage,
@@ -155,9 +168,9 @@ export default function Transactions() {
         ...filters
       }));
       console.log(editingTransaction ? 'Transaction updated successfully' : 'Transaction created successfully');
-      
+
     } catch (error) {
-      console.error('Transaction operation failed:', error);
+      setFormError(error.message || 'Failed to save transaction');
     }
   };
 
@@ -172,6 +185,7 @@ export default function Transactions() {
     });
     setEditingTransaction(null);
     setShowAddModal(false);
+    setFormError('');
   };
 
   const handleEdit = (transaction) => {
@@ -187,21 +201,37 @@ export default function Transactions() {
     setShowAddModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this transaction?")) {
-      try {
-        await dispatch(deleteTransaction(id)).unwrap();
-        // Refresh transactions after successful deletion
-        dispatch(fetchTransactions({
-          userId,
-          page: pagination.currentPage,
-          limit: pagination.itemsPerPage,
-          ...filters
-        }));
-      } catch (error) {
-        console.error('Delete failed:', error);
-      }
+  const handleDelete = (transaction) => {
+    setTransactionToDelete(transaction);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!transactionToDelete) return;
+
+    try {
+      await dispatch(deleteTransaction(transactionToDelete._id)).unwrap();
+
+      // Refresh transactions after successful deletion
+      dispatch(fetchTransactions({
+        userId,
+        page: pagination.currentPage,
+        limit: pagination.itemsPerPage,
+        ...filters
+      }));
+
+      // Close modal and reset state
+      setShowDeleteModal(false);
+      setTransactionToDelete(null);
+
+    } catch (error) {
+      console.error('Delete failed:', error);
     }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setTransactionToDelete(null);
   };
 
   const handlePageChange = (page) => {
@@ -228,6 +258,17 @@ export default function Transactions() {
     });
   };
 
+  const handleSort = (sortBy) => {
+    let newSortOrder = 'asc';
+
+    if (filters.sortBy === sortBy) {
+      // If clicking the same column, toggle order
+      newSortOrder = filters.sortOrder === 'asc' ? 'desc' : 'asc';
+    }
+
+    handleFilterChange({ sortBy, sortOrder: newSortOrder });
+  };
+
   const clearAllFilters = () => {
     dispatch(clearFilters());
   };
@@ -237,7 +278,7 @@ export default function Transactions() {
       {/* Error Alert */}
       {error && (
         <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          {error?.message}
+          {typeof error === 'string' ? error : error?.message}
           <button
             type="button"
             className="btn-close"
@@ -281,7 +322,7 @@ export default function Transactions() {
                       type="text"
                       className="form-control border-start-0"
                       placeholder="Search transactions..."
-                      defaultValue={filters.searchTerm || ''}
+                      value={filters.searchTerm || ''}
                       onChange={handleSearch}
                     />
                   </div>
@@ -358,28 +399,19 @@ export default function Transactions() {
                   <div className="btn-group btn-group-sm">
                     <button
                       className={`btn ${filters.sortBy === 'date' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                      onClick={() => {
-                        const newSortOrder = filters.sortBy === 'date' && filters.sortOrder === 'asc' ? 'desc' : 'asc';
-                        handleFilterChange({ sortBy: 'date', sortOrder: newSortOrder });
-                      }}
+                      onClick={() => handleSort('date')}
                     >
                       Date {getSortIcon('date')}
                     </button>
                     <button
                       className={`btn ${filters.sortBy === 'amount' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                      onClick={() => {
-                        const newSortOrder = filters.sortBy === 'amount' && filters.sortOrder === 'asc' ? 'desc' : 'asc';
-                        handleFilterChange({ sortBy: 'amount', sortOrder: newSortOrder });
-                      }}
+                      onClick={() => handleSort('amount')}
                     >
                       Amount {getSortIcon('amount')}
                     </button>
                     <button
                       className={`btn ${filters.sortBy === 'description' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                      onClick={() => {
-                        const newSortOrder = filters.sortBy === 'description' && filters.sortOrder === 'asc' ? 'desc' : 'asc';
-                        handleFilterChange({ sortBy: 'description', sortOrder: newSortOrder });
-                      }}
+                      onClick={() => handleSort('description')}
                     >
                       Title {getSortIcon('description')}
                     </button>
@@ -400,56 +432,57 @@ export default function Transactions() {
                     </tr>
                   </thead>
                   <tbody>
-                    {Array.isArray(transactions) && transactions.map((transaction) => (
-                      <tr key={transaction._id}>
-                        <td className="border-0 ps-4">
-                          <div className="d-flex align-items-center">
-                            <div className={`p-2 rounded me-3 ${transaction.type === 'Income'
+                    {Array.isArray(transactions) && transactions
+                      .map((transaction) => (
+                        <tr key={transaction._id}>
+                          <td className="border-0 ps-4">
+                            <div className="d-flex align-items-center">
+                              <div className={`p-2 rounded me-3 ${transaction.type === 'Income'
                                 ? 'bg-success bg-opacity-10'
                                 : 'bg-danger bg-opacity-10'
-                              }`}>
-                              {transaction.type === 'Income'
-                                ? <FaArrowUp className="text-success" size={14} />
-                                : <FaArrowDown className="text-danger" size={14} />
-                              }
+                                }`}>
+                                {transaction.type === 'Income'
+                                  ? <FaArrowUp className="text-success" size={14} />
+                                  : <FaArrowDown className="text-danger" size={14} />
+                                }
+                              </div>
+                              <div>
+                                <div className="fw-medium">{transaction.description}</div>
+                                <small className="text-muted text-capitalize">{transaction.type}</small>
+                                {transaction.notes && (
+                                  <div className="small text-muted">{transaction.notes}</div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <div className="fw-medium">{transaction.description}</div>
-                              <small className="text-muted text-capitalize">{transaction.type}</small>
-                              {transaction.notes && (
-                                <div className="small text-muted">{transaction.notes}</div>
-                              )}
+                          </td>
+                          <td className="border-0">
+                            <span className="badge bg-light text-dark">{transaction.category}</span>
+                          </td>
+                          <td className="border-0 text-muted">{formatDate(transaction.date)}</td>
+                          <td className={`border-0 text-end fw-medium ${transaction.amount > 0 ? 'text-success' : 'text-danger'
+                            }`}>
+                            {transaction.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(transaction.amount))}
+                          </td>
+                          <td className="border-0 text-center">
+                            <div className="btn-group btn-group-sm">
+                              <button
+                                className="btn btn-outline-primary"
+                                onClick={() => handleEdit(transaction)}
+                                disabled={loading}
+                              >
+                                <FaEdit size={12} />
+                              </button>
+                              <button
+                                className="btn btn-outline-danger"
+                                onClick={() => handleDelete(transaction)}
+                                disabled={loading}
+                              >
+                                <FaTrash size={12} />
+                              </button>
                             </div>
-                          </div>
-                        </td>
-                        <td className="border-0">
-                          <span className="badge bg-light text-dark">{transaction.category}</span>
-                        </td>
-                        <td className="border-0 text-muted">{formatDate(transaction.date)}</td>
-                        <td className={`border-0 text-end fw-medium ${transaction.amount > 0 ? 'text-success' : 'text-danger'
-                          }`}>
-                          {transaction.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(transaction.amount))}
-                        </td>
-                        <td className="border-0 text-center">
-                          <div className="btn-group btn-group-sm">
-                            <button
-                              className="btn btn-outline-primary"
-                              onClick={() => handleEdit(transaction)}
-                              disabled={loading}
-                            >
-                              <FaEdit size={12} />
-                            </button>
-                            <button
-                              className="btn btn-outline-danger"
-                              onClick={() => handleDelete(transaction._id)}
-                              disabled={loading}
-                            >
-                              <FaTrash size={12} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
                 {!loading && transactions.length === 0 && (
@@ -539,6 +572,11 @@ export default function Transactions() {
               </div>
               <form onSubmit={handleSubmit}>
                 <div className="modal-body">
+                  {formError && (
+                    <div className="alert alert-danger" role="alert">
+                      {formError}
+                    </div>
+                  )}
                   <div className="row g-3">
                     <div className="col-12">
                       <label className="form-label">Title *</label>
@@ -632,6 +670,86 @@ export default function Transactions() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && transactionToDelete && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title text-danger">
+                  <FaTrash className="me-2" />
+                  Delete Transaction
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={cancelDelete}
+                  disabled={loading}
+                ></button>
+              </div>
+              <div className="modal-body pt-0">
+                <div className="text-center py-3">
+                  <div className="mb-4">
+                    <div className="bg-danger bg-opacity-10 rounded-circle d-inline-flex p-3 mb-3">
+                      <FaTrash className="text-danger" size={24} />
+                    </div>
+                    <h6 className="mb-2">Are you sure you want to delete this transaction?</h6>
+                    <p className="text-muted mb-0">This action cannot be undone.</p>
+                  </div>
+
+                  {/* Transaction Details Preview */}
+                  <div className="card bg-light border-0">
+                    <div className="card-body py-3">
+                      <div className="d-flex align-items-center justify-content-between">
+                        <div className="d-flex align-items-center">
+                          <div className={`p-2 rounded me-3 ${transactionToDelete.type === 'Income'
+                            ? 'bg-success bg-opacity-10'
+                            : 'bg-danger bg-opacity-10'
+                            }`}>
+                            {transactionToDelete.type === 'Income'
+                              ? <FaArrowUp className="text-success" size={14} />
+                              : <FaArrowDown className="text-danger" size={14} />
+                            }
+                          </div>
+                          <div className="text-start">
+                            <div className="fw-medium">{transactionToDelete.description}</div>
+                            <small className="text-muted">{transactionToDelete.category}</small>
+                          </div>
+                        </div>
+                        <div className="text-end">
+                          <div className={`fw-medium ${transactionToDelete.amount > 0 ? 'text-success' : 'text-danger'}`}>
+                            {transactionToDelete.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(transactionToDelete.amount))}
+                          </div>
+                          <small className="text-muted">{formatDate(transactionToDelete.date)}</small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer border-0 pt-0">
+                <button
+                  type="button"
+                  className="btn btn-light"
+                  onClick={cancelDelete}
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={confirmDelete}
+                  disabled={loading}
+                >
+                  {loading && <FaSpinner className="fa-spin me-2" />}
+                  Delete Transaction
+                </button>
+              </div>
             </div>
           </div>
         </div>

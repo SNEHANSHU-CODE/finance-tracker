@@ -113,7 +113,7 @@ class GoalController {
         });
       }
 
-      const goal = await goalService.updateGoal(req.params.id, req.user.userId, req.body);
+      const goal = await goalService.updateGoal(req.params.id, req.userId, req.body);
 
       if (!goal) {
         return res.status(404).json({
@@ -140,8 +140,8 @@ class GoalController {
   // Delete goal
   async deleteGoal(req, res) {
     try {
-      const result = await goalService.deleteGoal(req.params.id, req.user.userId);
-
+      const result = await goalService.deleteGoal(req.params.id, req.userId);
+      console.log('goalcontro', req.userId)
       if (!result) {
         return res.status(404).json({
           success: false,
@@ -177,7 +177,7 @@ class GoalController {
 
       const goal = await goalService.addContribution(
         req.params.id,
-        req.user.userId,
+        req.userId,
         req.body.amount
       );
 
@@ -206,7 +206,7 @@ class GoalController {
   // Mark goal as complete
   async markGoalComplete(req, res) {
     try {
-      const goal = await goalService.markGoalComplete(req.params.id, req.user.userId);
+      const goal = await goalService.markGoalComplete(req.params.id, req.userId);
 
       if (!goal) {
         return res.status(404).json({
@@ -233,7 +233,7 @@ class GoalController {
   // Pause goal
   async pauseGoal(req, res) {
     try {
-      const goal = await goalService.pauseGoal(req.params.id, req.user.userId);
+      const goal = await goalService.pauseGoal(req.params.id, req.userId);
 
       if (!goal) {
         return res.status(404).json({
@@ -260,7 +260,7 @@ class GoalController {
   // Resume goal
   async resumeGoal(req, res) {
     try {
-      const goal = await goalService.resumeGoal(req.params.id, req.user.userId);
+      const goal = await goalService.resumeGoal(req.params.id, req.userId);
 
       if (!goal) {
         return res.status(404).json({
@@ -288,7 +288,7 @@ class GoalController {
   async getGoalsByCategory(req, res) {
     try {
       const goals = await goalService.getGoalsByCategory(
-        req.user.userId,
+        req.userId,
         req.params.category
       );
 
@@ -310,7 +310,7 @@ class GoalController {
   async getGoalsByPriority(req, res) {
     try {
       const goals = await goalService.getGoalsByPriority(
-        req.user.userId,
+        req.userId,
         req.params.priority
       );
 
@@ -331,7 +331,7 @@ class GoalController {
   // Get overdue goals
   async getOverdueGoals(req, res) {
     try {
-      const goals = await goalService.getOverdueGoals(req.user.userId);
+      const goals = await goalService.getOverdueGoals(req.userId);
 
       res.json({
         success: true,
@@ -350,7 +350,7 @@ class GoalController {
   // Get dashboard stats
   async getDashboardStats(req, res) {
     try {
-      const stats = await goalService.getDashboardStats(req.user.userId);
+      const stats = await goalService.getDashboardStats(req.userId);
 
       res.json({
         success: true,
@@ -369,7 +369,7 @@ class GoalController {
   // Get goals summary
   async getGoalsSummary(req, res) {
     try {
-      const summary = await goalService.getGoalsSummary(req.user.userId);
+      const summary = await goalService.getGoalsSummary(req.userId);
 
       res.json({
         success: true,

@@ -7,9 +7,9 @@ import {
   FaDollarSign,
   FaCalendarAlt,
   FaCheckCircle,
-  FaExclamationTriangle,
   FaClock,
-  FaSpinner
+  FaSpinner,
+  FaChartLine
 } from "react-icons/fa";
 import {
   fetchGoals,
@@ -48,6 +48,8 @@ export default function Goals() {
   const [editingGoal, setEditingGoal] = useState(null);
   const [showAddFundsModal, setShowAddFundsModal] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [goalToDelete, setGoalToDelete] = useState(null);
   const [addFundsAmount, setAddFundsAmount] = useState("");
   const [formData, setFormData] = useState({
     name: "",
@@ -65,61 +67,48 @@ export default function Goals() {
   };
 
   useEffect(() => {
-  if (showAddModal && !editingGoal) {
-    const tomorrow = new Date(Date.now() + 86400000);
-    setFormData(prev => ({
-      ...prev,
-      targetDate: tomorrow.toISOString().split('T')[0]
-    }));
-  }
-}, [showAddModal, editingGoal]);
+    if (showAddModal && !editingGoal) {
+      const tomorrow = new Date(Date.now() + 86400000);
+      setFormData(prev => ({
+        ...prev,
+        targetDate: tomorrow.toISOString().split('T')[0]
+      }));
+    }
+  }, [showAddModal, editingGoal]);
 
   // Load data on component mount
   useEffect(() => {
-  console.log('=== Goals Fetch Debug ===');
-  console.log('userId:', userId);
-  console.log('Auth state:', auth); // Add this to see full auth state
-  
-  if (!userId) {
-    console.log('No userId available, skipping fetch');
-    return;
-  }
+    console.log('=== Goals Fetch Debug ===');
+    console.log('userId:', userId);
+    console.log('Auth state:', auth); // Add this to see full auth state
 
-  // Clear any previous errors
-  dispatch(clearError());
-  
-  const fetchData = async () => {
-    try {
-      console.log('Starting to fetch goals...');
-      
-      // Test the goals fetch separately first
-      const goalsResult = await dispatch(fetchGoals()).unwrap();
-      console.log('Goals fetch successful:', goalsResult);
-      
-      console.log('Starting to fetch dashboard stats...');
-      const statsResult = await dispatch(fetchDashboardStats()).unwrap();
-      console.log('Dashboard stats fetch successful:', statsResult);
-      
-      console.log('All data loaded successfully');
-    } catch (error) {
-      console.error('=== Detailed Error Info ===');
-      console.error('Error object:', error);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-      
-      // If it's a network error, log more details
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-        console.error('Response headers:', error.response.headers);
-      } else if (error.request) {
-        console.error('Request made but no response:', error.request);
-      }
+    if (!userId) {
+      console.log('No userId available, skipping fetch');
+      return;
     }
-  };
 
-  fetchData();
-}, [dispatch, userId, auth.isAuthenticated]);
+    // Clear any previous errors
+    dispatch(clearError());
+
+    const fetchData = async () => {
+      try {
+        await dispatch(fetchGoals()).unwrap();
+        await dispatch(fetchDashboardStats()).unwrap();
+      } catch (error) {
+        console.error('Error object:', error);
+        console.error('Error message:', error.message);
+
+        // If it's a network error, log more details
+        if (error.response) {
+          console.error('Response status:', error.response);
+        } else if (error.request) {
+          console.error('Request made but no response:', error.request);
+        }
+      }
+    };
+
+    fetchData();
+  }, [dispatch, userId, auth.isAuthenticated]);
 
   // Clear error when component unmounts
   useEffect(() => {
@@ -148,51 +137,51 @@ export default function Goals() {
       case 'check-circle':
         return <FaCheckCircle className="text-success" />;
       case 'exclamation-triangle':
-        return <FaExclamationTriangle className="text-warning" />;
+        return <FaChartLine className="text-warning" />;
       default:
         return <FaClock className="text-info" />;
     }
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!formData.name || !formData.targetAmount) return;
+    e.preventDefault();
+    if (!formData.name || !formData.targetAmount) return;
 
-  // Validate form data
-  const validationErrors = goalService.validateGoalData(formData);
-  if (validationErrors.length > 0) {
-    alert(validationErrors.join('\n'));
-    return;
-  }
-
-  const goalData = {
-    ...formData,
-    targetAmount: parseFloat(formData.targetAmount),
-    userId // Ensure userId is included
-  };
-
-  try {
-    if (editingGoal) {
-      await dispatch(updateGoal({
-        id: editingGoal._id,
-        goalData
-      })).unwrap();
-    } else {
-      console.log("Form values:", formData);
-      console.log("Final goal data:", goalData);
-      await dispatch(createGoal(goalData)).unwrap();
+    // Validate form data
+    const validationErrors = goalService.validateGoalData(formData);
+    if (validationErrors.length > 0) {
+      alert(validationErrors.join('\n'));
+      return;
     }
-    
-    resetForm();
-    
-    // Refresh data after successful operation
-    dispatch(fetchGoals());
-    dispatch(fetchDashboardStats());
-  } catch (error) {
-    console.error('Error saving goal:', error.errors);
-    // Error is already handled by Redux, just log it
-  }
-};
+
+    const goalData = {
+      ...formData,
+      targetAmount: parseFloat(formData.targetAmount),
+      userId // Ensure userId is included
+    };
+
+    try {
+      if (editingGoal) {
+        await dispatch(updateGoal({
+          id: editingGoal._id,
+          goalData
+        })).unwrap();
+      } else {
+        console.log("Form values:", formData);
+        console.log("Final goal data:", goalData);
+        await dispatch(createGoal(goalData)).unwrap();
+      }
+
+      resetForm();
+
+      // Refresh data after successful operation
+      dispatch(fetchGoals());
+      dispatch(fetchDashboardStats());
+    } catch (error) {
+      console.error('Error saving goal:', error.errors);
+      // Error is already handled by Redux, just log it
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -218,13 +207,21 @@ export default function Goals() {
     setShowAddModal(true);
   };
 
-  const handleDelete = async (goalId) => {
-    if (window.confirm("Are you sure you want to delete this goal?")) {
-      try {
-        await dispatch(deleteGoal(goalId)).unwrap();
-      } catch (error) {
-        console.error('Error deleting goal:', error);
-      }
+  const handleDelete = (goal) => {
+    setGoalToDelete(goal);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!goalToDelete) return;
+
+    try {
+      await dispatch(deleteGoal(goalToDelete._id)).unwrap();
+      dispatch(fetchDashboardStats());
+      setShowDeleteModal(false);
+      setGoalToDelete(null);
+    } catch (error) {
+      console.error('Error deleting goal:', error);
     }
   };
 
@@ -245,6 +242,7 @@ export default function Goals() {
         goalId: selectedGoal._id,
         amount
       })).unwrap();
+      dispatch(fetchDashboardStats());
 
       setShowAddFundsModal(false);
       setSelectedGoal(null);
@@ -413,7 +411,7 @@ export default function Goals() {
                               </li>
                               <li><hr className="dropdown-divider" /></li>
                               <li>
-                                <button className="dropdown-item text-danger" onClick={() => handleDelete(goal._id)}>
+                                <button className="dropdown-item text-danger" onClick={() => handleDelete(goal)}>
                                   <FaTrash className="me-2" size={12} />
                                   Delete
                                 </button>
@@ -671,6 +669,158 @@ export default function Goals() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && goalToDelete && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title text-danger">
+                  <FaTrash className="me-2" />
+                  Delete Goal
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setGoalToDelete(null);
+                  }}
+                  disabled={loading}
+                ></button>
+              </div>
+              <div className="modal-body pt-0">
+                <div className="text-center py-3">
+                  <div className="mb-4">
+                    <div className="bg-danger bg-opacity-10 rounded-circle d-inline-flex p-3 mb-3">
+                      <FaTrash className="text-danger" size={32} />
+                    </div>
+                    <h6 className="mb-2">Are you sure you want to delete this goal?</h6>
+                    <p className="text-muted mb-0">This action cannot be undone and all progress will be lost.</p>
+                  </div>
+
+                  {/* Goal Details Preview */}
+                  <div className="card bg-light border-0">
+                    <div className="card-body py-3">
+                      <div className="d-flex align-items-center justify-content-between mb-3">
+                        <div className="d-flex align-items-center">
+                          <div className="p-2 rounded me-3 bg-primary bg-opacity-10">
+                            {getStatusIcon(goalToDelete)}
+                          </div>
+                          <div className="text-start">
+                            <div className="fw-medium">{goalToDelete.name}</div>
+                            <small className="text-muted">{goalToDelete.category}</small>
+                          </div>
+                        </div>
+                        <div className="text-end">
+                          <div className="fw-medium text-primary">
+                            {formatCurrency(goalToDelete.targetAmount)}
+                          </div>
+                          <small className="text-muted">
+                            Target: {formatDate(goalToDelete.targetDate)}
+                          </small>
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="mb-3">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span className="text-muted small">Current Progress</span>
+                          <span className="fw-medium small">
+                            {getProgressPercentage(goalToDelete.savedAmount, goalToDelete.targetAmount).toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="progress" style={{ height: '6px' }}>
+                          <div
+                            className={`progress-bar bg-${getProgressColor(
+                              getProgressPercentage(goalToDelete.savedAmount, goalToDelete.targetAmount)
+                            )}`}
+                            style={{
+                              width: `${Math.min(
+                                getProgressPercentage(goalToDelete.savedAmount, goalToDelete.targetAmount),
+                                100
+                              )}%`
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      {/* Amount Details */}
+                      <div className="row g-2">
+                        <div className="col-6">
+                          <div className="text-center p-2 bg-success bg-opacity-10 rounded">
+                            <div className="fw-bold text-success small">
+                              {formatCurrency(goalToDelete.savedAmount || 0)}
+                            </div>
+                            <small className="text-muted">Saved</small>
+                          </div>
+                        </div>
+                        <div className="col-6">
+                          <div className="text-center p-2 bg-warning bg-opacity-10 rounded">
+                            <div className="fw-bold text-warning small">
+                              {formatCurrency(goalToDelete.targetAmount - (goalToDelete.savedAmount || 0))}
+                            </div>
+                            <small className="text-muted">Remaining</small>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Priority Badge */}
+                      <div className="mt-3 text-center">
+                        <span className={`badge bg-${priorityColors[goalToDelete.priority]} bg-opacity-10 text-${priorityColors[goalToDelete.priority]} text-capitalize`}>
+                          {goalToDelete.priority} Priority
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Warning Message */}
+                  {goalToDelete.savedAmount > 0 && (
+                    <div className="alert alert-warning mt-3 mb-0">
+                      <small>
+                        <strong>Warning:</strong> This goal has {formatCurrency(goalToDelete.savedAmount)} in savings that will be lost.
+                      </small>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="modal-footer border-0 pt-0">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setGoalToDelete(null);
+                  }}
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={confirmDelete}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <FaSpinner className="fa-spin me-2" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <FaTrash className="me-2" />
+                      Delete Goal
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
