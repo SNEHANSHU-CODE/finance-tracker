@@ -1,5 +1,5 @@
 const express = require('express');
-const { oauth2Client, getAuthUrl } = require('../utils/googleOAuth');
+const { oauth2Client, getAuthUrl } = require('../utils/googleOauth');
 const googleRouter = express.Router();
 
 const { saveGoogleTokens } = require('../utils/googleTokenCache');
@@ -24,7 +24,7 @@ googleRouter.get('/callback', authenticateToken, async (req, res) => {
 
     oauth2Client.setCredentials(tokens);
 
-    // ✅ Save access_token in Redis
+    // Save access_token in Redis
     if (tokens.access_token) {
       await redisService.set(
         `google_access_token:${userId}`,
@@ -33,7 +33,7 @@ googleRouter.get('/callback', authenticateToken, async (req, res) => {
       );
     }
 
-    // ✅ Save refresh_token in authModel
+    // Save refresh_token in authModel
     if (tokens.refresh_token) {
       await Auth.findOneAndUpdate(
         { userId },
