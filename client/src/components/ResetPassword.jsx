@@ -324,8 +324,8 @@ const ResetPassword = () => {
   const displayEmail = reduxEmail || email;
 
   return (
-    <div className="container-fluid py-4 d-flex align-items-center justify-content-center bg-light nav-top-margin">
-      <div className="row w-100 justify-content-center">
+    <div className="container-fluid py-4 d-flex align-items-center justify-content-center bg-light">
+      <div className="row w-100 justify-content-center nav-top-margin">
         <div className="col-12 col-sm-8 col-md-6 col-lg-4 col-xl-3">
           <div className="card shadow-lg border-0">
             <div className="card-body p-4">

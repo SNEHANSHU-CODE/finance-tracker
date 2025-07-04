@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import { 
   FaDollarSign, 
@@ -25,7 +25,7 @@ import {
   FaExchangeAlt
 } from "react-icons/fa";
 import Catagory from "../components/Catagory";
-import { recentTransactions } from "../app/transactionSlice";
+import { recentTransactions, fetchDashboardStats } from "../app/transactionSlice";
 
 export default function Dashboard() {
   const dispatch = useDispatch();
@@ -41,13 +41,16 @@ export default function Dashboard() {
   };
 
   const [ recentTransaction, setRecentTransaction ] = useState([]);
+  const [ dashboardData, setDashboardData ] = useState({});
 
   // Get recent transaction on page lodad
   useEffect(()=>{
     const fetchData = async () => {
     try {
       const result = await dispatch(recentTransactions()).unwrap();
+      const dashboard = await dispatch(fetchDashboardStats()).unwrap();
       setRecentTransaction(result);
+      setDashboardData(dashboard);
     } catch (error) {
       console.error("Failed to load recent transactions:", error);
     }

@@ -53,8 +53,8 @@ const budgetSchema = new mongoose.Schema({
 });
 
 // Compound index to ensure one budget per category per month/year per profile
-budgetSchema.index({ profileId: 1, category: 1, month: 1, year: 1 }, { unique: true });
-budgetSchema.index({ profileId: 1, month: 1, year: 1 });
+budgetSchema.index({ userId: 1, category: 1, month: 1, year: 1 }, { unique: true });
+budgetSchema.index({ userId: 1, month: 1, year: 1 });
 
 // Virtual for remaining budget
 budgetSchema.virtual('remainingAmount').get(function() {
@@ -94,9 +94,9 @@ budgetSchema.methods.reset = function() {
 };
 
 // Static method to get budgets by profile and period
-budgetSchema.statics.getByProfileAndPeriod = function(profileId, month, year) {
+budgetSchema.statics.getByProfileAndPeriod = function(userId, month, year) {
   return this.find({ 
-    profileId, 
+    userId, 
     month, 
     year,
     isActive: true 
@@ -104,8 +104,8 @@ budgetSchema.statics.getByProfileAndPeriod = function(profileId, month, year) {
 };
 
 // Static method to get budget summary
-budgetSchema.statics.getBudgetSummary = async function(profileId, month, year) {
-  const budgets = await this.find({ profileId, month, year, isActive: true });
+budgetSchema.statics.getBudgetSummary = async function(userId, month, year) {
+  const budgets = await this.find({ userId, month, year, isActive: true });
   
   const totalBudget = budgets.reduce((sum, b) => sum + b.budgetAmount, 0);
   const totalSpent = budgets.reduce((sum, b) => sum + b.spentAmount, 0);
@@ -136,7 +136,7 @@ budgetSchema.statics.getBudgetSummary = async function(profileId, month, year) {
 };
 
 // Static method to create default budgets for a new period
-budgetSchema.statics.createDefaultBudgets = async function(profileId, month, year, defaultAmounts = {}) {
+budgetSchema.statics.createDefaultBudgets = async function(userId, month, year, defaultAmounts = {}) {
   const defaultCategories = {
     'Food': defaultAmounts.Food || 500,
     'Transportation': defaultAmounts.Transportation || 300,
@@ -151,7 +151,7 @@ budgetSchema.statics.createDefaultBudgets = async function(profileId, month, yea
   for (const [category, amount] of Object.entries(defaultCategories)) {
     try {
       const budget = new this({
-        profileId,
+        userId,
         category,
         budgetAmount: amount,
         month,
@@ -168,7 +168,7 @@ budgetSchema.statics.createDefaultBudgets = async function(profileId, month, yea
 };
 
 // Static method to copy budgets from previous month
-budgetSchema.statics.copyFromPreviousMonth = async function(profileId, currentMonth, currentYear) {
+budgetSchema.statics.copyFromPreviousMonth = async function(userId, currentMonth, currentYear) {
   let prevMonth = currentMonth - 1;
   let prevYear = currentYear;
   
@@ -178,7 +178,7 @@ budgetSchema.statics.copyFromPreviousMonth = async function(profileId, currentMo
   }
   
   const previousBudgets = await this.find({ 
-    profileId, 
+    userId, 
     month: prevMonth, 
     year: prevYear,
     isActive: true 
@@ -188,7 +188,7 @@ budgetSchema.statics.copyFromPreviousMonth = async function(profileId, currentMo
   for (const prevBudget of previousBudgets) {
     try {
       const newBudget = new this({
-        profileId,
+        userId,
         category: prevBudget.category,
         budgetAmount: prevBudget.budgetAmount,
         month: currentMonth,
@@ -206,8 +206,8 @@ budgetSchema.statics.copyFromPreviousMonth = async function(profileId, currentMo
 };
 
 // Static method to get budget efficiency rating
-budgetSchema.statics.getBudgetEfficiency = async function(profileId, month, year) {
-  const budgets = await this.find({ profileId, month, year, isActive: true });
+budgetSchema.statics.getBudgetEfficiency = async function(userId, month, year) {
+  const budgets = await this.find({ userId, month, year, isActive: true });
   
   if (budgets.length === 0) return 'No Data';
   

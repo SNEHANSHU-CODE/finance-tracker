@@ -1,542 +1,435 @@
-// controllers/analyticsController.js
-const analyticsService = require('../services/analyticsService');
+const AnalyticsService = require('../services/analyticsService');
 const { validationResult } = require('express-validator');
-const { AppError } = require('../utils/errorHandler');
-const { formatResponse } = require('../utils/responseFormatterUtils');
-const { cacheResult, getCachedResult } = require('../utils/cacheUtils');
 
-const analyticsController = {
-  // Dashboard Analytics
-  async getDashboardAnalytics(req, res, next) {
+class AnalyticsController {
+  
+  // Get dashboard overview
+  static async getDashboard(req, res) {
     try {
-      const profileId = req.user.profileId;
-      const { period = 'monthly', startDate, endDate } = req.query;
-
-      const cacheKey = `dashboard_analytics_${profileId}_${period}_${startDate}_${endDate}`;
-      const cached = await getCachedResult(cacheKey);
-      if (cached) {
-        return res.status(200).json(formatResponse(cached, 'Dashboard analytics retrieved successfully'));
-      }
-
-      const analytics = await analyticsService.getDashboardAnalytics(profileId, {
-        period,
-        startDate,
-        endDate
+      const userId = req.user.id;
+      const data = await AnalyticsService.getDashboardData(userId);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Dashboard data retrieved successfully'
       });
-
-      await cacheResult(cacheKey, analytics, 300); // Cache for 5 minutes
-
-      res.status(200).json(formatResponse(analytics, 'Dashboard analytics retrieved successfully'));
     } catch (error) {
-      next(error);
-    }
-  },
-
-  async getFinancialOverview(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { startDate, endDate, includeProjections = false } = req.query;
-
-      const overview = await analyticsService.getFinancialOverview(profileId, {
-        startDate,
-        endDate,
-        includeProjections: includeProjections === 'true'
+      console.error('Dashboard error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve dashboard data',
+        error: error.message
       });
-
-      res.status(200).json(formatResponse(overview, 'Financial overview retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Expense Analytics
-  async getExpenseSummary(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { period, startDate, endDate, groupBy = 'category' } = req.query;
-
-      const summary = await analyticsService.getExpenseSummary(profileId, {
-        period,
-        startDate,
-        endDate,
-        groupBy
-      });
-
-      res.status(200).json(formatResponse(summary, 'Expense summary retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getExpenseTrends(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { period, startDate, endDate, granularity = 'daily' } = req.query;
-
-      const trends = await analyticsService.getExpenseTrends(profileId, {
-        period,
-        startDate,
-        endDate,
-        granularity
-      });
-
-      res.status(200).json(formatResponse(trends, 'Expense trends retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getCategoryBreakdown(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { period, startDate, endDate, includeSubcategories = false } = req.query;
-
-      const breakdown = await analyticsService.getCategoryBreakdown(profileId, {
-        period,
-        startDate,
-        endDate,
-        includeSubcategories: includeSubcategories === 'true'
-      });
-
-      res.status(200).json(formatResponse(breakdown, 'Category breakdown retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getTopCategories(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { limit = 10, startDate, endDate, metric = 'amount' } = req.query;
-
-      const topCategories = await analyticsService.getTopCategories(profileId, {
-        limit: parseInt(limit),
-        startDate,
-        endDate,
-        metric
-      });
-
-      res.status(200).json(formatResponse(topCategories, 'Top categories retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Income Analytics
-  async getIncomeSummary(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { period, startDate, endDate } = req.query;
-
-      const summary = await analyticsService.getIncomeSummary(profileId, {
-        period,
-        startDate,
-        endDate
-      });
-
-      res.status(200).json(formatResponse(summary, 'Income summary retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getIncomeTrends(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { period, startDate, endDate, granularity = 'monthly' } = req.query;
-
-      const trends = await analyticsService.getIncomeTrends(profileId, {
-        period,
-        startDate,
-        endDate,
-        granularity
-      });
-
-      res.status(200).json(formatResponse(trends, 'Income trends retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getIncomeSourceAnalysis(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { startDate, endDate } = req.query;
-
-      const analysis = await analyticsService.getIncomeSourceAnalysis(profileId, {
-        startDate,
-        endDate
-      });
-
-      res.status(200).json(formatResponse(analysis, 'Income source analysis retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Budget Analytics
-  async getBudgetPerformance(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { period, startDate, endDate } = req.query;
-
-      const performance = await analyticsService.getBudgetPerformance(profileId, {
-        period,
-        startDate,
-        endDate
-      });
-
-      res.status(200).json(formatResponse(performance, 'Budget performance retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getBudgetUtilization(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { period, startDate, endDate } = req.query;
-
-      const utilization = await analyticsService.getBudgetUtilization(profileId, {
-        period,
-        startDate,
-        endDate
-      });
-
-      res.status(200).json(formatResponse(utilization, 'Budget utilization retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getBudgetVariance(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { period, startDate, endDate } = req.query;
-
-      const variance = await analyticsService.getBudgetVariance(profileId, {
-        period,
-        startDate,
-        endDate
-      });
-
-      res.status(200).json(formatResponse(variance, 'Budget variance analysis retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Goal Analytics
-  async getGoalProgressAnalytics(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { startDate, endDate, status } = req.query;
-
-      const progress = await analyticsService.getGoalProgressAnalytics(profileId, {
-        startDate,
-        endDate,
-        status
-      });
-
-      res.status(200).json(formatResponse(progress, 'Goal progress analytics retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getGoalPerformanceMetrics(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { startDate, endDate } = req.query;
-
-      const metrics = await analyticsService.getGoalPerformanceMetrics(profileId, {
-        startDate,
-        endDate
-      });
-
-      res.status(200).json(formatResponse(metrics, 'Goal performance metrics retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getGoalProjections(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { goalId } = req.params;
-      const { months = 6 } = req.query;
-
-      const projections = await analyticsService.getGoalProjections(profileId, {
-        goalId,
-        months: parseInt(months)
-      });
-
-      res.status(200).json(formatResponse(projections, 'Goal projections retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Savings Analytics
-  async getSavingsRate(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { period, startDate, endDate } = req.query;
-
-      const savingsRate = await analyticsService.getSavingsRate(profileId, {
-        period,
-        startDate,
-        endDate
-      });
-
-      res.status(200).json(formatResponse(savingsRate, 'Savings rate retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getSavingsTrends(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { period, startDate, endDate, granularity = 'monthly' } = req.query;
-
-      const trends = await analyticsService.getSavingsTrends(profileId, {
-        period,
-        startDate,
-        endDate,
-        granularity
-      });
-
-      res.status(200).json(formatResponse(trends, 'Savings trends retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Cash Flow Analytics
-  async getCashFlowAnalysis(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { period, startDate, endDate } = req.query;
-
-      const analysis = await analyticsService.getCashFlowAnalysis(profileId, {
-        period,
-        startDate,
-        endDate
-      });
-
-      res.status(200).json(formatResponse(analysis, 'Cash flow analysis retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getCashFlowForecast(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { months = 3 } = req.query;
-
-      const forecast = await analyticsService.getCashFlowForecast(profileId, {
-        months: parseInt(months)
-      });
-
-      res.status(200).json(formatResponse(forecast, 'Cash flow forecast retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Comparison Analytics
-  async getPeriodComparison(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { 
-        currentStartDate, 
-        currentEndDate, 
-        compareStartDate, 
-        compareEndDate,
-        metrics = ['income', 'expenses', 'savings']
-      } = req.query;
-
-      const comparison = await analyticsService.getPeriodComparison(profileId, {
-        currentPeriod: { startDate: currentStartDate, endDate: currentEndDate },
-        comparePeriod: { startDate: compareStartDate, endDate: compareEndDate },
-        metrics: Array.isArray(metrics) ? metrics : [metrics]
-      });
-
-      res.status(200).json(formatResponse(comparison, 'Period comparison retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getYearOverYearComparison(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { period, year = new Date().getFullYear() } = req.query;
-
-      const comparison = await analyticsService.getYearOverYearComparison(profileId, {
-        period,
-        year: parseInt(year)
-      });
-
-      res.status(200).json(formatResponse(comparison, 'Year-over-year comparison retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Custom Analytics
-  async generateCustomAnalytics(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const customConfig = req.body;
-
-      const analytics = await analyticsService.generateCustomAnalytics(profileId, customConfig);
-
-      res.status(201).json(formatResponse(analytics, 'Custom analytics generated successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getCustomAnalytics(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { id } = req.params;
-
-      const analytics = await analyticsService.getCustomAnalytics(profileId, id);
-
-      if (!analytics) {
-        throw new AppError('Custom analytics not found', 404);
-      }
-
-      res.status(200).json(formatResponse(analytics, 'Custom analytics retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Chart Data
-  async getChartData(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { chartType } = req.params;
-      const { startDate, endDate, metric, granularity = 'daily' } = req.query;
-
-      const chartData = await analyticsService.getChartData(profileId, {
-        chartType,
-        startDate,
-        endDate,
-        metric,
-        granularity
-      });
-
-      res.status(200).json(formatResponse(chartData, 'Chart data retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Export Analytics
-  async exportAnalytics(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { format } = req.params;
-      const { startDate, endDate, metrics = [] } = req.query;
-
-      const exportData = await analyticsService.exportAnalytics(profileId, {
-        format,
-        startDate,
-        endDate,
-        metrics: Array.isArray(metrics) ? metrics : [metrics]
-      });
-
-      // Set appropriate headers for file download
-      const filename = `analytics_${profileId}_${Date.now()}.${format}`;
-      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-      res.setHeader('Content-Type', getContentType(format));
-
-      res.send(exportData);
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Insights and Recommendations
-  async getFinancialInsights(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { startDate, endDate, categories = [] } = req.query;
-
-      const insights = await analyticsService.getFinancialInsights(profileId, {
-        startDate,
-        endDate,
-        categories: Array.isArray(categories) ? categories : [categories]
-      });
-
-      res.status(200).json(formatResponse(insights, 'Financial insights retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getRecommendations(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { type = 'all', priority = 'all' } = req.query;
-
-      const recommendations = await analyticsService.getRecommendations(profileId, {
-        type,
-        priority
-      });
-
-      res.status(200).json(formatResponse(recommendations, 'Recommendations retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Real-time Analytics
-  async getRealtimeSummary(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-
-      const summary = await analyticsService.getRealtimeSummary(profileId);
-
-      res.status(200).json(formatResponse(summary, 'Real-time summary retrieved successfully'));
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Historical Analytics
-  async getHistoricalSummary(req, res, next) {
-    try {
-      const profileId = req.user.profileId;
-      const { period, months = 12 } = req.query;
-
-      const summary = await analyticsService.getHistoricalSummary(profileId, {
-        period,
-        months: parseInt(months)
-      });
-
-      res.status(200).json(formatResponse(summary, 'Historical summary retrieved successfully'));
-    } catch (error) {
-      next(error);
     }
   }
-};
 
-// Helper function to get content type for exports
-function getContentType(format) {
-  const contentTypes = {
-    'csv': 'text/csv',
-    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'pdf': 'application/pdf',
-    'json': 'application/json'
-  };
-  return contentTypes[format] || 'application/octet-stream';
+  // Get monthly analytics
+  static async getMonthlyAnalytics(req, res) {
+    try {
+      const userId = req.user.id;
+      const { year, month } = req.params;
+      
+      if (!year || !month || isNaN(year) || isNaN(month)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Valid year and month are required'
+        });
+      }
+
+      const data = await AnalyticsService.getCurrentMonthData(userId);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Monthly analytics retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Monthly analytics error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve monthly analytics',
+        error: error.message
+      });
+    }
+  }
+
+  // Get current month analytics
+  static async getCurrentMonthAnalytics(req, res) {
+    try {
+      const userId = req.user.id;
+      const data = await AnalyticsService.getCurrentMonthData(userId);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Current month analytics retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Current month analytics error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve current month analytics',
+        error: error.message
+      });
+    }
+  }
+
+  // Get spending trends
+  static async getSpendingTrends(req, res) {
+    try {
+      const userId = req.user.id;
+      const months = parseInt(req.query.months) || 6;
+      
+      const data = await AnalyticsService.getSpendingTrends(userId, months);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Spending trends retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Spending trends error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve spending trends',
+        error: error.message
+      });
+    }
+  }
+
+  // Get category analysis
+  // Get category analysis
+static async getCategoryAnalysis(req, res) {
+  try {
+    const userId = req.user.id;
+    let { startDate, endDate, type = 'Expense' } = req.query;
+    
+    // If no dates provided, default to current month
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      
+      startDate = firstDayOfMonth.toISOString().split('T')[0];
+      endDate = lastDayOfMonth.toISOString().split('T')[0];
+    }
+
+    const data = await AnalyticsService.getCategoryAnalysis(userId, startDate, endDate, type);
+    
+    res.json({
+      success: true,
+      data,
+      message: 'Category analysis retrieved successfully'
+    });
+  } catch (error) {
+    console.error('Category analysis error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve category analysis',
+      error: error.message
+    });
+  }
 }
 
-module.exports = analyticsController;
+  // Get spending comparison
+  static async getSpendingComparison(req, res) {
+    try {
+      const userId = req.user.id;
+      const { period1Start, period1End, period2Start, period2End } = req.query;
+      
+      if (!period1Start || !period1End || !period2Start || !period2End) {
+        return res.status(400).json({
+          success: false,
+          message: 'All period dates are required'
+        });
+      }
+
+      const period1 = { startDate: period1Start, endDate: period1End };
+      const period2 = { startDate: period2Start, endDate: period2End };
+      
+      const data = await AnalyticsService.getSpendingComparison(userId, period1, period2);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Spending comparison retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Spending comparison error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve spending comparison',
+        error: error.message
+      });
+    }
+  }
+
+  // Get income trends
+  static async getIncomeTrends(req, res) {
+    try {
+      const userId = req.user.id;
+      const months = parseInt(req.query.months) || 6;
+      
+      const data = await AnalyticsService.getIncomeTrends(userId, months);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Income trends retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Income trends error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve income trends',
+        error: error.message
+      });
+    }
+  }
+
+  // Get income sources
+  static async getIncomeSources(req, res) {
+    try {
+      const userId = req.user.id;
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          success: false,
+          message: 'Start date and end date are required'
+        });
+      }
+
+      const data = await AnalyticsService.getIncomeSources(userId, startDate, endDate);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Income sources retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Income sources error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve income sources',
+        error: error.message
+      });
+    }
+  }
+
+  // Get goals progress
+  static async getGoalsProgress(req, res) {
+    try {
+      const userId = req.user.id;
+      const data = await AnalyticsService.getGoalsProgress(userId);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Goals progress retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Goals progress error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve goals progress',
+        error: error.message
+      });
+    }
+  }
+
+  // Get goals summary
+  static async getGoalsSummary(req, res) {
+    try {
+      const userId = req.user.id;
+      const data = await AnalyticsService.getGoalsOverview(userId);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Goals summary retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Goals summary error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve goals summary',
+        error: error.message
+      });
+    }
+  }
+
+  // Get transaction insights
+  static async getTransactionInsights(req, res) {
+    try {
+      const userId = req.user.id;
+      const days = parseInt(req.query.days) || 30;
+      
+      const data = await AnalyticsService.getTransactionInsights(userId, days);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Transaction insights retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Transaction insights error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve transaction insights',
+        error: error.message
+      });
+    }
+  }
+
+  // Get transaction patterns
+  static async getTransactionPatterns(req, res) {
+    try {
+      const userId = req.user.id;
+      const days = parseInt(req.query.days) || 90;
+      
+      const data = await AnalyticsService.getTransactionPatterns(userId, days);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Transaction patterns retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Transaction patterns error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve transaction patterns',
+        error: error.message
+      });
+    }
+  }
+
+  // Get savings rate
+  static async getSavingsRate(req, res) {
+    try {
+      const userId = req.user.id;
+      const months = parseInt(req.query.months) || 3;
+      
+      const data = await AnalyticsService.calculateSavingsRate(userId, months);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Savings rate retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Savings rate error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve savings rate',
+        error: error.message
+      });
+    }
+  }
+
+  // Get savings trends
+  static async getSavingsTrends(req, res) {
+    try {
+      const userId = req.user.id;
+      const months = parseInt(req.query.months) || 12;
+      
+      const data = await AnalyticsService.getSavingsTrends(userId, months);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Savings trends retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Savings trends error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve savings trends',
+        error: error.message
+      });
+    }
+  }
+
+  // Get budget performance (placeholder)
+  static async getBudgetPerformance(req, res) {
+    try {
+      const userId = req.user.id;
+      const data = await AnalyticsService.getBudgetPerformance(userId);
+      
+      res.json({
+        success: true,
+        data,
+        message: 'Budget performance retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Budget performance error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve budget performance',
+        error: error.message
+      });
+    }
+  }
+
+  // Export analytics data
+  static async exportAnalytics(req, res) {
+    try {
+      const userId = req.user.id;
+      const { type } = req.params;
+      const format = req.query.format || 'json';
+      
+      let data;
+      
+      switch (type) {
+        case 'dashboard':
+          data = await AnalyticsService.getDashboardData(userId);
+          break;
+        case 'spending':
+          data = await AnalyticsService.getSpendingTrends(userId);
+          break;
+        case 'income':
+          data = await AnalyticsService.getIncomeTrends(userId);
+          break;
+        case 'goals':
+          data = await AnalyticsService.getGoalsProgress(userId);
+          break;
+        case 'savings':
+          data = await AnalyticsService.getSavingsTrends(userId);
+          break;
+        default:
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid export type'
+          });
+      }
+      
+      if (format === 'csv') {
+        // TODO: Implement CSV export
+        return res.status(501).json({
+          success: false,
+          message: 'CSV export not yet implemented'
+        });
+      }
+      
+      res.json({
+        success: true,
+        data,
+        exportType: type,
+        format,
+        exportedAt: new Date(),
+        message: 'Analytics data exported successfully'
+      });
+    } catch (error) {
+      console.error('Export analytics error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to export analytics data',
+        error: error.message
+      });
+    }
+  }
+}
+
+module.exports = AnalyticsController;

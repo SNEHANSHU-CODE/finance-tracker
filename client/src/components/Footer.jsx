@@ -40,10 +40,11 @@ export default function Footer() {
           <div className="col-md-3">
             <h6 className="text-uppercase fw-semibold mb-3">Quick Links</h6>
             <ul className="list-unstyled">
-              <li><Link to="/profile" className="text-light text-decoration-none">Profile</Link></li>
-              <li><Link to="/settings" className="text-light text-decoration-none">Settings</Link></li>
-              <li><Link to="/help" className="text-light text-decoration-none">Help Center</Link></li>
-              <li><Link to="/contact" className="text-light text-decoration-none">Contact Us</Link></li>
+              <li><Link to="/dashboard/dashboard" className="text-light text-decoration-none">Dashboard</Link></li>
+              <li><Link to="/dashboard/analytics" className="text-light text-decoration-none">Analytics</Link></li>
+              <li><Link to="/dashboard/transaction" className="text-light text-decoration-none">Transactions</Link></li>
+              <li><Link to="/dashboard/goals" className="text-light text-decoration-none">Goals</Link></li>
+              <li><Link to="/dashboard/settings" className="text-light text-decoration-none">Settings</Link></li>
             </ul>
           </div>
 

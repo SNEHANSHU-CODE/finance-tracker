@@ -5,7 +5,7 @@ const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 const { redisService } = require('./config/redis');
 const emailService = require('./services/emailService');
-const startCustomReminderCron = require('./utils/reminderCron');
+const reminderService = require('./services/reminderService');
 
 // Importing all Routes
 const authRoutes = require('./routes/authRoutes');
@@ -69,7 +69,18 @@ redisService.setupGracefulShutdown();
 initializeRedis();
 
 //Send reminder in every 5 min
-startCustomReminderCron();
+function startReminderChecker() {
+  console.log('Reminder email service started...');
+  setInterval(() => {
+  try {
+    reminderService.checkAndSendReminders();
+  } catch (err) {
+    console.error('Reminder check failed (unhandled):', err);
+  }
+}, 5 * 60 * 1000);
+}
+
+startReminderChecker();
 
 // Start Server
 const PORT = process.env.PORT || 5000;

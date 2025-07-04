@@ -19,6 +19,24 @@ class emailService {
     });
   }
 
+  sanitizeText(input) {
+    if (typeof input !== 'string') return '';
+
+    // Remove any HTML tags
+    const noTags = input.replace(/<\/?[^>]+(>|$)/g, '');
+
+    // Encode special characters to prevent HTML injection
+    const escaped = noTags
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
+    return escaped;
+  }
+
+
   async sendOTPEmail(email, otp) {
     try {
       const mailOptions = {
@@ -57,6 +75,35 @@ class emailService {
         </div>
       </div>
     `;
+  }
+
+  async sendReminderEmail(email, data) {
+    try {
+      const mailOptions = {
+        from: config.email.from,
+        to: email,
+        subject: `Reminder: ${data.title}`,
+        html: this.generateSendReminderTemplate(data),
+      };
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log(`Reminder email sent to ${email} - ID: ${info.messageId}`);
+    } catch (error) {
+      console.error('Error sending reminder email:', error);
+    }
+  }
+
+
+  generateSendReminderTemplate(data) {
+    const safeTitle = this.sanitizeText(data.title);
+    const safeDescription = this.sanitizeText(data.description || '');
+    return `
+    <div style="font-family: Arial, sans-serif; padding: 20px;">
+      <h2 style="color: #333;">Reminder: ${safeTitle}</h2>
+      <p><strong>Date:</strong> ${new Date(data.date).toLocaleString()}</p>
+      ${safeDescription ? `<p><strong>Description:</strong> ${safeDescription}</p>` : ''}
+      <p style="color: #777;">This is an automated reminder email.</p>
+    </div>
+  `;
   }
 
   async verifyConnection() {

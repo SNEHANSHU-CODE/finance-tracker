@@ -193,7 +193,6 @@ const reportSchema = new mongoose.Schema({
 reportSchema.index({ profileId: 1, createdAt: -1 });
 reportSchema.index({ profileId: 1, reportType: 1 });
 reportSchema.index({ profileId: 1, 'period.startDate': 1, 'period.endDate': 1 });
-reportSchema.index({ shareToken: 1 }, { sparse: true });
 
 // Virtual for report duration in days
 reportSchema.virtual('durationDays').get(function() {

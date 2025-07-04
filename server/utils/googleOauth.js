@@ -6,13 +6,14 @@ const oauth2Client = new google.auth.OAuth2(
   'http://localhost:5000/api/google/callback'
 );
 
-const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];
 
-const getAuthUrl = () => {
+const getAuthUrl = (state) => {
+  const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];
   return oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
-    prompt: 'consent'
+    prompt: 'consent',
+    state
   });
 };
 

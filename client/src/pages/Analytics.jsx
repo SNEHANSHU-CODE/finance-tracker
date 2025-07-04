@@ -1,448 +1,125 @@
-import React, { useState } from "react";
-import { 
-  FaChartLine,
-  FaChartPie,
-  FaChartBar,
-  // FaTrendingUp,
-  // FaTrendingDown,
-  FaDownload,
-  FaPrint,
-  FaFilter,
-  FaCalendarAlt,
-  FaFileAlt,
-  FaEye,
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchCategoryAnalysis, fetchDashboard, fetchGoalsProgress, fetchSpendingTrends, fetchCurrentMonthAnalytics, fetchIncomeTrends, fetchSavingsTrends,
+} from '../app/analyticsSlice';
+
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  AreaChart,
+  Area,
+  Legend
+} from 'recharts';
+import {
   FaDollarSign,
-  FaPercentage,
   FaArrowUp,
   FaArrowDown,
   FaWallet,
+  FaChartLine,
+  FaCalendarAlt,
+  FaFilter,
+  FaDownload,
+  FaEye,
+  // FaTarget,
+  FaCreditCard,
   FaShoppingCart,
-  FaCar,
+  FaPiggyBank,
   FaHome,
+  FaCar,
   FaUtensils,
   FaGamepad,
-  FaPiggyBank,
-  FaCreditCard,
-  FaExchangeAlt,
-  FaSearch,
-  FaShareAlt,
-  // FaUserChart,
-  FaClipboardList
-} from "react-icons/fa";
+  FaHeartbeat,
+  FaGraduationCap,
+  FaPlane,
+  FaBolt,
+  FaSync
+} from 'react-icons/fa';
 
-import Catagory from "../components/Catagory";
 
-export default function AnalyticsReports() {
-  const [reportPeriod, setReportPeriod] = useState("thisMonth");
-  const [reportType, setReportType] = useState("overview");
-  const [chartView, setChartView] = useState("monthly");
+const AnalyticsDashboard = () => {
+  const dispatch = useDispatch();
 
-  // Sample analytics data
-  const analyticsData = {
-    monthlyTrends: [
-      { month: "Jan", income: 4200, expenses: 2850, savings: 1350 },
-      { month: "Feb", income: 4200, expenses: 3100, savings: 1100 },
-      { month: "Mar", income: 4500, expenses: 2950, savings: 1550 },
-      { month: "Apr", income: 4200, expenses: 3200, savings: 1000 },
-      { month: "May", income: 4400, expenses: 2800, savings: 1600 },
-      { month: "Jun", income: 4200, expenses: 2850, savings: 1350 }
-    ],
-    categoryBreakdown: [
-      { category: "Food & Dining", amount: 485.30, percentage: 35, trend: -5.2, color: "warning" },
-      { category: "Transportation", amount: 320.15, percentage: 25, trend: 2.1, color: "info" },
-      { category: "Shopping", amount: 245.80, percentage: 18, trend: 8.5, color: "danger" },
-      { category: "Entertainment", amount: 180.50, percentage: 15, trend: -2.8, color: "secondary" },
-      { category: "Utilities", amount: 95.00, percentage: 7, trend: 0.5, color: "dark" }
-    ]
-  };
+  const dashboardData = useSelector((state) => state.analytics.dashboard) || {};
+  const goalsData = useSelector((state) => state.analytics.goalsProgress) || { goals: [], summary: {} };
+  const spendingTrends = useSelector((state) => state.analytics.spendingTrends) || { trends: [] };
+  const categoryData = useSelector((state) => state.analytics.categoryAnalysis) || { categories: [] };
 
-  const keyMetrics = {
-    totalSpent: 1326.75,
-    avgDaily: 44.23,
-    largestExpense: 485.30,
-    transactionCount: 24,
-    budgetUtilization: 76.8,
-    savingsGoal: 88.5
-  };
 
-  const recentReports = [
-    {
-      id: 1,
-      title: "Monthly Expense Report",
-      type: "Expense Analysis",
-      date: "2025-06-15",
-      status: "Generated",
-      icon: FaChartPie,
-      color: "primary"
-    },
-    {
-      id: 2,
-      title: "Quarterly Budget Review",
-      type: "Budget Report",
-      date: "2025-06-10",
-      status: "In Progress",
-      icon: FaChartBar,
-      color: "warning"
-    },
-    {
-      id: 3,
-      title: "Savings Goal Analysis",
-      type: "Goal Tracking",
-      date: "2025-06-08",
-      status: "Completed",
-      icon: FaPiggyBank,
-      color: "success"
-    }
-  ];
+  const [selectedPeriod, setSelectedPeriod] = useState('30days');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [isLoading, setIsLoading] = useState(false);
+
+
+  useEffect(() => {
+    dispatch(fetchDashboard());
+    dispatch(fetchGoalsProgress());
+    dispatch(fetchSpendingTrends());
+    dispatch(fetchCategoryAnalysis());
+    dispatch(fetchCurrentMonthAnalytics());
+    dispatch(fetchIncomeTrends());
+    dispatch(fetchSavingsTrends());
+  }, [dispatch]);
+
+
+  const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF', '#5F27CD'];
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+      currency: 'USD',
+      minimumFractionDigits: 0
+    }).format(Math.abs(amount));
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+  const getChangeColor = (value) => {
+    return value >= 0 ? 'text-success' : 'text-danger';
+  };
+
+  const handleRefresh = () => {
+    setIsLoading(true);
+    Promise.all([
+      dispatch(fetchDashboard()),
+      dispatch(fetchGoalsProgress()),
+      dispatch(fetchSpendingTrends()),
+      dispatch(fetchCategoryAnalysis())
+    ]).finally(() => {
+      setIsLoading(false);
     });
   };
 
-  const getTrendIcon = (trend) => {
-    return trend > 0 
-      
-  };
-
-  return (
-    <div className="container-fluid p-0">
-      {/* Header */}
-      <div className="row mb-4">
-        <div className="col-12">
-          <div className="d-flex justify-content-between align-items-center flex-wrap">
-            <div>
-              <h4 className="mb-1">Analytics & Reports</h4>
-              <p className="text-muted mb-0">Detailed insights into your financial patterns</p>
-            </div>
-            <div className="d-flex gap-2 align-items-center flex-wrap">
-              <select 
-                className="form-select form-select-sm"
-                value={reportPeriod}
-                onChange={(e) => setReportPeriod(e.target.value)}
-                style={{ width: 'auto' }}
-              >
-                <option value="thisWeek">This Week</option>
-                <option value="thisMonth">This Month</option>
-                <option value="last3Months">Last 3 Months</option>
-                <option value="thisYear">This Year</option>
-              </select>
-              <select 
-                className="form-select form-select-sm"
-                value={reportType}
-                onChange={(e) => setReportType(e.target.value)}
-                style={{ width: 'auto' }}
-              >
-                <option value="overview">Overview</option>
-                <option value="expense">Expense Analysis</option>
-                <option value="income">Income Tracking</option>
-                <option value="budget">Budget Performance</option>
-                <option value="goals">Goal Progress</option>
-              </select>
-              <div className="btn-group" role="group">
-                <button className="btn btn-outline-primary btn-sm d-flex align-items-center gap-2">
-                  <FaDownload size={12} />
-                  Export
-                </button>
-                <button className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
-                  <FaPrint size={12} />
-                  Print
-                </button>
-                <button className="btn btn-outline-info btn-sm d-flex align-items-center gap-2">
-                  <FaShareAlt size={12} />
-                  Share
-                </button>
+  const StatCard = ({ title, value, change, icon, color = 'primary' }) => (
+    <div className="col-xl-3 col-md-6 mb-4">
+      <div className="card border-0 shadow-sm h-100">
+        <div className="card-body">
+          <div className="row align-items-center">
+            <div className="col">
+              <div className={`text-${color} text-uppercase mb-1 small fw-bold`}>
+                {title}
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Key Metrics Cards */}
-      <div className="row g-3 mb-4">
-        <div className="col-lg-2 col-md-4 col-sm-6">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body text-center p-3">
-              <div className="mb-2">
-                <FaDollarSign className="text-primary" size={20} />
+              <div className="h5 mb-0 fw-bold text-gray-800">
+                {typeof value === 'number' ? formatCurrency(value) : value}
               </div>
-              <h6 className="fw-bold text-primary mb-1">{formatCurrency(keyMetrics.totalSpent)}</h6>
-              <small className="text-muted">Total Spent</small>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-lg-2 col-md-4 col-sm-6">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body text-center p-3">
-              <div className="mb-2">
-                <FaChartLine className="text-success" size={20} />
-              </div>
-              <h6 className="fw-bold text-success mb-1">{formatCurrency(keyMetrics.avgDaily)}</h6>
-              <small className="text-muted">Avg Daily</small>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-lg-2 col-md-4 col-sm-6">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body text-center p-3">
-              <div className="mb-2">
-                <FaArrowUp className="text-warning" size={20} />
-              </div>
-              <h6 className="fw-bold text-warning mb-1">{formatCurrency(keyMetrics.largestExpense)}</h6>
-              <small className="text-muted">Largest Expense</small>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-lg-2 col-md-4 col-sm-6">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body text-center p-3">
-              <div className="mb-2">
-                <FaClipboardList className="text-info" size={20} />
-              </div>
-              <h6 className="fw-bold text-info mb-1">{keyMetrics.transactionCount}</h6>
-              <small className="text-muted">Transactions</small>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-lg-2 col-md-4 col-sm-6">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body text-center p-3">
-              <div className="mb-2">
-                <FaPercentage className="text-danger" size={20} />
-              </div>
-              <h6 className="fw-bold text-danger mb-1">{keyMetrics.budgetUtilization}%</h6>
-              <small className="text-muted">Budget Used</small>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-lg-2 col-md-4 col-sm-6">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body text-center p-3">
-              <div className="mb-2">
-                <FaPiggyBank className="text-success" size={20} />
-              </div>
-              <h6 className="fw-bold text-success mb-1">{keyMetrics.savingsGoal}%</h6>
-              <small className="text-muted">Goal Progress</small>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="row g-4">
-        {/* Charts and Graphs Section */}
-        <div className="col-lg-8">
-          {/* Monthly Trends Chart */}
-          <div className="card border-0 shadow-sm mb-4">
-            <div className="card-header bg-transparent border-0 pt-3">
-              <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">Financial Trends</h5>
-                <div className="btn-group btn-group-sm" role="group">
-                  <input type="radio" className="btn-check" name="chartView" id="monthly" checked={chartView === "monthly"} onChange={() => setChartView("monthly")} />
-                  <label className="btn btn-outline-primary" htmlFor="monthly">Monthly</label>
-                  
-                  <input type="radio" className="btn-check" name="chartView" id="weekly" checked={chartView === "weekly"} onChange={() => setChartView("weekly")} />
-                  <label className="btn btn-outline-primary" htmlFor="weekly">Weekly</label>
-                  
-                  <input type="radio" className="btn-check" name="chartView" id="yearly" checked={chartView === "yearly"} onChange={() => setChartView("yearly")} />
-                  <label className="btn btn-outline-primary" htmlFor="yearly">Yearly</label>
+              {change !== undefined && (
+                <div className={`small ${getChangeColor(change)}`}>
+                  {change >= 0 ? <FaArrowUp /> : <FaArrowDown />}
+                  {' '}{Math.abs(change)}%
                 </div>
-              </div>
+              )}
             </div>
-            <div className="card-body pt-2">
-              {/* Placeholder for Chart - In real app, use Chart.js or similar */}
-              <div className="bg-light rounded p-4 text-center" style={{ height: '300px' }}>
-                <FaChartLine size={48} className="text-muted mb-3" />
-                <h6 className="text-muted">Income vs Expenses Trend Chart</h6>
-                <p className="text-muted small mb-3">Interactive chart showing financial trends over time</p>
-                <div className="row text-center">
-                  {analyticsData.monthlyTrends.slice(-3).map((month, index) => (
-                    <div key={index} className="col-4">
-                      <div className="border rounded p-2 bg-white">
-                        <small className="fw-bold text-primary">{month.month}</small>
-                        <div className="mt-1">
-                          <small className="text-success d-block">+{formatCurrency(month.income)}</small>
-                          <small className="text-danger d-block">-{formatCurrency(month.expenses)}</small>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Category Analysis */}
-          <Catagory catagoryData = {analyticsData.categoryBreakdown}/>
-          </div >
-
-        {/* Sidebar */}
-        <div className="col-lg-4">
-          {/* Quick Insights */}
-          <div className="card border-0 shadow-sm mb-4">
-            <div className="card-header bg-transparent border-0 pt-3">
-              <h5 className="mb-0">Quick Insights</h5>
-            </div>
-            <div className="card-body pt-2">
-              <div className="d-flex align-items-center p-3 bg-success bg-opacity-10 rounded mb-3">
-                {/* <FaTrendingUp className="text-success me-3" size={20} /> */}
-                <div>
-                  <small className="fw-bold text-success">Savings Increased</small>
-                  <div className="text-muted small">15% higher than last month</div>
-                </div>
-              </div>
-              
-              <div className="d-flex align-items-center p-3 bg-warning bg-opacity-10 rounded mb-3">
-                <FaShoppingCart className="text-warning me-3" size={20} />
-                <div>
-                  <small className="fw-bold text-warning">Shopping Alert</small>
-                  <div className="text-muted small">8% increase in shopping expenses</div>
-                </div>
-              </div>
-              
-              <div className="d-flex align-items-center p-3 bg-info bg-opacity-10 rounded">
-                {/* <FaUserChart className="text-info me-3" size={20} /> */}
-                <div>
-                  <small className="fw-bold text-info">Budget Status</small>
-                  <div className="text-muted small">On track to meet monthly goals</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Reports */}
-          <div className="card border-0 shadow-sm mb-4">
-            <div className="card-header bg-transparent border-0 pt-3">
-              <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">Recent Reports</h5>
-                <button className="btn btn-outline-primary btn-sm">
-                  <FaEye size={12} className="me-1" />
-                  View All
-                </button>
-              </div>
-            </div>
-            <div className="card-body pt-2">
-              {recentReports.map((report) => (
-                <div key={report.id} className="d-flex align-items-center p-2 rounded hover-bg-light mb-2" style={{ cursor: 'pointer' }}>
-                  <div className={`p-2 bg-${report.color} bg-opacity-10 rounded me-3`}>
-                    <report.icon className={`text-${report.color}`} size={16} />
-                  </div>
-                  <div className="flex-grow-1">
-                    <div className="fw-medium small">{report.title}</div>
-                    <div className="text-muted small">{report.type}</div>
-                    <div className="text-muted small">
-                      <FaCalendarAlt size={10} className="me-1" />
-                      {formatDate(report.date)}
-                    </div>
-                  </div>
-                  <span className={`badge bg-${report.color} bg-opacity-20 text-${report.color} small`}>
-                    {report.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Report Actions */}
-          <div className="card border-0 shadow-sm">
-            <div className="card-header bg-transparent border-0 pt-3">
-              <h5 className="mb-0">Generate Reports</h5>
-            </div>
-            <div className="card-body pt-2">
-              <div className="d-grid gap-2">
-                <button className="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2">
-                  <FaChartPie size={14} />
-                  Expense Report
-                </button>
-                <button className="btn btn-outline-success d-flex align-items-center justify-content-center gap-2">
-                  <FaChartBar size={14} />
-                  Income Analysis
-                </button>
-                <button className="btn btn-outline-info d-flex align-items-center justify-content-center gap-2">
-                  <FaPiggyBank size={14} />
-                  Savings Report
-                </button>
-                <button className="btn btn-outline-warning d-flex align-items-center justify-content-center gap-2">
-                  <FaFileAlt size={14} />
-                  Custom Report
-                </button>
-              </div>
-              
-              <hr className="my-3" />
-              
-              <div className="input-group input-group-sm">
-                <input type="text" className="form-control" placeholder="Search reports..." />
-                <button className="btn btn-outline-secondary" type="button">
-                  <FaSearch size={12} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Performance Summary */}
-      <div className="row g-3 mt-4">
-        <div className="col-md-4">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">Monthly Performance</h6>
-                  <h4 className="fw-bold text-primary mb-0">Good</h4>
-                  <small className="text-muted">Above average spending control</small>
-                </div>
-                <div className="p-3 bg-primary bg-opacity-10 rounded-circle">
-                  <FaChartLine className="text-primary" size={24} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-md-4">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">Budget Efficiency</h6>
-                  <h4 className="fw-bold text-success mb-0">Excellent</h4>
-                  <small className="text-muted">23% under budget this month</small>
-                </div>
-                <div className="p-3 bg-success bg-opacity-10 rounded-circle">
-                  <FaPercentage className="text-success" size={24} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-md-4">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">Savings Trend</h6>
-                  <h4 className="fw-bold text-info mb-0">Growing</h4>
-                  <small className="text-muted">Consistent upward trajectory</small>
-                </div>
-                <div className="p-3 bg-info bg-opacity-10 rounded-circle">
-                  {/* <FaTrendingUp className="text-info" size={24} /> */}
-                </div>
+            <div className="col-auto">
+              <div className={`bg-${color} text-white rounded-circle p-3`}>
+                {icon}
               </div>
             </div>
           </div>
@@ -450,4 +127,532 @@ export default function AnalyticsReports() {
       </div>
     </div>
   );
-}
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-3 border rounded shadow-sm">
+          <p className="mb-2 fw-bold">{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} className="mb-1" style={{ color: entry.color }}>
+              {entry.dataKey}: {formatCurrency(entry.value)}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const renderOverview = () => (
+    <div className="row">
+      {/* Stats Cards */}
+      <div className="col-12 mb-4">
+        <div className="row">
+          <StatCard
+            title="Total Income"
+            value={dashboardData?.monthly?.summary?.totalIncome || 0}
+            change={8.5}
+            icon={<FaWallet />}
+            color="success"
+          />
+          <StatCard
+            title="Total Expenses"
+            value={dashboardData?.monthly?.summary?.totalExpenses || 0}
+            change={-2.3}
+            icon={<FaCreditCard />}
+            color="danger"
+          />
+          <StatCard
+            title="Net Savings"
+            value={dashboardData?.monthly?.summary?.netSavings || 0}
+            change={15.2}
+            icon={<FaPiggyBank />}
+            color="info"
+          />
+          <StatCard
+            title="Savings Rate"
+            value={`${dashboardData?.monthly?.summary?.savingsRate || 0}%`}
+            change={3.1}
+            // icon={<FaTarget />}
+            color="warning"
+          />
+        </div>
+      </div>
+
+      {/* Spending Trends Chart */}
+      <div className="col-xl-8 col-lg-7 mb-4">
+        <div className="card shadow-sm border-0 h-100">
+          <div className="card-header bg-white border-0 py-3">
+            <h6 className="m-0 fw-bold text-primary">Financial Trends</h6>
+          </div>
+          <div className="card-body">
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={spendingTrends.trends}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="monthYear" stroke="#8884d8" />
+                <YAxis stroke="#8884d8" />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="totalIncome"
+                  stroke="#28a745"
+                  strokeWidth={3}
+                  dot={{ fill: '#28a745', strokeWidth: 2, r: 4 }}
+                  name="Income"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="totalExpenses"
+                  stroke="#dc3545"
+                  strokeWidth={3}
+                  dot={{ fill: '#dc3545', strokeWidth: 2, r: 4 }}
+                  name="Expenses"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="netSavings"
+                  stroke="#17a2b8"
+                  strokeWidth={3}
+                  dot={{ fill: '#17a2b8', strokeWidth: 2, r: 4 }}
+                  name="Net Savings"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Category Breakdown */}
+      <div className="col-xl-4 col-lg-5 mb-4">
+        <div className="card shadow-sm border-0 h-100">
+          <div className="card-header bg-white border-0 py-3">
+            <h6 className="m-0 fw-bold text-primary">Spending by Category</h6>
+          </div>
+          <div className="card-body">
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={categoryData.categories}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="amount"
+                  label={({ category, percentage }) => `${category} ${percentage.toFixed(0)}%`}
+                >
+                  {categoryData.categories.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value) => formatCurrency(value)}
+                  labelFormatter={(label, payload) => {
+                    // Find the category name from the payload
+                    const categoryName = payload && payload[0] ? payload[0].payload.category : '';
+                    return categoryName;
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Transactions */}
+      <div className="col-xl-8 col-lg-7 mb-4">
+        <div className="card shadow-sm border-0">
+          <div className="card-header bg-white border-0 py-3">
+            <h6 className="m-0 fw-bold text-primary">Recent Transactions</h6>
+          </div>
+          <div className="card-body p-0">
+            <div className="table-responsive">
+              <table className="table table-hover mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th className="border-0">Description</th>
+                    <th className="border-0">Category</th>
+                    <th className="border-0">Date</th>
+                    <th className="border-0 text-end">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(dashboardData?.recent || []).map((transaction) => (
+                    <tr key={transaction.id}>
+                      <td>
+                        <div className="d-flex align-items-center">
+                          <div>
+                            <div className="fw-bold">{transaction.description}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="badge bg-light text-dark">
+                          {transaction.category}
+                        </span>
+                      </td>
+                      <td className="text-muted small">
+                        {new Date(transaction.date).toLocaleDateString()}
+                      </td>
+                      <td className={`text-end fw-bold ${transaction.amount >= 0 ? 'text-success' : 'text-danger'}`}>
+                        {transaction.amount >= 0 ? '+' : ''}{formatCurrency(transaction.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Goals Progress */}
+      <div className="col-xl-4 col-lg-5 mb-4">
+        <div className="card shadow-sm border-0">
+          <div className="card-header bg-white border-0 py-3">
+            <h6 className="m-0 fw-bold text-primary">Goals Progress</h6>
+          </div>
+          <div className="card-body">
+            {goalsData.goals.map((goal, index) => (
+              <div key={index} className="mb-3">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span className="fw-bold">{goal.name}</span>
+                  <span className="text-muted">{goal.progress}%</span>
+                </div>
+                <div className="progress mb-2" style={{ height: '8px' }}>
+                  <div
+                    className="progress-bar bg-success"
+                    role="progressbar"
+                    style={{ width: `${goal.progress}%` }}
+                    aria-valuenow={goal.progress}
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                  ></div>
+                </div>
+                <div className="d-flex justify-content-between text-muted small">
+                  <span>{formatCurrency(goal.savedAmount)}</span>
+                  <span>{formatCurrency(goal.targetAmount)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Replace the renderSpending function with this updated version:
+
+  const renderSpending = () => {
+    // Ensure all categories have data, set to 0 if missing
+    const allCategories = [
+      'Food', 'Transportation', 'Shopping', 'Entertainment', 'Utilities', 
+      'Healthcare', 'Education', 'Travel', 'Insurance', 'Rent', 'Other Expense'
+    ];
+
+    // Create a complete dataset with all categories
+    const completeCategories = allCategories.map(categoryName => {
+      const existingCategory = categoryData.categories.find(cat => cat.category === categoryName);
+      return {
+        category: categoryName,
+        amount: existingCategory?.amount || 0,
+        percentage: existingCategory?.percentage || 0
+      };
+    });
+
+    return (
+      <div className="row">
+        {/* Category Spending Bar Chart */}
+        <div className="col-12 mb-4">
+          <div className="card shadow-sm border-0">
+            <div className="card-header bg-white border-0 py-3">
+              <h6 className="m-0 fw-bold text-primary">Spending by Category</h6>
+            </div>
+            <div className="card-body">
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={completeCategories}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="category"
+                    stroke="#8884d8"
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis stroke="#8884d8" />
+                  <Tooltip formatter={(value) => formatCurrency(value)} />
+                  <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
+                    {completeCategories.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Spending Trends Area Chart */}
+        <div className="col-12 mb-4">
+          <div className="card shadow-sm border-0">
+            <div className="card-header bg-white border-0 py-3">
+              <h6 className="m-0 fw-bold text-primary">Monthly Spending Trends</h6>
+            </div>
+            <div className="card-body">
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={spendingTrends.trends}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="monthYear" stroke="#8884d8" />
+                  <YAxis stroke="#8884d8" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="totalExpenses"
+                    stroke="#dc3545"
+                    fill="#dc3545"
+                    fillOpacity={0.3}
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderIncome = () => (
+    <div className="row">
+      {/* Income Trends */}
+      <div className="col-12 mb-4">
+        <div className="card shadow-sm border-0">
+          <div className="card-header bg-white border-0 py-3">
+            <h6 className="m-0 fw-bold text-primary">Income Trends</h6>
+          </div>
+          <div className="card-body">
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={spendingTrends.trends}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="monthYear" stroke="#8884d8" />
+                <YAxis stroke="#8884d8" />
+                <Tooltip content={<CustomTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="totalIncome"
+                  stroke="#28a745"
+                  fill="#28a745"
+                  fillOpacity={0.3}
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderGoals = () => (
+    <div className="row">
+      {/* Goals Overview */}
+      <div className="col-12 mb-4">
+        <div className="row">
+          <div className="col-md-3">
+            <div className="card bg-primary text-white mb-3">
+              <div className="card-body text-center">
+                <h3 className="card-title">{goalsData.summary.totalGoals}</h3>
+                <p className="card-text">Total Goals</p>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-3">
+            <div className="card bg-success text-white mb-3">
+              <div className="card-body text-center">
+                <h3 className="card-title">{goalsData.summary.onTrackGoals}</h3>
+                <p className="card-text">On Track</p>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-3">
+            <div className="card bg-warning text-white mb-3">
+              <div className="card-body text-center">
+                <h3 className="card-title">{goalsData.summary.overdueGoals}</h3>
+                <p className="card-text">Overdue</p>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-3">
+            <div className="card bg-info text-white mb-3">
+              <div className="card-body text-center">
+                <h3 className="card-title">{goalsData.summary.averageProgress.toFixed(1)}%</h3>
+                <p className="card-text">Avg Progress</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed Goals */}
+      <div className="col-12">
+        <div className="card shadow-sm border-0">
+          <div className="card-header bg-white border-0 py-3">
+            <h6 className="m-0 fw-bold text-primary">Goal Details</h6>
+          </div>
+          <div className="card-body">
+            <div className="row">
+              {goalsData.goals.map((goal, index) => (
+                <div key={index} className="col-md-6 mb-4">
+                  <div className="card border-0 bg-light">
+                    <div className="card-body">
+                      <h6 className="card-title d-flex align-items-center">
+                        {/* <FaTarget className="me-2 text-primary" /> */}
+                        {goal.name}
+                      </h6>
+                      <div className="progress mb-3" style={{ height: '12px' }}>
+                        <div
+                          className="progress-bar bg-success"
+                          role="progressbar"
+                          style={{ width: `${goal.progress}%` }}
+                          aria-valuenow={goal.progress}
+                          aria-valuemin="0"
+                          aria-valuemax="100"
+                        ></div>
+                      </div>
+                      <div className="d-flex justify-content-between mb-2">
+                        <span className="text-muted">Progress:</span>
+                        <span className="fw-bold">{goal.progress}%</span>
+                      </div>
+                      <div className="d-flex justify-content-between mb-2">
+                        <span className="text-muted">Saved:</span>
+                        <span className="fw-bold text-success">{formatCurrency(goal.savedAmount)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span className="text-muted">Target:</span>
+                        <span className="fw-bold">{formatCurrency(goal.targetAmount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return renderOverview();
+      case 'spending':
+        return renderSpending();
+      case 'income':
+        return renderIncome();
+      case 'goals':
+        return renderGoals();
+      default:
+        return renderOverview();
+    }
+  };
+
+  return (
+    <div className="container-fluid px-4">
+      {/* Header */}
+      <div className="row mb-4">
+        <div className="col-12">
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              <h1 className="h3 mb-0 text-gray-800">Analytics Dashboard</h1>
+              <p className="text-muted">Track your financial progress and insights</p>
+            </div>
+            <div className="d-flex gap-2">
+              <div className="dropdown">
+                <button
+                  className="btn btn-outline-primary dropdown-toggle"
+                  type="button"
+                  id="periodDropdown"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  <FaCalendarAlt className="me-2" />
+                  {selectedPeriod === '30days' ? 'Last 30 Days' :
+                    selectedPeriod === '90days' ? 'Last 90 Days' :
+                      selectedPeriod === '1year' ? 'Last Year' : 'Last 30 Days'}
+                </button>
+                <ul className="dropdown-menu" aria-labelledby="periodDropdown">
+                  <li><a className="dropdown-item" href="#" onClick={() => setSelectedPeriod('30days')}>Last 30 Days</a></li>
+                  <li><a className="dropdown-item" href="#" onClick={() => setSelectedPeriod('90days')}>Last 90 Days</a></li>
+                  <li><a className="dropdown-item" href="#" onClick={() => setSelectedPeriod('1year')}>Last Year</a></li>
+                </ul>
+              </div>
+              <button className="btn btn-outline-secondary">
+                <FaDownload className="me-2" />
+                Export
+              </button>
+              <button className="btn btn-primary" onClick={handleRefresh}>
+                <FaSync className={`me-2 ${isLoading ? 'fa-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="row mb-4">
+        <div className="col-12">
+          <ul className="nav nav-tabs">
+            <li className="nav-item">
+              <button
+                className={`nav-link ${activeTab === 'overview' ? 'active' : ''}`}
+                onClick={() => setActiveTab('overview')}
+              >
+                <FaChartLine className="me-2" />
+                Overview
+              </button>
+            </li>
+            <li className="nav-item">
+              <button
+                className={`nav-link ${activeTab === 'spending' ? 'active' : ''}`}
+                onClick={() => setActiveTab('spending')}
+              >
+                <FaCreditCard className="me-2" />
+                Spending
+              </button>
+            </li>
+            <li className="nav-item">
+              <button
+                className={`nav-link ${activeTab === 'income' ? 'active' : ''}`}
+                onClick={() => setActiveTab('income')}
+              >
+                <FaWallet className="me-2" />
+                Income
+              </button>
+            </li>
+            <li className="nav-item">
+              <button
+                className={`nav-link ${activeTab === 'goals' ? 'active' : ''}`}
+                onClick={() => setActiveTab('goals')}
+              >
+                {/* <FaTarget className="me-2" /> */}
+                Goals
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="row">
+        <div className="col-12">
+          {renderTabContent()}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AnalyticsDashboard;

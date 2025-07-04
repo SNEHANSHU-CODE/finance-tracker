@@ -145,8 +145,8 @@ const OtpInput = ({
             disabled={disabled}
             className={`form-control text-center fw-bold ${disabled ? 'bg-light' : ''}`}
             style={{
-              width: '50px',
-              height: '50px',
+              width: '40px',
+              height: '40px',
               fontSize: '1.25rem',
               border: `2px solid ${disabled ? '#e9ecef' : '#dee2e6'}`,
               borderRadius: '8px',
