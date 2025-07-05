@@ -37,10 +37,6 @@ const FinanceProLanding = () => {
                     Get Started Free
                     <i className="fas fa-arrow-right ms-2"></i>
                   </a>
-                  <button className="btn btn-outline-light btn-lg px-4 py-3 fw-semibold d-flex align-items-center justify-content-center" style={{borderRadius: '50px'}}>
-                    <i className="fas fa-play me-2"></i>
-                    Watch Demo
-                  </button>
                 </div>
 
                 <div className="row text-center">
