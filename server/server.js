@@ -38,10 +38,11 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
+
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json());
-app.use(cookieParser());
+app.use(cookieParser()); 
 
 
 // Routes
