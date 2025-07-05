@@ -14,7 +14,7 @@ authRouter.post('/logout', authenticateToken, AuthController.logout);
 authRouter.post('/logout-all', authenticateToken, AuthController.logoutAll);
 authRouter.put('/profile', authenticateToken, AuthController.updateProfile);
 authRouter.put('/updatepassword', authenticateToken, AuthController.updatePassword);
-authRouter.put('/deleteaccount', authenticateToken, AuthController.deleteProfile)
+authRouter.put('/deleteaccount', authenticateToken, AuthController.deleteProfile);
 authRouter.get('/verify', authenticateToken, AuthController.verifyToken);
 
 module.exports = authRouter;
