@@ -26,7 +26,7 @@ connectDB();
 const app = express();
 
 // Middleware
-app.use(cors({
+const corsOptions = {
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
@@ -38,7 +38,9 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
   exposedHeaders: ['Set-Cookie']
-}));
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json());
 app.use(cookieParser()); 
