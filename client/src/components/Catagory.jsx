@@ -25,9 +25,9 @@ export default function Catagory({ catagoryData }) {
                             <div className="d-flex align-items-center gap-2">
                                 <span className="fw-medium">{category.category}</span>
                                 {/* {getTrendIcon(category.trend)} */}
-                                <small className={`${category.trend > 0 ? 'text-danger' : 'text-success'}`}>
+                                {/* <small className={`${category.trend > 0 ? 'text-danger' : 'text-success'}`}>
                                     {Math.abs(category.trend)}%
-                                </small>
+                                </small> */}
                             </div>
                             <div className="text-end">
                                 <span className="fw-bold">{formatCurrency(category.amount)}</span>

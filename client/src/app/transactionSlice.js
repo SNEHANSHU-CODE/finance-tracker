@@ -118,9 +118,17 @@ export const fetchMonthlySummary = createAsyncThunk(
 
 export const fetchCategoryAnalysis = createAsyncThunk(
   'transaction/fetchCategoryAnalysis',
-  async ({ startDate, endDate }, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await transactionService.getCategoryAnalysis(startDate, endDate);
+      // Calculate dates for the past year
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setFullYear(endDate.getFullYear() - 1);
+      
+      const response = await transactionService.getCategoryAnalysis(
+        startDate.toISOString(),
+        endDate.toISOString()
+      );
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);

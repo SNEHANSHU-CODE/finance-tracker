@@ -6,7 +6,6 @@ import {
   FaDollarSign, 
   FaArrowUp, 
   FaArrowDown, 
-  // FaTarget,
   FaChartLine,
   FaWallet,
   FaShoppingCart,
@@ -21,53 +20,162 @@ import {
   FaCalendarAlt,
   FaCreditCard,
   FaPiggyBank,
-  // FaTrendingUp,
-  FaExchangeAlt
+  FaExchangeAlt,
+  FaExclamationTriangle
 } from "react-icons/fa";
 import Catagory from "../components/Catagory";
-import { recentTransactions, fetchDashboardStats } from "../app/transactionSlice";
+import { recentTransactions, fetchDashboardStats, fetchCategoryAnalysis } from "../app/transactionSlice";
 
 export default function Dashboard() {
   const dispatch = useDispatch();
-  const [filterPeriod, setFilterPeriod] = useState("thisMonth");
   
-  // Sample data
-  const financialSummary = {
-    totalBalance: 12750.50,
-    monthlyIncome: 4200.00,
-    monthlyExpenses: 2850.75,
-    goalProgress: 68.5,
-    savingsRate: 32.1
-  };
+  // State management
+  const [recentTransaction, setRecentTransaction] = useState([]);
+  const [categoryData, setCategoryData] = useState([]);
+  const [dashboardData, setDashboardData] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [ recentTransaction, setRecentTransaction ] = useState([]);
-  const [ dashboardData, setDashboardData ] = useState({});
+  // Get Redux state for additional debugging
+  const transactionState = useSelector(state => state.transactions || {});
 
-  // Get recent transaction on page lodad
-  useEffect(()=>{
+  // Enhanced useEffect with comprehensive error handling
+  useEffect(() => {
     const fetchData = async () => {
-    try {
-      const result = await dispatch(recentTransactions()).unwrap();
-      const dashboard = await dispatch(fetchDashboardStats()).unwrap();
-      setRecentTransaction(result);
-      setDashboardData(dashboard);
-    } catch (error) {
-      console.error("Failed to load recent transactions:", error);
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Check if dispatch functions exist
+        if (typeof recentTransactions !== 'function') {
+          throw new Error('recentTransactions action is not defined');
+        }
+        if (typeof fetchDashboardStats !== 'function') {
+          throw new Error('fetchDashboardStats action is not defined');
+        }
+        
+        // Fetch recent transactions
+        const result = await dispatch(recentTransactions()).unwrap();
+        
+        // Validate recent transactions data
+        if (!Array.isArray(result)) {
+          setRecentTransaction([]);
+        } else {
+          setRecentTransaction(result);
+        }
+        
+        // Fetch dashboard stats
+        const dashboard = await dispatch(fetchDashboardStats()).unwrap();
+        
+        // Validate dashboard data structure
+        if (!dashboard || typeof dashboard !== 'object') {
+          setDashboardData({});
+        } else {
+          setDashboardData(dashboard);
+        }
+
+        // Fetch Catagory data
+        const category = await dispatch(fetchCategoryAnalysis()).unwrap();
+
+        // Validate catagory data
+        if(!category){
+          setCategoryData([]);
+          console.log(category);
+        }
+        else{
+          setCategoryData(category);
+          console.log(category);
+        }
+        
+      } catch (error) {
+        setError(error.message || 'Failed to load dashboard data');
+        
+        // Set empty defaults on error
+        setRecentTransaction([]);
+        setDashboardData({});
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [dispatch]);
+
+  // Enhanced financial summary with better fallbacks
+  const getFinancialSummary = () => {
+    
+    const defaultSummary = {
+      totalBalance: 0,
+      monthlyIncome: 0,
+      monthlyExpenses: 0,
+      goalProgress: 0,
+      savingsRate: 0
+    };
+
+    if (!dashboardData || !dashboardData.monthly || !dashboardData.monthly.summary) {
+      console.warn('Missing dashboard data structure for financial summary');
+      return defaultSummary;
     }
+
+    const { summary } = dashboardData.monthly;
+    
+    return {
+      totalBalance: (summary.totalIncome || 0) - (summary.totalExpenses || 0),
+      monthlyIncome: summary.totalIncome || 0,
+      monthlyExpenses: summary.totalExpenses || 0,
+      goalProgress: 68.5, // Keep as dummy data
+      savingsRate: summary.savingsRate || 0
+    };
   };
-  fetchData();
-  },[]);
-      
 
-  const categorySpending = [
-      { category: "Food & Dining", amount: 485.30, percentage: 35, trend: -5.2, color: "warning" },
-      { category: "Transportation", amount: 320.15, percentage: 25, trend: 2.1, color: "info" },
-      { category: "Shopping", amount: 245.80, percentage: 18, trend: 8.5, color: "danger" },
-      { category: "Entertainment", amount: 180.50, percentage: 15, trend: -2.8, color: "secondary" },
-      { category: "Utilities", amount: 95.00, percentage: 7, trend: 0.5, color: "dark" }
-  ];
+  // Enhanced category spending with better error handling
+  const getCategorySpending = () => {
+    
+    if (!dashboardData || !dashboardData.monthly || !dashboardData.monthly.breakdowns || !dashboardData.monthly.breakdowns.categories) {
+      console.warn('Missing category data structure');
+      return [];
+    }
 
+    const categories = dashboardData.monthly.breakdowns.categories;
+    const totalExpenses = dashboardData.monthly.summary?.totalExpenses || 0;
+    
+    if (totalExpenses === 0) {
+      console.warn('Total expenses is 0, cannot calculate percentages');
+      return [];
+    }
+    
+    return Object.entries(categories)
+      .filter(([_, data]) => data && typeof data === 'object' && data.totalExpenses)
+      .map(([categoryName, data]) => ({
+        category: categoryName,
+        amount: data.totalExpenses || 0,
+        percentage: Math.round(((data.totalExpenses || 0) / totalExpenses) * 100),
+        trend: 0,
+        color: getCategoryColor(categoryName)
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5);
+  };
+
+  // Helper function to assign colors to categories
+  const getCategoryColor = (categoryName) => {
+    const colorMap = {
+      "Food & Dining": "warning",
+      "Transportation": "info",
+      "Shopping": "danger",
+      "Entertainment": "secondary",
+      "Utilities": "dark",
+      "Other Expense": "primary",
+      "Investment": "success"
+    };
+    return colorMap[categoryName] || "secondary";
+  };
+
+  // Utility functions with null checks
   const formatCurrency = (amount) => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return '$0.00';
+    }
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
@@ -75,18 +183,76 @@ export default function Dashboard() {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    if (!dateString) return 'No date';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', dateString, error);
+      return 'Invalid date';
+    }
   };
 
   const getTransactionIcon = (transaction) => {
+    if (!transaction || !transaction.type) {
+      return <FaExchangeAlt className="text-secondary" />;
+    }
     return transaction.type === 'Income'
-    ? <FaArrowUp className="text-success" /> 
-    : <FaArrowDown className="text-danger" />;
+      ? <FaArrowUp className="text-success" /> 
+      : <FaArrowDown className="text-danger" />;
   };
+
+  // Format transaction amount with proper sign and null checks
+  const formatTransactionAmount = (transaction) => {
+    if (!transaction || !transaction.amount) {
+      return '$0.00';
+    }
+    const amount = Math.abs(transaction.amount);
+    const sign = transaction.type === 'Income' ? '+' : '-';
+    return `${sign}${formatCurrency(amount)}`;
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="container-fluid p-0">
+        <div className="text-center p-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-3">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="container-fluid p-0">
+        <div className="alert alert-danger m-3" role="alert">
+          <div className="d-flex align-items-center">
+            <FaExclamationTriangle className="me-2" />
+            <div>
+              <h4 className="alert-heading mb-1">Error Loading Dashboard</h4>
+              <p className="mb-2">{error}</p>
+              <button 
+                className="btn btn-outline-danger btn-sm" 
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const financialSummary = getFinancialSummary();
 
   return (
     <div className="container-fluid p-0">
@@ -97,19 +263,6 @@ export default function Dashboard() {
             <div>
               <h4 className="mb-1">Dashboard Overview</h4>
               <p className="text-muted mb-0">Welcome back! Here's your financial summary</p>
-            </div>
-            <div className="d-flex gap-2 align-items-center">
-              <select 
-                className="form-select form-select-sm"
-                value={filterPeriod}
-                onChange={(e) => setFilterPeriod(e.target.value)}
-                style={{ width: 'auto' }}
-              >
-                <option value="thisWeek">This Week</option>
-                <option value="thisMonth">This Month</option>
-                <option value="last3Months">Last 3 Months</option>
-                <option value="thisYear">This Year</option>
-              </select>
             </div>
           </div>
         </div>
@@ -126,10 +279,10 @@ export default function Dashboard() {
                 </div>
               </div>
               <h4 className="fw-bold text-primary">{formatCurrency(financialSummary.totalBalance)}</h4>
-              <p className="text-muted mb-0">Total Balance</p>
+              <p className="text-muted mb-0">Net Balance</p>
               <small className="text-success">
-                {/* <FaTrendingUp size={12} className="me-1" /> */}
-                +2.5% from last month
+                {(dashboardData.monthly?.summary?.netSavings || 0) > 0 ? '+' : ''}
+                {formatCurrency(dashboardData.monthly?.summary?.netSavings || 0)} this month
               </small>
             </div>
           </div>
@@ -147,7 +300,7 @@ export default function Dashboard() {
               <p className="text-muted mb-0">Monthly Income</p>
               <small className="text-success">
                 <FaArrowUp size={12} className="me-1" />
-                On track this month
+                {dashboardData.monthly?.summary?.transactionCount || 0} transactions
               </small>
             </div>
           </div>
@@ -163,9 +316,9 @@ export default function Dashboard() {
               </div>
               <h4 className="fw-bold text-danger">{formatCurrency(financialSummary.monthlyExpenses)}</h4>
               <p className="text-muted mb-0">Monthly Expenses</p>
-              <small className="text-warning">
-                <FaArrowUp size={12} className="me-1" />
-                +8% from last month
+              <small className="text-muted">
+                <FaArrowDown size={12} className="me-1" />
+                Across {categoryData?.categories?.length} categories
               </small>
             </div>
           </div>
@@ -176,14 +329,14 @@ export default function Dashboard() {
             <div className="card-body text-center">
               <div className="mb-3">
                 <div className="p-3 bg-info bg-opacity-10 rounded-circle d-inline-flex">
-                  {/* <FaTarget className="text-info" size={24} /> */}
+                  <FaPiggyBank className="text-info" size={24} />
                 </div>
               </div>
-              <h4 className="fw-bold text-info">{financialSummary.goalProgress}%</h4>
-              <p className="text-muted mb-0">Goal Progress</p>
+              <h4 className="fw-bold text-info">{financialSummary.savingsRate}%</h4>
+              <p className="text-muted mb-0">Savings Rate</p>
               <small className="text-info">
                 <FaChartLine size={12} className="me-1" />
-                4 active goals
+                {formatCurrency(dashboardData.monthly?.summary?.netSavings || 0)} saved
               </small>
             </div>
           </div>
@@ -207,46 +360,54 @@ export default function Dashboard() {
               <div className="table-responsive">
                 <table className="table table-hover align-middle">
                   <tbody>
-                    {recentTransaction && recentTransaction.map((transaction) => (
-                      <tr key={transaction._id}>
-                        <td style={{ width: '50px' }}>
-                          <div className={`p-2 bg-${transaction.color} bg-opacity-10 rounded-circle d-inline-flex`}>
-                            {getTransactionIcon(transaction)}
-                          </div>
-                        </td>
-                        <td>
-                          <div>
-                            <div className="fw-medium">{transaction.description}</div>
-                            <small className="text-muted">{transaction.category}</small>
-                          </div>
-                        </td>
-                        <td>
-                          <small className="text-muted d-flex align-items-center">
-                            <FaCalendarAlt size={10} className="me-1" />
-                            {formatDate(transaction.date)}
-                          </small>
-                        </td>
-                        <td className="text-end">
-                          <span className={`fw-bold ${transaction.type === 'Income' ? 'text-success' : 'text-danger'}`}>
-                            {transaction.displayAmount}
-                          </span>
-
-                        </td>
-                        <td style={{ width: '40px' }}>
-                          <div className="dropdown">
-                            <button className="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
-                              <FaEllipsisV size={10} />
-                            </button>
-                            <ul className="dropdown-menu dropdown-menu-end">
-                              <li><button className="dropdown-item">View Details</button></li>
-                              <li><button className="dropdown-item">Edit</button></li>
-                              <li><hr className="dropdown-divider" /></li>
-                              <li><button className="dropdown-item text-danger">Delete</button></li>
-                            </ul>
-                          </div>
+                    {recentTransaction && recentTransaction.length > 0 ? (
+                      recentTransaction.map((transaction, index) => (
+                        <tr key={transaction._id || `transaction-${index}`}>
+                          <td style={{ width: '50px' }}>
+                            <div className={`p-2 bg-${transaction.type === 'Income' ? 'success' : 'danger'} bg-opacity-10 rounded-circle d-inline-flex`}>
+                              {getTransactionIcon(transaction)}
+                            </div>
+                          </td>
+                          <td>
+                            <div>
+                              <div className="fw-medium">{transaction.description || 'No description'}</div>
+                              <small className="text-muted">{transaction.category || 'Uncategorized'}</small>
+                            </div>
+                          </td>
+                          <td>
+                            <small className="text-muted d-flex align-items-center">
+                              <FaCalendarAlt size={10} className="me-1" />
+                              {formatDate(transaction.date)}
+                            </small>
+                          </td>
+                          <td className="text-end">
+                            <span className={`fw-bold ${transaction.type === 'Income' ? 'text-success' : 'text-danger'}`}>
+                              {formatTransactionAmount(transaction)}
+                            </span>
+                          </td>
+                          <td style={{ width: '40px' }}>
+                            <div className="dropdown">
+                              <button className="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                <FaEllipsisV size={10} />
+                              </button>
+                              <ul className="dropdown-menu dropdown-menu-end">
+                                <li><button className="dropdown-item">View Details</button></li>
+                                <li><button className="dropdown-item">Edit</button></li>
+                                <li><hr className="dropdown-divider" /></li>
+                                <li><button className="dropdown-item text-danger">Delete</button></li>
+                              </ul>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="text-center text-muted py-4">
+                          <FaExclamationTriangle className="me-2" />
+                          No recent transactions found
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -257,7 +418,16 @@ export default function Dashboard() {
         {/* Category Spending & Quick Actions */}
         <div className="col-lg-4">
           {/* Category Spending */}
-          <Catagory catagoryData={categorySpending}/>
+          {categoryData?.categories?.length > 0 ? (
+            <Catagory catagoryData={categoryData.categories} />
+          ) : (
+            <div className="card border-0 shadow-sm">
+              <div className="card-body text-center text-muted py-4">
+                <FaChartLine size={48} className="mb-3 opacity-50" />
+                <p className="mb-0">No category data available</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
