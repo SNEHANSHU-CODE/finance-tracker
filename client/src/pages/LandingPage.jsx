@@ -169,7 +169,7 @@ const FinanceProLanding = () => {
       <section className="py-5 position-relative" style={{background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'}}>
         <div className="container">
           <div className="text-center mb-5">
-            <h2 className="display-5 fw-bold mb-4">Why Choose FinancePro?</h2>
+            <h2 className="display-5 fw-bold mb-4">Why Choose Finance Tracker?</h2>
             <p className="lead text-muted col-lg-8 mx-auto">
               Discover the benefits that make FinancePro the perfect choice for managing your finances
             </p>

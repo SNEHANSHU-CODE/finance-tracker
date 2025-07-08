@@ -27,7 +27,7 @@ export default function DashboardHome() {
         >
           <ul className="nav flex-column">
             <li className="nav-item">
-              <Link className="nav-link text-white" to="/dashboard/dashboard">Dashboard</Link>
+              <Link className="nav-link text-white" to="/dashboard">Dashboard</Link>
             </li>
             <li className="nav-item">
               <Link className="nav-link text-white" to="/dashboard/transactions">Transactions</Link>
