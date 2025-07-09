@@ -74,5 +74,5 @@ A full-stack personal finance management web application built using the MERN st
 
 👨‍💻 Author
 Snehanshu Sekhar Jena
-Email- snehanshusekhar99@gmail.com
-LinkedIn- https://www.linkedin.com/in/snehanshu-sekhar-jena-5365841a1/
+📧 Email: snehanshusekhar99@gmail.com
+🔗 LinkedIn: linkedin.com/in/snehanshu-sekhar-jena-5365841a1

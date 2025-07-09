@@ -32,7 +32,8 @@ const corsOptions = {
     'http://localhost:3000',
     'https://finance-tracker-ialp.onrender.com',
     'https://financetracker.space',
-    'http://financetracker.space'
+    'http://financetracker.space',
+    'http://localhost:4173'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

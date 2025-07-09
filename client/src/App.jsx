@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 
+import PWAManager from './pwa/PWAManager';
+
 import AppRouter from './routes/AppRouter'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -22,6 +24,7 @@ function App() {
 
   return (
     <>
+      <PWAManager />
       <ScrollToTop />
       <Navbar />
       <AppRouter />

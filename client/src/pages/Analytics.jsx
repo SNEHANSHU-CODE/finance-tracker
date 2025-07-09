@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   fetchCategoryAnalysis, fetchDashboard, fetchGoalsProgress, fetchSpendingTrends, fetchCurrentMonthAnalytics, fetchIncomeTrends, fetchSavingsTrends,
 } from '../app/analyticsSlice';
+import { Link } from "react-router-dom";
 
 import {
   LineChart,
@@ -54,7 +55,7 @@ const AnalyticsDashboard = () => {
   const goalsData = useSelector((state) => state.analytics.goalsProgress) || { goals: [], summary: {} };
   const spendingTrends = useSelector((state) => state.analytics.spendingTrends) || { trends: [] };
   const categoryData = useSelector((state) => state.analytics.categoryAnalysis) || { categories: [] };
-
+  const previousMonthData = useSelector((state) => state.analytics.previousMonth) || {};
 
   const [selectedPeriod, setSelectedPeriod] = useState('30days');
   const [activeTab, setActiveTab] = useState('overview');
@@ -84,6 +85,60 @@ const AnalyticsDashboard = () => {
 
   const getChangeColor = (value) => {
     return value >= 0 ? 'text-success' : 'text-danger';
+  };
+
+  const calculatePercentageChange = (current, previous) => {
+    if (!previous || previous === 0) return 0;
+    if (!current) return -100;
+    const change = ((current - previous) / Math.abs(previous)) * 100;
+    return Math.round(change * 100) / 100;
+  };
+
+  const getChangeValues = () => {
+    try {
+      const trends = spendingTrends?.trends || [];
+      
+      if (trends.length < 2) {
+        // If we don't have enough data, return 0 changes
+        return {
+          incomeChange: 0,
+          expenseChange: 0,
+          savingsChange: 0,
+          savingsRateChange: 0
+        };
+      }
+      
+      // Get last two months from trends
+      const currentMonth = trends[trends.length - 1];
+      const previousMonth = trends[trends.length - 2];
+      
+      return {
+        incomeChange: calculatePercentageChange(
+          currentMonth.totalIncome || 0, 
+          previousMonth.totalIncome || 0
+        ),
+        expenseChange: calculatePercentageChange(
+          currentMonth.totalExpenses || 0, 
+          previousMonth.totalExpenses || 0
+        ),
+        savingsChange: calculatePercentageChange(
+          currentMonth.netSavings || 0, 
+          previousMonth.netSavings || 0
+        ),
+        savingsRateChange: calculatePercentageChange(
+          (currentMonth.netSavings / currentMonth.totalIncome) * 100 || 0, 
+          (previousMonth.netSavings / previousMonth.totalIncome) * 100 || 0
+        )
+      };
+    } catch (error) {
+      console.error('Error calculating change values:', error);
+      return {
+        incomeChange: 0,
+        expenseChange: 0,
+        savingsChange: 0,
+        savingsRateChange: 0
+      };
+    }
   };
 
   const handleRefresh = () => {
@@ -144,121 +199,182 @@ const AnalyticsDashboard = () => {
     return null;
   };
 
-  const renderOverview = () => (
+  const renderOverview = () => {
+    const changeValues = getChangeValues();
+    return(
     <div className="row">
       {/* Stats Cards */}
       <div className="col-12 mb-4">
-        <div className="row">
-          <StatCard
-            title="Total Income"
-            value={dashboardData?.monthly?.summary?.totalIncome || 0}
-            change={8.5}
-            icon={<FaWallet />}
-            color="success"
-          />
-          <StatCard
-            title="Total Expenses"
-            value={dashboardData?.monthly?.summary?.totalExpenses || 0}
-            change={-2.3}
-            icon={<FaCreditCard />}
-            color="danger"
-          />
-          <StatCard
-            title="Net Savings"
-            value={dashboardData?.monthly?.summary?.netSavings || 0}
-            change={15.2}
-            icon={<FaPiggyBank />}
-            color="info"
-          />
-          <StatCard
-            title="Savings Rate"
-            value={`${dashboardData?.monthly?.summary?.savingsRate || 0}%`}
-            change={3.1}
-            // icon={<FaTarget />}
-            color="warning"
-          />
+          <div className="row">
+            <StatCard
+              title="Total Income"
+              value={dashboardData?.monthly?.summary?.totalIncome || 0}
+              change={changeValues.incomeChange}
+              icon={<FaWallet />}
+              color="success"
+            />
+            <StatCard
+              title="Total Expenses"
+              value={dashboardData?.monthly?.summary?.totalExpenses || 0}
+              change={changeValues.expenseChange}
+              icon={<FaCreditCard />}
+              color="danger"
+            />
+            <StatCard
+              title="Net Savings"
+              value={dashboardData?.monthly?.summary?.netSavings || 0}
+              change={changeValues.savingsChange}
+              icon={<FaPiggyBank />}
+              color="info"
+            />
+            <StatCard
+              title="Savings Rate"
+              value={`${dashboardData?.monthly?.summary?.savingsRate || 0}%`}
+              change={changeValues.savingsRateChange}
+              icon={<FaChartLine />}
+              color="warning"
+            />
+          </div>
         </div>
-      </div>
 
       {/* Spending Trends Chart */}
-      <div className="col-xl-8 col-lg-7 mb-4">
-        <div className="card shadow-sm border-0 h-100">
-          <div className="card-header bg-white border-0 py-3">
-            <h6 className="m-0 fw-bold text-primary">Financial Trends</h6>
-          </div>
-          <div className="card-body">
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={spendingTrends.trends}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="monthYear" stroke="#8884d8" />
-                <YAxis stroke="#8884d8" />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="totalIncome"
-                  stroke="#28a745"
-                  strokeWidth={3}
-                  dot={{ fill: '#28a745', strokeWidth: 2, r: 4 }}
-                  name="Income"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="totalExpenses"
-                  stroke="#dc3545"
-                  strokeWidth={3}
-                  dot={{ fill: '#dc3545', strokeWidth: 2, r: 4 }}
-                  name="Expenses"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="netSavings"
-                  stroke="#17a2b8"
-                  strokeWidth={3}
-                  dot={{ fill: '#17a2b8', strokeWidth: 2, r: 4 }}
-                  name="Net Savings"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
+      {/* Spending Trends Chart */}
+<div className="col-xl-8 col-lg-7 mb-4">
+  <div className="card shadow-sm border-0 h-100">
+    <div className="card-header bg-white border-0 py-3">
+      <h6 className="m-0 fw-bold text-primary">Financial Trends</h6>
+    </div>
+    <div className="card-body">
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart 
+          data={spendingTrends.trends}
+          margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis 
+            dataKey="monthYear" 
+            stroke="#8884d8"
+            tick={{ fontSize: 12 }}
+            interval={'preserveStartEnd'}
+            angle={-45}
+            textAnchor="end"
+            height={60}
+          />
+          <YAxis 
+            stroke="#8884d8"
+            tick={{ fontSize: 12 }}
+            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+          />
+          <Tooltip 
+            content={<CustomTooltip />}
+            contentStyle={{
+              backgroundColor: 'white',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              fontSize: '12px'
+            }}
+          />
+          <Legend 
+            wrapperStyle={{ fontSize: '12px' }}
+            iconType="line"
+          />
+          <Line
+            type="monotone"
+            dataKey="totalIncome"
+            stroke="#28a745"
+            strokeWidth={2}
+            dot={{ fill: '#28a745', strokeWidth: 2, r: 3 }}
+            activeDot={{ r: 5 }}
+            name="Income"
+          />
+          <Line
+            type="monotone"
+            dataKey="totalExpenses"
+            stroke="#dc3545"
+            strokeWidth={2}
+            dot={{ fill: '#dc3545', strokeWidth: 2, r: 3 }}
+            activeDot={{ r: 5 }}
+            name="Expenses"
+          />
+          <Line
+            type="monotone"
+            dataKey="netSavings"
+            stroke="#17a2b8"
+            strokeWidth={2}
+            dot={{ fill: '#17a2b8', strokeWidth: 2, r: 3 }}
+            activeDot={{ r: 5 }}
+            name="Net Savings"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  </div>
+</div>
 
       {/* Category Breakdown */}
-      <div className="col-xl-4 col-lg-5 mb-4">
-        <div className="card shadow-sm border-0 h-100">
-          <div className="card-header bg-white border-0 py-3">
-            <h6 className="m-0 fw-bold text-primary">Spending by Category</h6>
-          </div>
-          <div className="card-body">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={categoryData.categories}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="amount"
-                  label={({ category, percentage }) => `${category} ${percentage.toFixed(0)}%`}
-                >
-                  {categoryData.categories.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value) => formatCurrency(value)}
-                  labelFormatter={(label, payload) => {
-                    // Find the category name from the payload
-                    const categoryName = payload && payload[0] ? payload[0].payload.category : '';
-                    return categoryName;
+{/* Category Breakdown */}
+<div className="col-xl-4 col-lg-5 mb-4">
+  <div className="card shadow-sm border-0 h-100">
+    <div className="card-header bg-white border-0 py-3">
+      <h6 className="m-0 fw-bold text-primary">Spending by Category</h6>
+    </div>
+    <div className="card-body">
+      <ResponsiveContainer width="100%" height={300}>
+        <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+          <Pie
+            data={categoryData.categories}
+            cx="50%"
+            cy="50%"
+            outerRadius={window.innerWidth < 768 ? 60 : 80}
+            fill="#8884d8"
+            dataKey="amount"
+            label={({ category, percentage }) => 
+              window.innerWidth < 768 ? 
+                `${percentage.toFixed(0)}%` : 
+                `${category} ${percentage.toFixed(0)}%`
+            }
+            labelLine={true}
+            fontSize={window.innerWidth < 768 ? 10 : 12}
+          >
+            {categoryData.categories.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip
+            formatter={(value, name, props) => [formatCurrency(value), props.payload.category]}
+            contentStyle={{
+              backgroundColor: 'white',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              fontSize: '12px',
+              padding: '8px'
+            }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      {/* Mobile Legend */}
+      <div className="d-block d-md-none mt-3">
+        <div className="row">
+          {categoryData.categories.map((entry, index) => (
+            <div key={index} className="col-6 mb-2">
+              <div className="d-flex align-items-center">
+                <div 
+                  className="rounded-circle me-2" 
+                  style={{ 
+                    width: '12px', 
+                    height: '12px', 
+                    backgroundColor: COLORS[index % COLORS.length] 
                   }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+                ></div>
+                <small className="text-truncate">{entry.category}</small>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
+    </div>
+  </div>
+</div>
 
       {/* Recent Transactions */}
       <div className="col-xl-8 col-lg-7 mb-4">
@@ -340,7 +456,8 @@ const AnalyticsDashboard = () => {
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   // Replace the renderSpending function with this updated version:
 
@@ -562,44 +679,51 @@ const AnalyticsDashboard = () => {
     <div className="container-fluid px-4">
       {/* Header */}
       <div className="row mb-4">
-        <div className="col-12">
-          <div className="d-flex justify-content-between align-items-center">
-            <div>
-              <h1 className="h3 mb-0 text-gray-800">Analytics Dashboard</h1>
-              <p className="text-muted">Track your financial progress and insights</p>
-            </div>
-            <div className="d-flex gap-2">
-              <div className="dropdown">
-                <button
-                  className="btn btn-outline-primary dropdown-toggle"
-                  type="button"
-                  id="periodDropdown"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                >
-                  <FaCalendarAlt className="me-2" />
-                  {selectedPeriod === '30days' ? 'Last 30 Days' :
-                    selectedPeriod === '90days' ? 'Last 90 Days' :
-                      selectedPeriod === '1year' ? 'Last Year' : 'Last 30 Days'}
-                </button>
-                <ul className="dropdown-menu" aria-labelledby="periodDropdown">
-                  <li><a className="dropdown-item" href="#" onClick={() => setSelectedPeriod('30days')}>Last 30 Days</a></li>
-                  <li><a className="dropdown-item" href="#" onClick={() => setSelectedPeriod('90days')}>Last 90 Days</a></li>
-                  <li><a className="dropdown-item" href="#" onClick={() => setSelectedPeriod('1year')}>Last Year</a></li>
-                </ul>
-              </div>
-              <button className="btn btn-outline-secondary">
-                <FaDownload className="me-2" />
-                Export
-              </button>
-              <button className="btn btn-primary" onClick={handleRefresh}>
-                <FaSync className={`me-2 ${isLoading ? 'fa-spin' : ''}`} />
-                Refresh
-              </button>
-            </div>
-          </div>
-        </div>
+  <div className="col-12">
+    <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+      <div>
+        <h1 className="h3 mb-0 text-gray-800">Analytics Dashboard</h1>
+        <p className="text-muted mb-0">Track your financial progress and insights</p>
       </div>
+      <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto" style={{ maxWidth: '400px' }}>
+        <div className="dropdown">
+          <button
+            className="btn btn-outline-primary dropdown-toggle w-100 w-sm-auto"
+            type="button"
+            id="periodDropdown"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <FaCalendarAlt className="me-2" />
+            <span className="d-none d-sm-inline">
+              {selectedPeriod === '30days' ? 'Last 30 Days' :
+                selectedPeriod === '90days' ? 'Last 90 Days' :
+                  selectedPeriod === '1year' ? 'Last Year' : 'Last 30 Days'}
+            </span>
+            <span className="d-inline d-sm-none">
+              {selectedPeriod === '30days' ? '30D' :
+                selectedPeriod === '90days' ? '90D' :
+                  selectedPeriod === '1year' ? '1Y' : '30D'}
+            </span>
+          </button>
+          <ul className="dropdown-menu" aria-labelledby="periodDropdown">
+            <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('30days')}>Last 30 Days</Link></li>
+            <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('90days')}>Last 90 Days</Link></li>
+            <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('1year')}>Last Year</Link></li>
+          </ul>
+        </div>
+        <button className="btn btn-outline-secondary w-100 w-sm-auto">
+          <FaDownload className="me-2" />
+          <span className="d-none d-sm-inline">Export</span>
+        </button>
+        <button className="btn btn-primary w-100 w-sm-auto" onClick={handleRefresh}>
+          <FaSync className={`me-2 ${isLoading ? 'fa-spin' : ''}`} />
+          <span className="d-none d-sm-inline">Refresh</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
       {/* Navigation Tabs */}
       <div className="row mb-4">
