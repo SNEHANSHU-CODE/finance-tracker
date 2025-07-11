@@ -1,0 +1,26 @@
+.offline-indicator {
+  position: fixed;
+  bottom: 6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffc107;
+  color: #856404;
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (max-width: 400px) {
+  .offline-indicator {
+    left: 1rem;
+    right: 1rem;
+    transform: none;
+    text-align: center;
+    justify-content: center;
+  }
+}

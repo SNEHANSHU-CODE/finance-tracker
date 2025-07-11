@@ -1,0 +1,15 @@
+.pwa-manager {
+  position: relative;
+}
+
+.pwa-manager .offline-indicator {
+  z-index: 999;
+}
+
+.pwa-manager .install-prompt {
+  z-index: 1000;
+}
+
+.pwa-manager .update-prompt {
+  z-index: 1001;
+}

@@ -57,6 +57,13 @@ app.use('/api/reminders', reminderRouter);
 app.use('/api/google', googleRouter);
 app.use('/api/settings', settingsRouter);
 
+
+//Keep my server alive
+app.get('/api/ping', (req, res) => {
+  res.send('pong');
+});
+
+
 // Initialize Redis and start server
 async function initializeRedis() {
   try {

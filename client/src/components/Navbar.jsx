@@ -63,7 +63,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="w-100 navbar navbar-expand-lg bg-light shadow-sm py-3 position-fixed top-0 z-3">
+    <nav className="w-100 navbar navbar-expand-lg bg-light shadow-sm py-3 position-fixed top-0" style={{zIndex: "1100"}}>
       <div className="container">
         {/* Logo */}
         <Link 

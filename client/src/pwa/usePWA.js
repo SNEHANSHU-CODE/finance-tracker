@@ -1,46 +1,96 @@
 import { useState, useEffect, useCallback } from 'react'
 
+// Global storage to persist across re-mounts
+if (!window.pwaState) {
+  window.pwaState = {
+    deferredPrompt: null,
+    isInstallable: false,
+    eventReceived: false
+  }
+}
+
 export const usePWA = () => {
-  const [isInstallable, setIsInstallable] = useState(false)
+  const [isInstallable, setIsInstallable] = useState(window.pwaState.isInstallable)
   const [isInstalled, setIsInstalled] = useState(false)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [updateAvailable, setUpdateAvailable] = useState(false)
-  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [deferredPrompt, setDeferredPrompt] = useState(window.pwaState.deferredPrompt)
+
+  // Debug logging
+  console.log('usePWA initialized with global state:', {
+    isInstallable: window.pwaState.isInstallable,
+    hasDeferredPrompt: !!window.pwaState.deferredPrompt,
+    eventReceived: window.pwaState.eventReceived
+  })
 
   // Check if app is already installed
   useEffect(() => {
     const checkInstallation = () => {
-      // Check if running in standalone mode
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-      // Check if running as PWA
       const isPWA = window.navigator.standalone === true
-      
-      setIsInstalled(isStandalone || isPWA)
+      const isInstalled = isStandalone || isPWA
+
+      console.log('Installation check:', {
+        isStandalone,
+        isPWA,
+        isInstalled
+      })
+
+      setIsInstalled(isInstalled)
     }
 
     checkInstallation()
   }, [])
 
-  // Handle install prompt
+  // Handle install prompt - only set up once globally
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
+      console.log('beforeinstallprompt event received:', e)
       e.preventDefault()
+      
+      // Store globally
+      window.pwaState.deferredPrompt = e
+      window.pwaState.isInstallable = true
+      window.pwaState.eventReceived = true
+      
+      // Update local state
       setDeferredPrompt(e)
       setIsInstallable(true)
+      
+      console.log('Install prompt captured and stored globally')
     }
 
     const handleAppInstalled = () => {
+      console.log('App installed event received')
+      
+      // Clear global state
+      window.pwaState.deferredPrompt = null
+      window.pwaState.isInstallable = false
+      
+      // Update local state
       setIsInstalled(true)
       setIsInstallable(false)
       setDeferredPrompt(null)
     }
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-    window.addEventListener('appinstalled', handleAppInstalled)
+    // Only add listeners if not already added
+    if (!window.pwaListenersAdded) {
+      console.log('Adding global event listeners for install prompt')
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      window.addEventListener('appinstalled', handleAppInstalled)
+      window.pwaListenersAdded = true
+    } else {
+      console.log('Event listeners already added, using existing global state')
+      // If listeners already exist, sync with global state
+      if (window.pwaState.deferredPrompt) {
+        setDeferredPrompt(window.pwaState.deferredPrompt)
+        setIsInstallable(window.pwaState.isInstallable)
+      }
+    }
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-      window.removeEventListener('appinstalled', handleAppInstalled)
+      // Don't remove listeners on every cleanup to prevent issues with re-mounts
+      console.log('usePWA cleanup (listeners kept for persistence)')
     }
   }, [])
 
@@ -61,9 +111,9 @@ export const usePWA = () => {
   // Handle SW updates
   useEffect(() => {
     const handleSWUpdate = () => setUpdateAvailable(true)
-    
+
     window.addEventListener('sw-update-available', handleSWUpdate)
-    
+
     return () => {
       window.removeEventListener('sw-update-available', handleSWUpdate)
     }
@@ -71,18 +121,38 @@ export const usePWA = () => {
 
   // Install app function
   const installApp = useCallback(async () => {
-    if (!deferredPrompt) return false
+    console.log('installApp called, deferredPrompt:', !!deferredPrompt)
+    
+    const promptToUse = deferredPrompt || window.pwaState.deferredPrompt
+    
+    if (!promptToUse) {
+      console.warn('No deferred prompt available')
+      return false
+    }
 
     try {
-      await deferredPrompt.prompt()
-      const { outcome } = await deferredPrompt.userChoice
+      console.log('Showing install prompt...')
+      await promptToUse.prompt()
+      console.log('Prompt shown, waiting for user choice...')
       
+      const { outcome } = await promptToUse.userChoice
+      console.log('User choice outcome:', outcome)
+
       if (outcome === 'accepted') {
+        console.log('User accepted install')
+        
+        // Clear global state
+        window.pwaState.deferredPrompt = null
+        window.pwaState.isInstallable = false
+        
+        // Update local state
         setIsInstallable(false)
         setDeferredPrompt(null)
         return true
+      } else {
+        console.log('User dismissed install')
+        return false
       }
-      return false
     } catch (error) {
       console.error('Install failed:', error)
       return false
@@ -90,13 +160,34 @@ export const usePWA = () => {
   }, [deferredPrompt])
 
   // Update app function
-  const updateApp = useCallback(() => {
+  const updateApp = useCallback(async () => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(registration => {
-        registration.waiting?.postMessage({ type: 'SKIP_WAITING' })
-      })
+      try {
+        const registration = await navigator.serviceWorker.ready
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+        }
+      } catch (error) {
+        console.error('Service worker update failed:', error)
+        throw error
+      }
     }
   }, [])
+
+  // Log state changes
+  useEffect(() => {
+    console.log('PWA State changed:', {
+      isInstallable,
+      isInstalled,
+      isOnline,
+      updateAvailable,
+      hasDeferredPrompt: !!deferredPrompt,
+      globalState: {
+        hasGlobalPrompt: !!window.pwaState.deferredPrompt,
+        globalInstallable: window.pwaState.isInstallable
+      }
+    })
+  }, [isInstallable, isInstalled, isOnline, updateAvailable, deferredPrompt])
 
   return {
     isInstallable,

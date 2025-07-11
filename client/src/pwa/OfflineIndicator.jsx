@@ -1,4 +1,5 @@
 import React from 'react'
+import './styles/OfflineIndicator.css';
 
 const OfflineIndicator = () => {
   return (

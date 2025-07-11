@@ -1,35 +1,42 @@
 export const registerServiceWorker = async () => {
   if ('serviceWorker' in navigator) {
     try {
-      let registration = await navigator.serviceWorker.getRegistration();
+      let registration = await navigator.serviceWorker.getRegistration('/')
 
-      // If not registered, register it manually
       if (!registration) {
-        registration = await navigator.serviceWorker.register('/sw.js');
+        registration = await navigator.serviceWorker.register('/sw.js')
       }
 
-      // Listen for updates
+      // Handle updates
       registration.addEventListener('updatefound', () => {
-        const newWorker = registration.installing;
+        const newWorker = registration.installing
 
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              window.dispatchEvent(new CustomEvent('sw-update-available'));
+              window.dispatchEvent(new CustomEvent('sw-update-available'))
             }
-          });
+          })
         }
-      });
+      })
 
+      // Handle controller changes
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
-      });
+        window.location.reload()
+      })
 
-      console.log('Service Worker registered:', registration);
-      return registration;
+      // Handle messages from service worker
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'SKIP_WAITING') {
+          window.location.reload()
+        }
+      })
+
+      return registration
     } catch (error) {
-      console.error('Service Worker registration failed:', error);
-      return null;
+      console.error('Service Worker registration failed:', error)
+      return null
     }
   }
-};
+  return null
+}
