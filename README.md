@@ -69,10 +69,13 @@ A full-stack personal finance management web application built using the MERN st
 
 🌐 Live Demo
 
-🔗 Live Site: https://financetracker.space
-🔗 GitHub: github.com/SNEHANSHU-CODE/finance-tracker
+🔗 Live Site: https://financetracker.space  
+🔗 GitHub: https://github.com/SNEHANSHU-CODE/finance-tracker
 
 👨‍💻 Author
+
 Snehanshu Sekhar Jena
+
 📧 Email: snehanshusekhar99@gmail.com
-🔗 LinkedIn: linkedin.com/in/snehanshu-sekhar-jena-5365841a1
+
+🔗 LinkedIn: https://linkedin.com/in/snehanshu-sekhar-jena-5365841a1

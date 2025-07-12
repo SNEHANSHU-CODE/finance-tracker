@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const FinanceProLanding = () => {
+const LandingPage = () => {
   return (
     <div className="overflow-hidden">
       {/* Hero Section */}
@@ -171,7 +171,7 @@ const FinanceProLanding = () => {
           <div className="text-center mb-5">
             <h2 className="display-5 fw-bold mb-4">Why Choose Finance Tracker?</h2>
             <p className="lead text-muted col-lg-8 mx-auto">
-              Discover the benefits that make FinancePro the perfect choice for managing your finances
+              Discover the benefits that make Finance Tracker the perfect choice for managing your finances
             </p>
           </div>
 
@@ -244,7 +244,7 @@ const FinanceProLanding = () => {
             <div className="col-lg-8">
               <h2 className="display-5 fw-bold mb-4">Ready to Transform Your Financial Future?</h2>
               <p className="lead mb-5 opacity-75">
-                Join thousands of users who trust FinancePro to manage their finances securely and intelligently. 
+                Join thousands of users who trust Finance Tracker to manage their finances securely and intelligently. 
                 Start your journey today - completely free!
               </p>
               <div className="d-flex flex-column flex-sm-row gap-3 justify-content-center">
@@ -261,4 +261,4 @@ const FinanceProLanding = () => {
   );
 };
 
-export default FinanceProLanding;
+export default LandingPage;

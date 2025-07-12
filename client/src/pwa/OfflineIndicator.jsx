@@ -1,10 +1,11 @@
 import React from 'react'
+import { MdWifiOff } from 'react-icons/md'
 import './styles/OfflineIndicator.css';
 
 const OfflineIndicator = () => {
   return (
     <div className="offline-indicator">
-      <span className="offline-icon">📱</span>
+      <MdWifiOff size={16} className="offline-icon" />
       <span>You're offline. Some features may be limited.</span>
     </div>
   )
