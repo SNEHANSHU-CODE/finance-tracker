@@ -13,6 +13,11 @@ import { store } from './app/store';
 
 import { registerServiceWorker } from './pwa/serviceWorker.js';
 
+// Disable console in production
+if (import.meta.env.VITE_DISABLE_CONSOLE === 'true') {
+  console.log = console.warn = console.error = console.info = console.debug = function() {};
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Provider store={store}>

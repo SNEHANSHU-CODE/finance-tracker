@@ -61,16 +61,43 @@ const AnalyticsDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(false);
 
-
   useEffect(() => {
-    dispatch(fetchDashboard());
+    // Convert selectedPeriod to date parameters
+    const getDateRange = (period) => {
+      const endDate = new Date();
+      const startDate = new Date();
+
+      switch (period) {
+        case '30days':
+          startDate.setDate(endDate.getDate() - 30);
+          break;
+        case '90days':
+          startDate.setDate(endDate.getDate() - 90);
+          break;
+        case '1year':
+          startDate.setFullYear(endDate.getFullYear() - 1);
+          break;
+        default:
+          startDate.setDate(endDate.getDate() - 30);
+      }
+
+      return {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+      };
+    };
+
+    const dateRange = getDateRange(selectedPeriod);
+
+    // Dispatch all analytics calls with the date range parameters
+    dispatch(fetchDashboard(dateRange));
     dispatch(fetchGoalsProgress());
-    dispatch(fetchSpendingTrends());
-    dispatch(fetchCategoryAnalysis());
+    dispatch(fetchSpendingTrends(dateRange));
+    dispatch(fetchCategoryAnalysis(dateRange));
     dispatch(fetchCurrentMonthAnalytics());
-    dispatch(fetchIncomeTrends());
-    dispatch(fetchSavingsTrends());
-  }, [dispatch]);
+    dispatch(fetchIncomeTrends(dateRange));
+    dispatch(fetchSavingsTrends(dateRange));
+  }, [dispatch, selectedPeriod]);
 
 
   const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF', '#5F27CD'];
@@ -97,7 +124,7 @@ const AnalyticsDashboard = () => {
   const getChangeValues = () => {
     try {
       const trends = spendingTrends?.trends || [];
-      
+
       if (trends.length < 2) {
         // If we don't have enough data, return 0 changes
         return {
@@ -107,26 +134,26 @@ const AnalyticsDashboard = () => {
           savingsRateChange: 0
         };
       }
-      
+
       // Get last two months from trends
       const currentMonth = trends[trends.length - 1];
       const previousMonth = trends[trends.length - 2];
-      
+
       return {
         incomeChange: calculatePercentageChange(
-          currentMonth.totalIncome || 0, 
+          currentMonth.totalIncome || 0,
           previousMonth.totalIncome || 0
         ),
         expenseChange: calculatePercentageChange(
-          currentMonth.totalExpenses || 0, 
+          currentMonth.totalExpenses || 0,
           previousMonth.totalExpenses || 0
         ),
         savingsChange: calculatePercentageChange(
-          currentMonth.netSavings || 0, 
+          currentMonth.netSavings || 0,
           previousMonth.netSavings || 0
         ),
         savingsRateChange: calculatePercentageChange(
-          (currentMonth.netSavings / currentMonth.totalIncome) * 100 || 0, 
+          (currentMonth.netSavings / currentMonth.totalIncome) * 100 || 0,
           (previousMonth.netSavings / previousMonth.totalIncome) * 100 || 0
         )
       };
@@ -143,15 +170,43 @@ const AnalyticsDashboard = () => {
 
   const handleRefresh = () => {
     setIsLoading(true);
+
+    const getDateRange = (period) => {
+      const endDate = new Date();
+      const startDate = new Date();
+
+      switch (period) {
+        case '30days':
+          startDate.setDate(endDate.getDate() - 30);
+          break;
+        case '90days':
+          startDate.setDate(endDate.getDate() - 90);
+          break;
+        case '1year':
+          startDate.setFullYear(endDate.getFullYear() - 1);
+          break;
+        default:
+          startDate.setDate(endDate.getDate() - 30);
+      }
+
+      return {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+      };
+    };
+
+    const dateRange = getDateRange(selectedPeriod);
+
     Promise.all([
-      dispatch(fetchDashboard()),
+      dispatch(fetchDashboard(dateRange)),
       dispatch(fetchGoalsProgress()),
-      dispatch(fetchSpendingTrends()),
-      dispatch(fetchCategoryAnalysis())
+      dispatch(fetchSpendingTrends(dateRange)),
+      dispatch(fetchCategoryAnalysis(dateRange))
     ]).finally(() => {
       setIsLoading(false);
     });
   };
+
 
   const StatCard = ({ title, value, change, icon, color = 'primary' }) => (
     <div className="col-xl-3 col-md-6 mb-4">
@@ -201,10 +256,10 @@ const AnalyticsDashboard = () => {
 
   const renderOverview = () => {
     const changeValues = getChangeValues();
-    return(
-    <div className="row">
-      {/* Stats Cards */}
-      <div className="col-12 mb-4">
+    return (
+      <div className="row">
+        {/* Stats Cards */}
+        <div className="col-12 mb-4">
           <div className="row">
             <StatCard
               title="Total Income"
@@ -237,225 +292,225 @@ const AnalyticsDashboard = () => {
           </div>
         </div>
 
-      {/* Spending Trends Chart */}
-      {/* Spending Trends Chart */}
-<div className="col-xl-8 col-lg-7 mb-4">
-  <div className="card shadow-sm border-0 h-100">
-    <div className="card-header bg-white border-0 py-3">
-      <h6 className="m-0 fw-bold text-primary">Financial Trends</h6>
-    </div>
-    <div className="card-body">
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart 
-          data={spendingTrends.trends}
-          margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis 
-            dataKey="monthYear" 
-            stroke="#8884d8"
-            tick={{ fontSize: 12 }}
-            interval={'preserveStartEnd'}
-            angle={-45}
-            textAnchor="end"
-            height={60}
-          />
-          <YAxis 
-            stroke="#8884d8"
-            tick={{ fontSize: 12 }}
-            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-          />
-          <Tooltip 
-            content={<CustomTooltip />}
-            contentStyle={{
-              backgroundColor: 'white',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              fontSize: '12px'
-            }}
-          />
-          <Legend 
-            wrapperStyle={{ fontSize: '12px' }}
-            iconType="line"
-          />
-          <Line
-            type="monotone"
-            dataKey="totalIncome"
-            stroke="#28a745"
-            strokeWidth={2}
-            dot={{ fill: '#28a745', strokeWidth: 2, r: 3 }}
-            activeDot={{ r: 5 }}
-            name="Income"
-          />
-          <Line
-            type="monotone"
-            dataKey="totalExpenses"
-            stroke="#dc3545"
-            strokeWidth={2}
-            dot={{ fill: '#dc3545', strokeWidth: 2, r: 3 }}
-            activeDot={{ r: 5 }}
-            name="Expenses"
-          />
-          <Line
-            type="monotone"
-            dataKey="netSavings"
-            stroke="#17a2b8"
-            strokeWidth={2}
-            dot={{ fill: '#17a2b8', strokeWidth: 2, r: 3 }}
-            activeDot={{ r: 5 }}
-            name="Net Savings"
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  </div>
-</div>
-
-      {/* Category Breakdown */}
-{/* Category Breakdown */}
-<div className="col-xl-4 col-lg-5 mb-4">
-  <div className="card shadow-sm border-0 h-100">
-    <div className="card-header bg-white border-0 py-3">
-      <h6 className="m-0 fw-bold text-primary">Spending by Category</h6>
-    </div>
-    <div className="card-body">
-      <ResponsiveContainer width="100%" height={300}>
-        <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-          <Pie
-            data={categoryData.categories}
-            cx="50%"
-            cy="50%"
-            outerRadius={window.innerWidth < 768 ? 60 : 80}
-            fill="#8884d8"
-            dataKey="amount"
-            label={({ category, percentage }) => 
-              window.innerWidth < 768 ? 
-                `${percentage.toFixed(0)}%` : 
-                `${category} ${percentage.toFixed(0)}%`
-            }
-            labelLine={true}
-            fontSize={window.innerWidth < 768 ? 10 : 12}
-          >
-            {categoryData.categories.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip
-            formatter={(value, name, props) => [formatCurrency(value), props.payload.category]}
-            contentStyle={{
-              backgroundColor: 'white',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              fontSize: '12px',
-              padding: '8px'
-            }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-      {/* Mobile Legend */}
-      <div className="d-block d-md-none mt-3">
-        <div className="row">
-          {categoryData.categories.map((entry, index) => (
-            <div key={index} className="col-6 mb-2">
-              <div className="d-flex align-items-center">
-                <div 
-                  className="rounded-circle me-2" 
-                  style={{ 
-                    width: '12px', 
-                    height: '12px', 
-                    backgroundColor: COLORS[index % COLORS.length] 
-                  }}
-                ></div>
-                <small className="text-truncate">{entry.category}</small>
-              </div>
+        {/* Spending Trends Chart */}
+        {/* Spending Trends Chart */}
+        <div className="col-xl-8 col-lg-7 mb-4">
+          <div className="card shadow-sm border-0 h-100">
+            <div className="card-header bg-white border-0 py-3">
+              <h6 className="m-0 fw-bold text-primary">Financial Trends</h6>
             </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-      {/* Recent Transactions */}
-      <div className="col-xl-8 col-lg-7 mb-4">
-        <div className="card shadow-sm border-0">
-          <div className="card-header bg-white border-0 py-3">
-            <h6 className="m-0 fw-bold text-primary">Recent Transactions</h6>
+            <div className="card-body">
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart
+                  data={spendingTrends.trends}
+                  margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="monthYear"
+                    stroke="#8884d8"
+                    tick={{ fontSize: 12 }}
+                    interval={'preserveStartEnd'}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis
+                    stroke="#8884d8"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    content={<CustomTooltip />}
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      fontSize: '12px'
+                    }}
+                  />
+                  <Legend
+                    wrapperStyle={{ fontSize: '12px' }}
+                    iconType="line"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="totalIncome"
+                    stroke="#28a745"
+                    strokeWidth={2}
+                    dot={{ fill: '#28a745', strokeWidth: 2, r: 3 }}
+                    activeDot={{ r: 5 }}
+                    name="Income"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="totalExpenses"
+                    stroke="#dc3545"
+                    strokeWidth={2}
+                    dot={{ fill: '#dc3545', strokeWidth: 2, r: 3 }}
+                    activeDot={{ r: 5 }}
+                    name="Expenses"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="netSavings"
+                    stroke="#17a2b8"
+                    strokeWidth={2}
+                    dot={{ fill: '#17a2b8', strokeWidth: 2, r: 3 }}
+                    activeDot={{ r: 5 }}
+                    name="Net Savings"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="card-body p-0">
-            <div className="table-responsive">
-              <table className="table table-hover mb-0">
-                <thead className="table-light">
-                  <tr>
-                    <th className="border-0">Description</th>
-                    <th className="border-0">Category</th>
-                    <th className="border-0">Date</th>
-                    <th className="border-0 text-end">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(dashboardData?.recent || []).map((transaction) => (
-                    <tr key={transaction.id}>
-                      <td>
-                        <div className="d-flex align-items-center">
-                          <div>
-                            <div className="fw-bold">{transaction.description}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="badge bg-light text-dark">
-                          {transaction.category}
-                        </span>
-                      </td>
-                      <td className="text-muted small">
-                        {new Date(transaction.date).toLocaleDateString()}
-                      </td>
-                      <td className={`text-end fw-bold ${transaction.amount >= 0 ? 'text-success' : 'text-danger'}`}>
-                        {transaction.amount >= 0 ? '+' : ''}{formatCurrency(transaction.amount)}
-                      </td>
-                    </tr>
+        </div>
+
+        {/* Category Breakdown */}
+        {/* Category Breakdown */}
+        <div className="col-xl-4 col-lg-5 mb-4">
+          <div className="card shadow-sm border-0 h-100">
+            <div className="card-header bg-white border-0 py-3">
+              <h6 className="m-0 fw-bold text-primary">Spending by Category</h6>
+            </div>
+            <div className="card-body">
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                  <Pie
+                    data={categoryData.categories}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={window.innerWidth < 768 ? 60 : 80}
+                    fill="#8884d8"
+                    dataKey="amount"
+                    label={({ category, percentage }) =>
+                      window.innerWidth < 768 ?
+                        `${percentage.toFixed(0)}%` :
+                        `${category} ${percentage.toFixed(0)}%`
+                    }
+                    labelLine={true}
+                    fontSize={window.innerWidth < 768 ? 10 : 12}
+                  >
+                    {categoryData.categories.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value, name, props) => [formatCurrency(value), props.payload.category]}
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      padding: '8px'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Mobile Legend */}
+              <div className="d-block d-md-none mt-3">
+                <div className="row">
+                  {categoryData.categories.map((entry, index) => (
+                    <div key={index} className="col-6 mb-2">
+                      <div className="d-flex align-items-center">
+                        <div
+                          className="rounded-circle me-2"
+                          style={{
+                            width: '12px',
+                            height: '12px',
+                            backgroundColor: COLORS[index % COLORS.length]
+                          }}
+                        ></div>
+                        <small className="text-truncate">{entry.category}</small>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Transactions */}
+        <div className="col-xl-8 col-lg-7 mb-4">
+          <div className="card shadow-sm border-0">
+            <div className="card-header bg-white border-0 py-3">
+              <h6 className="m-0 fw-bold text-primary">Recent Transactions</h6>
+            </div>
+            <div className="card-body p-0">
+              <div className="table-responsive">
+                <table className="table table-hover mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th className="border-0">Description</th>
+                      <th className="border-0">Category</th>
+                      <th className="border-0">Date</th>
+                      <th className="border-0 text-end">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(dashboardData?.recent || []).map((transaction) => (
+                      <tr key={transaction.id}>
+                        <td>
+                          <div className="d-flex align-items-center">
+                            <div>
+                              <div className="fw-bold">{transaction.description}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="badge bg-light text-dark">
+                            {transaction.category}
+                          </span>
+                        </td>
+                        <td className="text-muted small">
+                          {new Date(transaction.date).toLocaleDateString()}
+                        </td>
+                        <td className={`text-end fw-bold ${transaction.amount >= 0 ? 'text-success' : 'text-danger'}`}>
+                          {transaction.amount >= 0 ? '+' : ''}{formatCurrency(transaction.amount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Goals Progress */}
+        <div className="col-xl-4 col-lg-5 mb-4">
+          <div className="card shadow-sm border-0">
+            <div className="card-header bg-white border-0 py-3">
+              <h6 className="m-0 fw-bold text-primary">Goals Progress</h6>
+            </div>
+            <div className="card-body">
+              {goalsData.goals.map((goal, index) => (
+                <div key={index} className="mb-3">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="fw-bold">{goal.name}</span>
+                    <span className="text-muted">{goal.progress}%</span>
+                  </div>
+                  <div className="progress mb-2" style={{ height: '8px' }}>
+                    <div
+                      className="progress-bar bg-success"
+                      role="progressbar"
+                      style={{ width: `${goal.progress}%` }}
+                      aria-valuenow={goal.progress}
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                    ></div>
+                  </div>
+                  <div className="d-flex justify-content-between text-muted small">
+                    <span>{formatCurrency(goal.savedAmount)}</span>
+                    <span>{formatCurrency(goal.targetAmount)}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
-
-      {/* Goals Progress */}
-      <div className="col-xl-4 col-lg-5 mb-4">
-        <div className="card shadow-sm border-0">
-          <div className="card-header bg-white border-0 py-3">
-            <h6 className="m-0 fw-bold text-primary">Goals Progress</h6>
-          </div>
-          <div className="card-body">
-            {goalsData.goals.map((goal, index) => (
-              <div key={index} className="mb-3">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <span className="fw-bold">{goal.name}</span>
-                  <span className="text-muted">{goal.progress}%</span>
-                </div>
-                <div className="progress mb-2" style={{ height: '8px' }}>
-                  <div
-                    className="progress-bar bg-success"
-                    role="progressbar"
-                    style={{ width: `${goal.progress}%` }}
-                    aria-valuenow={goal.progress}
-                    aria-valuemin="0"
-                    aria-valuemax="100"
-                  ></div>
-                </div>
-                <div className="d-flex justify-content-between text-muted small">
-                  <span>{formatCurrency(goal.savedAmount)}</span>
-                  <span>{formatCurrency(goal.targetAmount)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
     );
   };
 
@@ -464,7 +519,7 @@ const AnalyticsDashboard = () => {
   const renderSpending = () => {
     // Ensure all categories have data, set to 0 if missing
     const allCategories = [
-      'Food', 'Transportation', 'Shopping', 'Entertainment', 'Utilities', 
+      'Food', 'Transportation', 'Shopping', 'Entertainment', 'Utilities',
       'Healthcare', 'Education', 'Travel', 'Insurance', 'Rent', 'Other Expense'
     ];
 
@@ -679,51 +734,51 @@ const AnalyticsDashboard = () => {
     <div className="container-fluid px-4">
       {/* Header */}
       <div className="row mb-4">
-  <div className="col-12">
-    <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
-      <div>
-        <h1 className="h3 mb-0 text-gray-800">Analytics Dashboard</h1>
-        <p className="text-muted mb-0">Track your financial progress and insights</p>
-      </div>
-      <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto" style={{ maxWidth: '400px' }}>
-        <div className="dropdown">
-          <button
-            className="btn btn-outline-primary dropdown-toggle w-100 w-sm-auto"
-            type="button"
-            id="periodDropdown"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >
-            <FaCalendarAlt className="me-2" />
-            <span className="d-none d-sm-inline">
-              {selectedPeriod === '30days' ? 'Last 30 Days' :
-                selectedPeriod === '90days' ? 'Last 90 Days' :
-                  selectedPeriod === '1year' ? 'Last Year' : 'Last 30 Days'}
-            </span>
-            <span className="d-inline d-sm-none">
-              {selectedPeriod === '30days' ? '30D' :
-                selectedPeriod === '90days' ? '90D' :
-                  selectedPeriod === '1year' ? '1Y' : '30D'}
-            </span>
-          </button>
-          <ul className="dropdown-menu" aria-labelledby="periodDropdown">
-            <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('30days')}>Last 30 Days</Link></li>
-            <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('90days')}>Last 90 Days</Link></li>
-            <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('1year')}>Last Year</Link></li>
-          </ul>
+        <div className="col-12">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+            <div>
+              <h1 className="h3 mb-0 text-gray-800">Analytics Dashboard</h1>
+              <p className="text-muted mb-0">Track your financial progress and insights</p>
+            </div>
+            <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto" style={{ maxWidth: '400px' }}>
+              <div className="dropdown">
+                <button
+                  className="btn btn-outline-primary dropdown-toggle w-100 w-sm-auto"
+                  type="button"
+                  id="periodDropdown"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  <FaCalendarAlt className="me-2" />
+                  <span className="d-none d-sm-inline">
+                    {selectedPeriod === '30days' ? 'Last 30 Days' :
+                      selectedPeriod === '90days' ? 'Last 90 Days' :
+                        selectedPeriod === '1year' ? 'Last Year' : 'Last 30 Days'}
+                  </span>
+                  <span className="d-inline d-sm-none">
+                    {selectedPeriod === '30days' ? '30D' :
+                      selectedPeriod === '90days' ? '90D' :
+                        selectedPeriod === '1year' ? '1Y' : '30D'}
+                  </span>
+                </button>
+                <ul className="dropdown-menu" aria-labelledby="periodDropdown">
+                  <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('30days')}>Last 30 Days</Link></li>
+                  <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('90days')}>Last 90 Days</Link></li>
+                  <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('1year')}>Last Year</Link></li>
+                </ul>
+              </div>
+              <button className="btn btn-outline-secondary w-100 w-sm-auto">
+                <FaDownload className="me-2" />
+                <span className="d-none d-sm-inline">Export</span>
+              </button>
+              <button className="btn btn-primary w-100 w-sm-auto" onClick={handleRefresh}>
+                <FaSync className={`me-2 ${isLoading ? 'fa-spin' : ''}`} />
+                <span className="d-none d-sm-inline">Refresh</span>
+              </button>
+            </div>
+          </div>
         </div>
-        <button className="btn btn-outline-secondary w-100 w-sm-auto">
-          <FaDownload className="me-2" />
-          <span className="d-none d-sm-inline">Export</span>
-        </button>
-        <button className="btn btn-primary w-100 w-sm-auto" onClick={handleRefresh}>
-          <FaSync className={`me-2 ${isLoading ? 'fa-spin' : ''}`} />
-          <span className="d-none d-sm-inline">Refresh</span>
-        </button>
       </div>
-    </div>
-  </div>
-</div>
 
       {/* Navigation Tabs */}
       <div className="row mb-4">

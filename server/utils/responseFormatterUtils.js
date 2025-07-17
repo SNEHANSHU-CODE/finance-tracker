@@ -1,12 +1,3 @@
-// utils/responseFormatterUtils.js
-
-/**
- * Standard response formatter for API responses
- * @param {any} data - The data to be returned
- * @param {string} message - Success message
- * @param {Object} meta - Additional metadata (pagination, etc.)
- * @returns {Object} Formatted response object
- */
 function formatResponse(data, message = 'Operation successful', meta = {}) {
   const response = {
     success: true,
@@ -23,14 +14,6 @@ function formatResponse(data, message = 'Operation successful', meta = {}) {
   return response;
 }
 
-/**
- * Error response formatter
- * @param {string} message - Error message
- * @param {number} statusCode - HTTP status code
- * @param {string} errorCode - Internal error code
- * @param {any} details - Additional error details
- * @returns {Object} Formatted error response
- */
 function formatErrorResponse(message, statusCode = 500, errorCode = null, details = null) {
   const response = {
     success: false,
@@ -52,13 +35,7 @@ function formatErrorResponse(message, statusCode = 500, errorCode = null, detail
   return response;
 }
 
-/**
- * Paginated response formatter
- * @param {Array} data - Array of items
- * @param {Object} pagination - Pagination info
- * @param {string} message - Success message
- * @returns {Object} Formatted paginated response
- */
+
 function formatPaginatedResponse(data, pagination, message = 'Data retrieved successfully') {
   const meta = {
     pagination: {
@@ -74,14 +51,7 @@ function formatPaginatedResponse(data, pagination, message = 'Data retrieved suc
   return formatResponse(data, message, meta);
 }
 
-/**
- * Analytics specific response formatter
- * @param {Object} analyticsData - Analytics data
- * @param {string} message - Success message
- * @param {Object} filters - Applied filters
- * @param {Object} summary - Summary statistics
- * @returns {Object} Formatted analytics response
- */
+
 function formatAnalyticsResponse(analyticsData, message, filters = {}, summary = {}) {
   const meta = {};
 
@@ -101,14 +71,7 @@ function formatAnalyticsResponse(analyticsData, message, filters = {}, summary =
   return formatResponse(analyticsData, message, meta);
 }
 
-/**
- * Chart data response formatter
- * @param {Object} chartData - Chart data
- * @param {string} chartType - Type of chart
- * @param {Object} config - Chart configuration
- * @param {string} message - Success message
- * @returns {Object} Formatted chart response
- */
+
 function formatChartResponse(chartData, chartType, config = {}, message = 'Chart data retrieved successfully') {
   const meta = {
     chartType,
@@ -122,14 +85,7 @@ function formatChartResponse(chartData, chartType, config = {}, message = 'Chart
   return formatResponse(chartData, message, meta);
 }
 
-/**
- * Export response formatter
- * @param {string} filename - Export filename
- * @param {string} format - Export format
- * @param {number} recordCount - Number of records exported
- * @param {string} message - Success message
- * @returns {Object} Formatted export response
- */
+
 function formatExportResponse(filename, format, recordCount, message = 'Export generated successfully') {
   const meta = {
     export: {
@@ -143,12 +99,7 @@ function formatExportResponse(filename, format, recordCount, message = 'Export g
   return formatResponse({ filename }, message, meta);
 }
 
-/**
- * Validation error response formatter
- * @param {Array} validationErrors - Array of validation errors
- * @param {string} message - Error message
- * @returns {Object} Formatted validation error response
- */
+
 function formatValidationErrorResponse(validationErrors, message = 'Validation failed') {
   const formattedErrors = validationErrors.map(error => ({
     field: error.param || error.field,
@@ -160,13 +111,7 @@ function formatValidationErrorResponse(validationErrors, message = 'Validation f
   return formatErrorResponse(message, 400, 'VALIDATION_ERROR', formattedErrors);
 }
 
-/**
- * Success response for create operations
- * @param {any} data - Created resource data
- * @param {string} resourceType - Type of resource created
- * @param {string} id - Resource ID
- * @returns {Object} Formatted create response
- */
+
 function formatCreateResponse(data, resourceType = 'Resource', id = null) {
   const message = `${resourceType} created successfully`;
   const meta = {
@@ -177,13 +122,7 @@ function formatCreateResponse(data, resourceType = 'Resource', id = null) {
   return formatResponse(data, message, meta);
 }
 
-/**
- * Success response for update operations
- * @param {any} data - Updated resource data
- * @param {string} resourceType - Type of resource updated
- * @param {string} id - Resource ID
- * @returns {Object} Formatted update response
- */
+
 function formatUpdateResponse(data, resourceType = 'Resource', id = null) {
   const message = `${resourceType} updated successfully`;
   const meta = {
@@ -195,12 +134,7 @@ function formatUpdateResponse(data, resourceType = 'Resource', id = null) {
   return formatResponse(data, message, meta);
 }
 
-/**
- * Success response for delete operations
- * @param {string} resourceType - Type of resource deleted
- * @param {string} id - Resource ID
- * @returns {Object} Formatted delete response
- */
+
 function formatDeleteResponse(resourceType = 'Resource', id) {
   const message = `${resourceType} deleted successfully`;
   const meta = {
@@ -212,13 +146,7 @@ function formatDeleteResponse(resourceType = 'Resource', id) {
   return formatResponse(null, message, meta);
 }
 
-/**
- * Bulk operation response formatter
- * @param {Object} results - Bulk operation results
- * @param {string} operation - Operation type (create, update, delete)
- * @param {string} resourceType - Type of resource
- * @returns {Object} Formatted bulk response
- */
+
 function formatBulkResponse(results, operation, resourceType = 'Resources') {
   const { successful = 0, failed = 0, errors = [] } = results;
   const total = successful + failed;
@@ -243,14 +171,7 @@ function formatBulkResponse(results, operation, resourceType = 'Resources') {
   return formatResponse(responseData, message, meta);
 }
 
-/**
- * Cache response formatter
- * @param {any} data - Cached data
- * @param {string} message - Success message
- * @param {boolean} fromCache - Whether data was served from cache
- * @param {number} ttl - Time to live in seconds
- * @returns {Object} Formatted cache response
- */
+
 function formatCacheResponse(data, message, fromCache = false, ttl = null) {
   const meta = {
     cache: {
@@ -266,12 +187,7 @@ function formatCacheResponse(data, message, fromCache = false, ttl = null) {
   return formatResponse(data, message, meta);
 }
 
-/**
- * Health check response formatter
- * @param {Object} healthData - Health check data
- * @param {string} status - Overall status (healthy, degraded, unhealthy)
- * @returns {Object} Formatted health response
- */
+
 function formatHealthResponse(healthData, status = 'healthy') {
   const message = `System status: ${status}`;
   const meta = {
@@ -282,13 +198,7 @@ function formatHealthResponse(healthData, status = 'healthy') {
   return formatResponse(healthData, message, meta);
 }
 
-/**
- * File upload response formatter
- * @param {Object} fileData - File upload data
- * @param {string} filename - Uploaded filename
- * @param {number} size - File size in bytes
- * @returns {Object} Formatted upload response
- */
+
 function formatUploadResponse(fileData, filename, size) {
   const message = 'File uploaded successfully';
   const meta = {
@@ -303,15 +213,7 @@ function formatUploadResponse(fileData, filename, size) {
   return formatResponse(fileData, message, meta);
 }
 
-/**
- * Search results response formatter
- * @param {Array} results - Search results
- * @param {string} query - Search query
- * @param {Object} filters - Applied filters
- * @param {number} totalResults - Total number of results
- * @param {number} searchTime - Search execution time in ms
- * @returns {Object} Formatted search response
- */
+
 function formatSearchResponse(results, query, filters = {}, totalResults = null, searchTime = null) {
   const message = `Search completed. Found ${totalResults || results.length} results`;
   
@@ -328,11 +230,7 @@ function formatSearchResponse(results, query, filters = {}, totalResults = null,
   return formatResponse(results, message, meta);
 }
 
-/**
- * Helper function to format file sizes
- * @param {number} bytes - File size in bytes
- * @returns {string} Formatted file size
- */
+
 function formatFileSize(bytes) {
   if (bytes === 0) return '0 Bytes';
   
@@ -343,13 +241,7 @@ function formatFileSize(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-/**
- * Helper function to format currency values
- * @param {number} amount - Amount to format
- * @param {string} currency - Currency code (default: USD)
- * @param {string} locale - Locale for formatting (default: en-US)
- * @returns {string} Formatted currency string
- */
+
 function formatCurrency(amount, currency = 'USD', locale = 'en-US') {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
@@ -357,21 +249,12 @@ function formatCurrency(amount, currency = 'USD', locale = 'en-US') {
   }).format(amount);
 }
 
-/**
- * Helper function to format percentages
- * @param {number} value - Value to format as percentage
- * @param {number} decimals - Number of decimal places
- * @returns {string} Formatted percentage string
- */
+
 function formatPercentage(value, decimals = 2) {
   return (value * 100).toFixed(decimals) + '%';
 }
 
-/**
- * Response wrapper for async route handlers
- * @param {Function} handler - Async route handler function
- * @returns {Function} Wrapped handler with error catching
- */
+
 function asyncHandler(handler) {
   return (req, res, next) => {
     Promise.resolve(handler(req, res, next)).catch(next);
