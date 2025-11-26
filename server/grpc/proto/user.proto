@@ -1,0 +1,322 @@
+syntax = "proto3";
+
+package user;
+
+// User Service Definition
+service UserService {
+    // Transaction Operations
+    rpc GetTransactions(TransactionRequest) returns (TransactionResponse);
+    rpc GetRecentTransactions(UserRequest) returns (TransactionResponse);
+    rpc GetTransactionById(TransactionByIdRequest) returns (TransactionSingleResponse);
+    rpc GetCurrentMonthSummary(UserRequest) returns (MonthlySummaryResponse);
+    rpc GetMonthlySummary(MonthlySummaryRequest) returns (MonthlySummaryResponse);
+    rpc GetSpendingTrends(UserRequest) returns (SpendingTrendsResponse);
+    rpc GetCategoryAnalysis(UserRequest) returns (CategoryAnalysisResponse);
+    
+    // Reminder Operations
+    rpc GetReminders(UserRequest) returns (ReminderResponse);
+    rpc GetReminderById(ReminderByIdRequest) returns (ReminderSingleResponse);
+    
+    // Goal Operations
+    rpc GetGoals(GoalRequest) returns (GoalResponse);
+    rpc GetGoalById(GoalByIdRequest) returns (GoalSingleResponse);
+    rpc GetDashboardStats(UserRequest) returns (GoalDashboardResponse);
+    rpc GetGoalsSummary(UserRequest) returns (GoalSummaryResponse);
+    rpc GetGoalsByCategory(GoalByCategoryRequest) returns (GoalResponse);
+    rpc GetGoalsByPriority(GoalByPriorityRequest) returns (GoalResponse);
+    rpc GetOverdueGoals(UserRequest) returns (GoalResponse);
+    
+    // Analytics Operations
+    rpc GetDashboard(UserRequest) returns (DashboardResponse);
+    rpc GetMonthlyAnalytics(MonthlyAnalyticsRequest) returns (MonthlyAnalyticsResponse);
+    rpc GetCurrentMonthAnalytics(UserRequest) returns (MonthlyAnalyticsResponse);
+    rpc GetSpendingTrendsAnalytics(UserRequest) returns (SpendingTrendsAnalyticsResponse);
+    rpc GetCategoryAnalysisAnalytics(UserRequest) returns (CategoryAnalysisAnalyticsResponse);
+    rpc GetIncomeTrends(UserRequest) returns (IncomeTrendsResponse);
+    rpc GetIncomeSources(UserRequest) returns (IncomeSourcesResponse);
+    rpc GetGoalsProgress(UserRequest) returns (GoalsProgressResponse);
+    rpc GetSavingsRate(UserRequest) returns (SavingsRateResponse);
+    rpc GetSavingsTrends(UserRequest) returns (SavingsTrendsResponse);
+}
+
+// Common Messages
+message UserRequest {
+    string user_id = 1;
+}
+
+// Transaction Messages
+message TransactionRequest {
+    string user_id = 1;
+    string type = 2; // income, expense
+    string category = 3;
+    string start_date = 4;
+    string end_date = 5;
+    int32 limit = 6;
+    int32 skip = 7;
+}
+
+message TransactionByIdRequest {
+    string user_id = 1;
+    string transaction_id = 2;
+}
+
+message TransactionSingleResponse {
+    Transaction transaction = 1;
+    string message = 2;
+}
+
+message TransactionResponse {
+    repeated Transaction transactions = 1;
+    int32 total = 2;
+    string message = 3;
+}
+
+message Transaction {
+    string id = 1;
+    string description = 2;
+    double amount = 3;
+    string date = 4;
+    string category = 5;
+    string type = 6; // income, expense
+    string payment_method = 7;
+    bool is_recurring = 8;
+    string recurring_frequency = 9;
+    string created_at = 10;
+    string updated_at = 11;
+}
+
+message MonthlySummaryRequest {
+    string user_id = 1;
+    int32 month = 2;
+    int32 year = 3;
+}
+
+message MonthlySummaryResponse {
+    double total_income = 1;
+    double total_expense = 2;
+    double net_savings = 3;
+    int32 transaction_count = 4;
+    map<string, double> category_breakdown = 5;
+    string message = 6;
+}
+
+message SpendingTrendsResponse {
+    repeated MonthlyTrend trends = 1;
+    string message = 2;
+}
+
+message MonthlyTrend {
+    string month = 1;
+    int32 year = 2;
+    double amount = 3;
+}
+
+message CategoryAnalysisResponse {
+    repeated CategoryData categories = 1;
+    string message = 2;
+}
+
+message CategoryData {
+    string category = 1;
+    double amount = 2;
+    int32 transaction_count = 3;
+    double percentage = 4;
+}
+
+// Reminder Messages
+message ReminderByIdRequest {
+    string user_id = 1;
+    string reminder_id = 2;
+}
+
+message ReminderSingleResponse {
+    Reminder reminder = 1;
+    string message = 2;
+}
+
+message ReminderResponse {
+    repeated Reminder reminders = 1;
+    int32 total = 2;
+    string message = 3;
+}
+
+message Reminder {
+    string id = 1;
+    string title = 2;
+    string date = 3;
+    string calendar_event_id = 4;
+    string created_at = 5;
+    string updated_at = 6;
+}
+
+// Goal Messages
+message GoalRequest {
+    string user_id = 1;
+    string status = 2; // Active, Completed, Paused
+}
+
+message GoalByIdRequest {
+    string user_id = 1;
+    string goal_id = 2;
+}
+
+message GoalByCategoryRequest {
+    string user_id = 1;
+    string category = 2;
+}
+
+message GoalByPriorityRequest {
+    string user_id = 1;
+    string priority = 2;
+}
+
+message GoalSingleResponse {
+    Goal goal = 1;
+    string message = 2;
+}
+
+message GoalResponse {
+    repeated Goal goals = 1;
+    int32 total = 2;
+    string message = 3;
+}
+
+message Goal {
+    string id = 1;
+    string name = 2;
+    string category = 3;
+    string priority = 4;
+    double target_amount = 5;
+    double saved_amount = 6;
+    string target_date = 7;
+    string status = 8;
+    string completed_date = 9;
+    string description = 10;
+    int32 progress_percentage = 11;
+    double remaining_amount = 12;
+    int32 days_remaining = 13;
+    bool is_overdue = 14;
+    string created_at = 15;
+    string updated_at = 16;
+}
+
+message GoalDashboardResponse {
+    int32 total_goals = 1;
+    int32 active_goals = 2;
+    int32 completed_goals = 3;
+    double total_target_amount = 4;
+    double total_saved_amount = 5;
+    int32 overall_progress = 6;
+    repeated Goal recent_goals = 7;
+    string message = 8;
+}
+
+message GoalSummaryResponse {
+    int32 total_goals = 1;
+    int32 active_goals = 2;
+    int32 completed_goals = 3;
+    int32 paused_goals = 4;
+    double total_target_amount = 5;
+    double total_saved_amount = 6;
+    int32 overall_progress = 7;
+    string message = 8;
+}
+
+// Analytics Messages
+message MonthlyAnalyticsRequest {
+    string user_id = 1;
+    int32 year = 2;
+    int32 month = 3;
+}
+
+message DashboardResponse {
+    double total_income = 1;
+    double total_expense = 2;
+    double net_savings = 3;
+    double savings_rate = 4;
+    int32 transaction_count = 5;
+    int32 active_goals = 6;
+    map<string, double> top_categories = 7;
+    repeated MonthlyTrend recent_trends = 8;
+    string message = 9;
+}
+
+message MonthlyAnalyticsResponse {
+    int32 month = 1;
+    int32 year = 2;
+    double total_income = 3;
+    double total_expense = 4;
+    double net_savings = 5;
+    double savings_rate = 6;
+    map<string, double> expense_by_category = 7;
+    map<string, double> income_by_source = 8;
+    int32 transaction_count = 9;
+    string message = 10;
+}
+
+message SpendingTrendsAnalyticsResponse {
+    repeated MonthlyTrend monthly_trends = 1;
+    double average_monthly_spending = 2;
+    double highest_spending_month = 3;
+    double lowest_spending_month = 4;
+    string message = 5;
+}
+
+message CategoryAnalysisAnalyticsResponse {
+    repeated CategoryData categories = 1;
+    string top_category = 2;
+    double top_category_amount = 3;
+    string message = 4;
+}
+
+message IncomeTrendsResponse {
+    repeated MonthlyTrend monthly_income = 1;
+    double average_monthly_income = 2;
+    double total_income = 3;
+    string message = 4;
+}
+
+message IncomeSourcesResponse {
+    map<string, double> sources = 1;
+    string top_source = 2;
+    double top_source_amount = 3;
+    string message = 4;
+}
+
+message GoalsProgressResponse {
+    repeated GoalProgress goals = 1;
+    double overall_progress = 2;
+    int32 on_track_count = 3;
+    int32 behind_count = 4;
+    string message = 5;
+}
+
+message GoalProgress {
+    string goal_id = 1;
+    string goal_name = 2;
+    int32 progress_percentage = 3;
+    double amount_remaining = 4;
+    int32 days_remaining = 5;
+    bool is_on_track = 6;
+}
+
+message SavingsRateResponse {
+    double current_rate = 1;
+    double average_rate = 2;
+    repeated MonthlyRate monthly_rates = 3;
+    string message = 4;
+}
+
+message MonthlyRate {
+    string month = 1;
+    int32 year = 2;
+    double rate = 3;
+}
+
+message SavingsTrendsResponse {
+    repeated MonthlyTrend monthly_savings = 1;
+    double average_monthly_savings = 2;
+    double total_savings = 3;
+    string trend_direction = 4; // increasing, decreasing, stable
+    string message = 5;
+}
