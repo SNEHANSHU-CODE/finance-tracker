@@ -1,0 +1,1 @@
+/* ...existing code from sync/syncManager.ts... */

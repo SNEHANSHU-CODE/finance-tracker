@@ -80,8 +80,16 @@ export const settingsService = {
   getPreferences: async () => {
     try {
       const response = await api.get('/settings/preferences');
-      return response.data;
+      console.log('Get preferences response:', response.data);
+      // Extract preferences from nested response data and wrap in preferences object for Redux
+      const pref = response.data?.data?.preferences || response.data?.preferences || response.data;
+      return { preferences: pref };
     } catch (error) {
+      console.error('Get preferences error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       throw new Error(error.response?.data?.message || 'Failed to fetch preferences');
     }
   },
@@ -89,10 +97,57 @@ export const settingsService = {
   // Update user preferences
   updatePreferences: async (preferences) => {
     try {
+      console.log('=== UPDATE PREFERENCES SERVICE ===');
+      console.log('Sending preferences to server:', JSON.stringify(preferences, null, 2));
+      console.log('Request URL:', `${API_URL}/settings/preferences`);
+      console.log('Request method: PATCH');
+      
       const response = await api.patch('/settings/preferences', preferences);
-      return response.data;
+      
+      console.log('Update preferences response received:', response.status);
+      console.log('Response data structure:', {
+        hasData: !!response.data,
+        hasDataData: !!response.data?.data,
+        hasDataDataPreferences: !!response.data?.data?.preferences,
+        hasDataPreferences: !!response.data?.preferences,
+        responseStructure: Object.keys(response.data || {})
+      });
+      console.log('Full response data:', JSON.stringify(response.data, null, 2));
+      
+      // Extract preferences from nested response data and wrap in preferences object for Redux
+      const pref = response.data?.data?.preferences || response.data?.preferences || response.data;
+      console.log('Extracted preferences:', JSON.stringify(pref, null, 2));
+      
+      return { preferences: pref };
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to update preferences');
+      console.error('=== UPDATE PREFERENCES ERROR ===');
+      console.error('Error message:', error.message);
+      console.error('Error response status:', error.response?.status);
+      console.error('Error response data:', error.response?.data);
+      console.error('Full error object:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers
+        }
+      });
+      throw new Error(error.response?.data?.message || error.message || 'Failed to update preferences');
+    }
+  },
+
+  // Reset user preferences
+  resetPreferences: async () => {
+    try {
+      const response = await api.post('/settings/preferences/reset');
+      // Extract preferences from nested response data and wrap in preferences object for Redux
+      const pref = response.data?.data?.preferences || response.data?.preferences || response.data;
+      return { preferences: pref };
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to reset preferences');
     }
   },
 
@@ -100,8 +155,16 @@ export const settingsService = {
   getActiveSessions: async () => {
     try {
       const response = await api.get('/settings/sessions');
-      return response.data;
+      console.log('Get active sessions response:', response.data);
+      // Extract sessions from nested response data
+      const sessions = response.data?.data?.sessions || response.data?.sessions || [];
+      return { sessions };
     } catch (error) {
+      console.error('Get active sessions error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       throw new Error(error.response?.data?.message || 'Failed to fetch active sessions');
     }
   },
@@ -123,16 +186,6 @@ export const settingsService = {
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to terminate all sessions');
-    }
-  },
-
-  // Reset preferences to default
-  resetPreferences: async () => {
-    try {
-      const response = await api.post('/settings/preferences/reset');
-      return response.data;
-    } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to reset preferences');
     }
   },
 

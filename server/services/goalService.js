@@ -341,6 +341,58 @@ class GoalService {
       throw new Error(`Failed to calculate monthly savings needed: ${error.message}`);
     }
   }
+
+  // Check if user has already migrated guest data
+  async checkGuestMigration(userId) {
+    try {
+      const existingGoal = await Goal.findOne({
+        userId,
+        isGuestMigrated: true
+      });
+      return !!existingGoal;
+    } catch (error) {
+      console.error('Error checking guest migration:', error);
+      return false;
+    }
+  }
+
+  // Migrate guest data to user account
+  async migrateGuestData(userId, goals) {
+    try {
+      const migratedGoals = [];
+
+      for (const guestGoal of goals) {
+        const goal = new Goal({
+          userId,
+          name: guestGoal.name,
+          description: guestGoal.description,
+          targetAmount: guestGoal.targetAmount,
+          currentAmount: guestGoal.currentAmount || 0,
+          category: guestGoal.category,
+          priority: guestGoal.priority || 'medium',
+          targetDate: guestGoal.targetDate,
+          status: guestGoal.status || 'active',
+          isGuestMigrated: true,
+          migratedAt: new Date()
+        });
+
+        await goal.save();
+        migratedGoals.push(goal);
+      }
+
+      return {
+        success: true,
+        message: `${migratedGoals.length} goals migrated successfully`,
+        data: {
+          migratedCount: migratedGoals.length,
+          goals: migratedGoals
+        }
+      };
+    } catch (error) {
+      console.error('Error migrating guest data:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new GoalService();

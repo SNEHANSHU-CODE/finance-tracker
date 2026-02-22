@@ -40,106 +40,143 @@ class TransactionService {
 
   // Get transactions by user with filters
   async getTransactions(userId, options = {}) {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      type,
+      category,
+      startDate,
+      endDate,
+      paymentMethod,
+      tags,
+      searchTerm,
+      sortBy = 'date',
+      sortOrder = 'desc'
+    } = options;
 
+    const { ObjectId } = require('mongoose').Types;
 
-    console.log("userId received in Service:", userId);
-
-    try {
-      const {
-        page = 1,
-        limit = 20,
-        type,
-        category,
-        startDate,
-        endDate,
-        paymentMethod,
-        tags,
-        searchTerm,
-        sortBy = 'date',
-        sortOrder = 'desc'
-      } = options;
-
-      console.log("getting options", options);
-
-      const { ObjectId } = require('mongoose').Types;
-
-      if (!userId || typeof userId !== 'string' || !ObjectId.isValid(userId)) {
-        throw new Error('Invalid or missing userId');
-      }
-
-      const query = { userId: new ObjectId(userId) };
-
-      // Apply filters
-      const isValid = (val) => val !== undefined && val !== null && val !== '';
-
-      if (type === 'Income' || type === 'Expense') {
-        query.type = type;
-      }
-
-      if (isValid(category)) {
-        query.category = category;
-      }
-
-      if (isValid(paymentMethod)) {
-        query.paymentMethod = paymentMethod;
-      }
-
-      if (Array.isArray(tags) && tags.length > 0) {
-        query.tags = { $in: tags };
-      }
-
-      if (isValid(startDate) && isValid(endDate)) {
-        query.date = {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate)
-        };
-      }
-
-      // Add search functionality
-      if (isValid(searchTerm)) {
-        const searchRegex = new RegExp(searchTerm, 'i'); // Case-insensitive search
-        query.$or = [
-          { description: searchRegex },
-          { notes: searchRegex },
-          { category: searchRegex },
-          { paymentMethod: searchRegex }
-        ];
-
-        // If search term is a number, also search in amount
-        if (!isNaN(searchTerm)) {
-          query.$or.push({ amount: parseFloat(searchTerm) });
-        }
-      }
-
-      const skip = (page - 1) * limit;
-      const sortOptions = {};
-      sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
-
-      const transactions = await Transaction.find(query)
-        .populate('goalId', 'name category')
-        .sort(sortOptions)
-        .skip(skip)
-        .limit(parseInt(limit));
-
-      const total = await Transaction.countDocuments(query);
-
-      return {
-        success: true,
-        data: {
-          transactions,
-          pagination: {
-            currentPage: parseInt(page),
-            totalPages: Math.ceil(total / limit),
-            totalItems: total,
-            itemsPerPage: parseInt(limit)
-          }
-        }
-      };
-    } catch (error) {
-      console.error('Error getting transactions:', error);
-      throw error;
+    if (!userId || typeof userId !== 'string' || !ObjectId.isValid(userId)) {
+      throw new Error('Invalid or missing userId');
     }
+
+    const query = { userId: new ObjectId(userId) };
+
+    // Helper function to check if value is valid and not empty
+    const isValid = (val) => {
+      if (val === undefined || val === null || val === '' || val === 'undefined') {
+        return false;
+      }
+      // Handle arrays (from duplicate query params)
+      if (Array.isArray(val)) {
+        return val.length > 0 && val[0] !== '' && val[0] !== undefined && val[0] !== null;
+      }
+      return true;
+    };
+
+    // Type filter - handle both string and array
+    const typeValue = Array.isArray(type) ? type[0] : type;
+    if (typeValue && typeValue !== 'all' && (typeValue === 'Income' || typeValue === 'Expense')) {
+      query.type = typeValue;
+    }
+
+    // Category filter
+    if (isValid(category)) {
+      const categoryValue = Array.isArray(category) ? category[0] : category;
+      query.category = categoryValue;
+    }
+
+    // Payment method filter
+    if (isValid(paymentMethod)) {
+      const paymentMethodValue = Array.isArray(paymentMethod) ? paymentMethod[0] : paymentMethod;
+      query.paymentMethod = paymentMethodValue;
+    }
+
+    // Tags filter
+    if (Array.isArray(tags) && tags.length > 0) {
+      query.tags = { $in: tags };
+    }
+
+    // Date range filter - ONLY add if at least one valid date exists
+    const hasValidStartDate = isValid(startDate);
+    const hasValidEndDate = isValid(endDate);
+
+    if (hasValidStartDate || hasValidEndDate) {
+      const dateQuery = {};
+
+      if (hasValidStartDate) {
+        const startDateValue = Array.isArray(startDate) ? startDate[0] : startDate;
+        const start = new Date(startDateValue);
+        if (!isNaN(start.getTime())) {
+          dateQuery.$gte = start;
+        }
+      }
+
+      if (hasValidEndDate) {
+        const endDateValue = Array.isArray(endDate) ? endDate[0] : endDate;
+        const end = new Date(endDateValue);
+        if (!isNaN(end.getTime())) {
+          // Set to end of day
+          end.setHours(23, 59, 59, 999);
+          dateQuery.$lte = end;
+        }
+      }
+
+      // Only add date filter if we have at least one valid date
+      if (Object.keys(dateQuery).length > 0) {
+        query.date = dateQuery;
+      }
+    }
+
+    // Search functionality
+    if (isValid(searchTerm)) {
+      const searchValue = Array.isArray(searchTerm) ? searchTerm[0] : searchTerm;
+      const searchRegex = new RegExp(searchValue, 'i');
+      query.$or = [
+        { description: searchRegex },
+        { notes: searchRegex },
+        { category: searchRegex },
+        { paymentMethod: searchRegex }
+      ];
+
+      // If search term is a number, also search in amount
+      if (!isNaN(searchValue)) {
+        query.$or.push({ amount: parseFloat(searchValue) });
+      }
+    }
+
+    // Pagination
+    const skip = (page - 1) * limit;
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Execute query
+    const transactions = await Transaction.find(query)
+      .populate('goalId', 'name category')
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Transaction.countDocuments(query);
+
+    return {
+      success: true,
+      data: {
+        transactions,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalItems: total,
+          itemsPerPage: parseInt(limit)
+        }
+      }
+    };
+  } catch (error) {
+    console.error('Error getting transactions:', error);
+    throw error;
   }
+}
 
   // Get single transaction by ID
   async getTransactionById(transactionId, userId) {
@@ -232,19 +269,19 @@ class TransactionService {
   }
 
   // Get category analysis
-  async getCategoryAnalysis(userId, startDate, endDate) {
-    try {
-      const analysis = await Transaction.getCategoryAnalysis(userId, startDate, endDate);
+async getCategoryAnalysis(userId) {
+  try {
+    const analysis = await Transaction.getCategoryAnalysis(userId);
 
-      return {
-        success: true,
-        data: analysis
-      };
-    } catch (error) {
-      console.error('Error getting category analysis:', error);
-      throw error;
-    }
+    return {
+      success: true,
+      data: analysis
+    };
+  } catch (error) {
+    console.error('Error getting category analysis:', error);
+    throw error;
   }
+}
 
   // Get recent transactions
   async getRecentTransactions(userId, limit = 5) {
@@ -379,6 +416,66 @@ class TransactionService {
       };
     } catch (error) {
       console.error('Error getting spending trends:', error);
+      throw error;
+    }
+  }
+
+  // Check if user has already migrated guest data
+  async checkGuestMigration(userId) {
+    try {
+      const existingTransaction = await Transaction.findOne({
+        userId,
+        isGuestMigrated: true
+      });
+      return !!existingTransaction;
+    } catch (error) {
+      console.error('Error checking guest migration:', error);
+      return false;
+    }
+  }
+
+  // Migrate guest data to user account
+  async migrateGuestData(userId, transactions) {
+    try {
+      const migratedTransactions = [];
+
+      for (const guestTransaction of transactions) {
+        // Ensure amount has correct sign based on type
+        let amount = guestTransaction.amount;
+        if (guestTransaction.type === 'Expense' && amount > 0) {
+          amount = -Math.abs(amount);
+        } else if (guestTransaction.type === 'Income' && amount < 0) {
+          amount = Math.abs(amount);
+        }
+
+        const transaction = new Transaction({
+          userId,
+          description: guestTransaction.description,
+          amount,
+          type: guestTransaction.type,
+          category: guestTransaction.category,
+          date: guestTransaction.date,
+          paymentMethod: guestTransaction.paymentMethod,
+          notes: guestTransaction.notes,
+          tags: guestTransaction.tags,
+          isGuestMigrated: true,
+          migratedAt: new Date()
+        });
+
+        await transaction.save();
+        migratedTransactions.push(transaction);
+      }
+
+      return {
+        success: true,
+        message: `${migratedTransactions.length} transactions migrated successfully`,
+        data: {
+          migratedCount: migratedTransactions.length,
+          transactions: migratedTransactions
+        }
+      };
+    } catch (error) {
+      console.error('Error migrating guest data:', error);
       throw error;
     }
   }

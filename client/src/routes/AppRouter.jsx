@@ -6,6 +6,7 @@ import { useAuthInitialization } from '../hooks/useAuthInitialization';
 import NotFound from '../components/NotFound';
 import Login from '../pages/Login';
 import Signup from '../pages/Signup';
+import OAuthCallback from '../pages/OAuthCallback'; 
 import LandingPage from '../pages/LandingPage';
 import DashboardHome from '../pages/DashboardHome';
 import LoadingSpinner from '../components/LodingSpinner';
@@ -25,9 +26,9 @@ import Profile from '../pages/Profile';
 import Reminders from '../pages/Reminders';
 
 // Protected Route Component
-const ProtectedRoute = ({ children }) => {
-    const { isAuthenticated } = useSelector((state) => state.auth);
-    return isAuthenticated ? children : <Navigate to="/login" replace />;
+const ProtectedRoute = ({ children, guestAllowed = false }) => {
+    const { isAuthenticated, isGuest } = useSelector((state) => state.auth);
+    return (isAuthenticated && (!guestAllowed || !isGuest)) || (isGuest && guestAllowed) ? children : <Navigate to="/login" replace />;
 };
 
 // Public Route Component (redirect to dashboard if authenticated)
@@ -49,6 +50,7 @@ export default function AppRouter() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+            <Route path="/oauth/callback" element={<PublicRoute><OAuthCallback /></PublicRoute>} />
             <Route path="/resetpassword" element={<PublicRoute><ResetPassword /></PublicRoute>} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/service" element={<TermsOfService />} />
@@ -59,7 +61,7 @@ export default function AppRouter() {
             <Route 
                 path="/dashboard" 
                 element={
-                    <ProtectedRoute>
+                    <ProtectedRoute guestAllowed={true}>
                         <DashboardHome />
                     </ProtectedRoute>
                 } 
@@ -68,11 +70,27 @@ export default function AppRouter() {
 
                 {/* Nested routes */}
                 <Route path="transactions" element={<Transactions />} />
-                <Route path="analytics" element={<Analytics />} />
+                <Route path="analytics" element={
+                    <ProtectedRoute guestAllowed={false}>
+                        <Analytics />
+                    </ProtectedRoute>
+                } />
                 <Route path="goals" element={<Goals />} />
-                <Route path="reminders" element={<Reminders />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="profile" element={<Profile />} />
+                <Route path="reminders" element={
+                    <ProtectedRoute guestAllowed={false}>
+                        <Reminders />
+                    </ProtectedRoute>
+                } />
+                <Route path="settings" element={
+                    <ProtectedRoute guestAllowed={false}>
+                        <Settings />
+                    </ProtectedRoute>
+                } />
+                <Route path="profile" element={
+                    <ProtectedRoute guestAllowed={false}>
+                        <Profile />
+                    </ProtectedRoute>
+                } />
                 {/* Redirect unknown dashboard routes to main dashboard */}
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>

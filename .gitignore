@@ -29,3 +29,19 @@ dev-dist
 #Server
 node_modules
 .env
+
+#Python Server
+# Virtual Environment
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# API Testing
+/chatServer/app/api
+
+# OS files
+Thumbs.db

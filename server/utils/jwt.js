@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
 const JWT_RESET_SECRET = process.env.JWT_RESET_SECRET || 'your-reset-secret-key';
+const JWT_REGISTRATION_SECRET = process.env.JWT_REGISTRATION_SECRET || 'your-registration-secret-key';
 
 class JWTUtils {
   static generateAccessToken(userId) {
@@ -39,9 +40,9 @@ class JWTUtils {
 
   static verifyResetToken(token){
     try{
-      return jwt.verify(token,JWT_RESET_SECRET);
+      return jwt.verify(token, JWT_RESET_SECRET);
     } catch (error) {
-      throw new Error('Invalic reset token');
+      throw new Error('Invalid reset token');
     }
   }
 
@@ -51,8 +52,6 @@ class JWTUtils {
       refreshToken: this.generateRefreshToken(userId)
     };
   }
-
-
 
   static generatePasswordResetToken(email) {
     return jwt.sign(
@@ -67,6 +66,30 @@ class JWTUtils {
     );
   }
 
+  static generateRegistrationToken(email) {
+    return jwt.sign(
+      {
+        email: email.toLowerCase(),
+        type: 'registration'
+      },
+      JWT_REGISTRATION_SECRET,
+      {
+        expiresIn: '15m' // 15 minutes for registration completion
+      }
+    );
+  }
+
+  static verifyRegistrationToken(token) {
+    try {
+      const decoded = jwt.verify(token, JWT_REGISTRATION_SECRET);
+      if (decoded.type !== 'registration') {
+        throw new Error('Invalid token type');
+      }
+      return decoded;
+    } catch (error) {
+      throw new Error('Invalid or expired registration token');
+    }
+  }
 }
 
 module.exports = JWTUtils;

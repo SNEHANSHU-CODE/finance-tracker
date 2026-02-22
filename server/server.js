@@ -6,6 +6,7 @@ const connectDB = require('./config/db');
 const { redisService } = require('./config/redis');
 const emailService = require('./services/emailService');
 const reminderService = require('./services/reminderService');
+const queryLogger = require('./middleware/queryLogger');
 
 // Importing all Routes
 const authRoutes = require('./routes/authRoutes');
@@ -14,8 +15,8 @@ const transactionRoutes = require('./routes/transactionRoutes');
 const goalRouter = require('./routes/goalRoutes');
 const analyticsRouter = require('./routes/analyticsRoutes');
 const reminderRouter = require('./routes/reminderRoutes');
-const googleRouter = require('./routes/googleRoutes');
 const settingsRouter = require('./routes/settingsRoutes');
+const googleRouter = require('./routes/googleRoutes');
 
 // Load .env
 dotenv.config();
@@ -26,17 +27,14 @@ connectDB();
 const app = express();
 
 // Middleware
+// Trust reverse proxy headers (so req.ip / x-forwarded-for works correctly in prod)
+// app.set('trust proxy', true);
 const corsOptions = {
   origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://finance-tracker-ialp.onrender.com',
-    'https://financetracker.space',
-    'http://financetracker.space',
-    'http://localhost:4173'
+    process.env.CLIENT_URL,
   ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'x-timezone', 'x-request-timestamp', 'x-locale'],
   exposedHeaders: ['Set-Cookie']
 };
@@ -44,8 +42,16 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 app.use(express.json());
-app.use(cookieParser()); 
+app.use(cookieParser());
+// Performance monitoring middleware - logs slow queries
+app.use(queryLogger);
 
+// Import Google Controller for direct routes
+const GoogleOAuthController = require('./auth/controllers/google.controller');
+
+// Direct route for Google OAuth callback (not under /api)
+// Google redirects to http://localhost:5000/auth/google
+app.get('/auth/google', GoogleOAuthController.handleCallback);
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -54,8 +60,8 @@ app.use('/api/transaction', transactionRoutes);
 app.use('/api/goals', goalRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/reminders', reminderRouter);
-app.use('/api/google', googleRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/google', googleRouter); 
 
 
 //Keep my server alive
@@ -63,6 +69,8 @@ app.get('/api/ping', (req, res) => {
   res.send('pong');
 });
 
+// Initialize token cleanup job
+const { initializeTokenCleanupJob } = require('./jobs/tokenCleanup');
 
 // Initialize Redis and start server
 async function initializeRedis() {
@@ -75,6 +83,14 @@ async function initializeRedis() {
     const emailConnected = await emailService.verifyConnection();
     if (!emailConnected) {
       console.warn('Email service verification failed, but server will continue');
+    }
+    
+    // Start token cleanup job
+    try {
+      initializeTokenCleanupJob();
+      console.log('✅ Token cleanup job initialized');
+    } catch (error) {
+      console.warn('⚠️ Token cleanup job initialization failed:', error.message);
     }
 
   } catch (error) {
@@ -105,4 +121,6 @@ startReminderChecker();
 
 // Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

@@ -17,11 +17,17 @@ import {
   updateUserPreferences, 
   fetchUserPreferences,
   resetUserPreferences,
-  clearPreferencesError 
+  clearPreferencesError,
+  fetchActiveSessions,
+  terminateSessionAction,
+  terminateAllSessionsAction
 } from "../app/authSlice";
+import SessionInfo from "../components/SessionInfo";
+import { usePreferences } from "../hooks/usePreferences";
 
 export default function Settings() {
   const dispatch = useDispatch();
+  const { t } = usePreferences();
   
   // Redux state
   const { 
@@ -29,7 +35,10 @@ export default function Settings() {
     preferencesLoading, 
     preferencesError,
     user,
-    isAuthenticated 
+    isAuthenticated,
+    sessions,
+    sessionsLoading,
+    sessionsError
   } = useSelector((state) => state.auth);
 
   // Local state for form handling
@@ -37,23 +46,12 @@ export default function Settings() {
   const [hasChanges, setHasChanges] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Mock active sessions (this would come from a sessions API)
-  const activeSessions = [
-    { 
-      id: 1, 
-      device: "Chrome on Windows", 
-      location: "Bangalore, IND", 
-      lastActive: "Active now", 
-      current: true 
-    },
-    { 
-      id: 2, 
-      device: "Mobile App on Samsung", 
-      location: "Bangalore, IND", 
-      lastActive: "2 hours ago", 
-      current: false 
+  // Fetch sessions on mount if authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchActiveSessions());
     }
-  ];
+  }, [dispatch, isAuthenticated]);
 
   // Update local preferences when Redux preferences change
   useEffect(() => {
@@ -91,16 +89,30 @@ export default function Settings() {
     if (!hasChanges) return;
     
     try {
-      await dispatch(updateUserPreferences(localPreferences)).unwrap();
+      console.log('=== SAVE PREFERENCES DEBUG ===');
+      console.log('Local preferences to send:', JSON.stringify(localPreferences, null, 2));
+      console.log('Current Redux preferences:', JSON.stringify(preferences, null, 2));
+      console.log('User ID from state:', user?._id);
+      
+      const result = await dispatch(updateUserPreferences(localPreferences)).unwrap();
+      console.log('Save preferences result:', result);
+      
       setSaveSuccess(true);
       setHasChanges(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
-      console.error('Failed to save preferences:', error);
+      console.error('Failed to save preferences:', {
+        errorMessage: error,
+        errorType: typeof error,
+        errorDetails: error?.message || error?.data || error
+      });
     }
   };
 
   const handleResetPreferences = async () => {
-    if (window.confirm('Are you sure you want to reset all preferences to default values?')) {
+    if (window.confirm(t('reset_to_default') + '?')) {
       try {
         await dispatch(resetUserPreferences()).unwrap();
         setSaveSuccess(true);
@@ -119,7 +131,7 @@ export default function Settings() {
       <div className="container-fluid">
         <div className="row justify-content-center">
           <div className="col-12 col-md-6 text-center">
-            <p className="text-muted">Please log in to access settings.</p>
+            <p className="text-muted">{t('login')} {t('settings')}</p>
           </div>
         </div>
       </div>
@@ -132,8 +144,8 @@ export default function Settings() {
         <div className="col-12">
           {/* Header */}
           <div className="mb-4">
-            <h2 className="h4 mb-2">Settings</h2>
-            <p className="text-muted">Manage your account preferences and security settings</p>
+            <h2 className="h4 mb-2">{t('settings')}</h2>
+            <p className="text-muted">{t('manage_prefs_desc')}</p>
           </div>
 
           {/* Error Alert */}
@@ -152,9 +164,9 @@ export default function Settings() {
 
           {/* Success Alert */}
           {saveSuccess && (
-            <div className="alert alert-success fade show mb-4" role="alert">
+              <div className="alert alert-success fade show mb-4" role="alert">
               <FaCheck className="me-2" />
-              Preferences saved successfully!
+              {t('save_preferences')}
             </div>
           )}
 
@@ -167,11 +179,11 @@ export default function Settings() {
                   <div className="d-flex justify-content-between align-items-center">
                     <h5 className="mb-0 d-flex align-items-center">
                       <FaCog className="me-2" />
-                      Application Preferences
+                      {t('settings')}
                     </h5>
                     {hasChanges && (
                       <span className="badge bg-warning text-dark">
-                        Unsaved Changes
+                        {t('unsaved_changes')}
                       </span>
                     )}
                   </div>
@@ -181,7 +193,7 @@ export default function Settings() {
                     <div className="col-md-6">
                       <label className="form-label d-flex align-items-center">
                         <FaDollarSign className="me-2" />
-                        Currency
+                        {t('currency')}
                       </label>
                       <select
                         className="form-select"
@@ -189,9 +201,9 @@ export default function Settings() {
                         onChange={(e) => handlePreferenceChange('currency', e.target.value)}
                         disabled={preferencesLoading}
                       >
-                        <option value="INR">Indian Rupee (INR)</option>
-                        <option value="USD">US Dollar (USD)</option>
-                        <option value="EUR">Euro (EUR)</option>
+                        <option value="INR">{t('inr')}</option>
+                        <option value="USD">{t('usd')}</option>
+                        <option value="EUR">{t('eur')}</option>
                         <option value="GBP">British Pound (GBP)</option>
                         <option value="CAD">Canadian Dollar (CAD)</option>
                         <option value="AUD">Australian Dollar (AUD)</option>
@@ -201,7 +213,7 @@ export default function Settings() {
                     <div className="col-md-6">
                       <label className="form-label d-flex align-items-center">
                         <FaGlobe className="me-2" />
-                        Language
+                        {t('language')}
                       </label>
                       <select
                         className="form-select"
@@ -209,19 +221,19 @@ export default function Settings() {
                         onChange={(e) => handlePreferenceChange('language', e.target.value)}
                         disabled={preferencesLoading}
                       >
-                        <option value="en">English</option>
-                        <option value="hi">Hindi</option>
-                        <option value="es">Spanish</option>
-                        <option value="fr">French</option>
-                        <option value="de">German</option>
-                        <option value="it">Italian</option>
+                        <option value="en">{t('english')}</option>
+                        <option value="hi">{t('hindi')}</option>
+                        <option value="es">Español</option>
+                        <option value="de">Deutsch</option>
+                        <option value="it">Italiano</option>
+                        <option value="zh">中文</option>
                       </select>
                     </div>
 
                     <div className="col-md-6">
                       <label className="form-label d-flex align-items-center">
                         <FaPalette className="me-2" />
-                        Theme
+                        {t('theme')}
                       </label>
                       <select
                         className="form-select"
@@ -229,9 +241,9 @@ export default function Settings() {
                         onChange={(e) => handlePreferenceChange('theme', e.target.value)}
                         disabled={preferencesLoading}
                       >
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
-                        <option value="auto">Auto</option>
+                        <option value="light">{t('light')}</option>
+                        <option value="dark">{t('dark')}</option>
+                        <option value="auto">{t('auto')}</option>
                       </select>
                     </div>
                   </div>
@@ -242,7 +254,7 @@ export default function Settings() {
                       onClick={handleResetPreferences}
                       disabled={preferencesLoading}
                     >
-                      Reset to Default
+                      {t('reset_to_default')}
                     </button>
                     
                     <div className="d-flex gap-2">
@@ -254,12 +266,12 @@ export default function Settings() {
                         {preferencesLoading ? (
                           <>
                             <FaSpinner className="me-2 spinner-border spinner-border-sm" />
-                            Saving...
+                            {t('saving')}
                           </>
                         ) : (
                           <>
                             <FaSave className="me-2" />
-                            Save Preferences
+                            {t('save_preferences')}
                           </>
                         )}
                       </button>
@@ -272,47 +284,71 @@ export default function Settings() {
               <div className="card shadow-sm">
                 <div className="card-header bg-white border-bottom">
                   <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center">
-                    <h5 className="mb-2 mb-sm-0 d-flex align-items-center">
-                      <FaDesktop className="me-2" />
-                      Active Sessions
-                    </h5>
-                    <button className="btn btn-outline-danger btn-sm d-flex align-items-center">
-                      <FaSignOutAlt className="me-2" />
-                      Sign Out All
-                    </button>
+                    <div className="d-flex align-items-center gap-2">
+                        <h5 className="mb-0 d-flex align-items-center">
+                        <FaDesktop className="me-2" />
+                          {t('active_sessions')}
+                      </h5>
+                      <SessionInfo />
+                    </div>
+                    {sessions.length > 1 && (
+                      <button 
+                        className="btn btn-outline-danger btn-sm d-flex align-items-center"
+                        onClick={() => dispatch(terminateAllSessionsAction())}
+                        disabled={sessionsLoading}
+                      >
+                        <FaSignOutAlt className="me-2" />
+                          {sessionsLoading ? t('signing_out') : t('sign_out_all')}
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="card-body p-0">
-                  {activeSessions.map((session, index) => (
-                    <div key={session.id} className={`p-3 ${index !== activeSessions.length - 1 ? 'border-bottom' : ''}`}>
-                      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center">
-                        <div className="d-flex align-items-center mb-2 mb-sm-0">
-                          <div className="bg-info bg-opacity-10 rounded-circle p-2 me-3">
-                            {session.device.includes('Mobile') ? 
-                              <FaMobile className="text-info" /> : 
-                              <FaDesktop className="text-info" />
-                            }
-                          </div>
-                          <div>
-                            <div className="fw-medium d-flex flex-column flex-sm-row align-items-start align-items-sm-center">
-                              <span className="me-2">{session.device}</span>
-                              {session.current && (
-                                <span className="badge bg-success">Current</span>
-                              )}
-                            </div>
-                            <small className="text-muted">
-                              {session.location} • {session.lastActive}
-                            </small>
-                          </div>
-                        </div>
-                        {!session.current && (
-                          <button className="btn btn-outline-danger btn-sm">
-                            <FaSignOutAlt />
-                          </button>
-                        )}
-                      </div>
+                  {sessionsLoading && !sessions.length ? (
+                    <div className="p-3 text-center">
+                      <FaSpinner className="spinner-border me-2" />
+                        {t('loading_sessions')}
                     </div>
-                  ))}
+                  ) : sessions.length === 0 ? (
+                    <div className="p-3 text-center text-muted">
+                      {t('no_active_sessions')}
+                    </div>
+                  ) : (
+                    sessions.map((session, index) => (
+                      <div key={session._id} className={`p-3 ${index !== sessions.length - 1 ? 'border-bottom' : ''}`}>
+                        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center">
+                          <div className="d-flex align-items-center mb-2 mb-sm-0">
+                            <div className="bg-info bg-opacity-10 rounded-circle p-2 me-3">
+                              {session.device?.toLowerCase().includes('mobile') ? 
+                                <FaMobile className="text-info" /> : 
+                                <FaDesktop className="text-info" />
+                              }
+                            </div>
+                            <div>
+                              <div className="fw-medium d-flex flex-column flex-sm-row align-items-start align-items-sm-center">
+                                  <span className="me-2">{session.device || t('unknown_device')}</span>
+                                {session.isCurrent && (
+                                    <span className="badge bg-success">{t('current')}</span>
+                                )}
+                              </div>
+                              <small className="text-muted">
+                                  {session.location || t('location_unknown')} • {session.lastActive || t('just_now')}
+                              </small>
+                            </div>
+                          </div>
+                          {!session.isCurrent && (
+                            <button 
+                              className="btn btn-outline-danger btn-sm"
+                              onClick={() => dispatch(terminateSessionAction(session._id))}
+                              disabled={sessionsLoading}
+                            >
+                              <FaSignOutAlt />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -320,24 +356,24 @@ export default function Settings() {
               {user && (
                 <div className="card shadow-sm mt-4">
                   <div className="card-header bg-white border-bottom">
-                    <h5 className="mb-0">Current User Info</h5>
+                    <h5 className="mb-0">{t('current_user_info')}</h5>
                   </div>
                   <div className="card-body">
                     <div className="row">
                       <div className="col-md-6">
-                        <strong>Username:</strong> {user.username}
+                        <strong>{t('username')}:</strong> {user.username}
                       </div>
                       <div className="col-md-6">
-                        <strong>Email:</strong> {user.email}
+                        <strong>{t('email')}:</strong> {user.email}
                       </div>
                     </div>
                     <div className="row mt-2">
                       <div className="col-12">
-                        <strong>Current Preferences:</strong>
+                        <strong>{t('current_preferences')}:</strong>
                         <ul className="list-unstyled mt-1 ms-3">
-                          <li>Currency: {preferences.currency}</li>
-                          <li>Language: {preferences.language}</li>
-                          <li>Theme: {preferences.theme}</li>
+                          <li>{t('currency')}: {preferences.currency}</li>
+                          <li>{t('language')}: {preferences.language}</li>
+                          <li>{t('theme')}: {preferences.theme}</li>
                         </ul>
                       </div>
                     </div>

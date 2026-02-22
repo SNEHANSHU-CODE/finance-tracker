@@ -1,5 +1,7 @@
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
+const UAParser = require('ua-parser-js');
+const { isPrivateIp } = require('../utils/ip');
 
 const settingsService = {
   // Get user preferences
@@ -92,38 +94,42 @@ const settingsService = {
   },
 
   // Get active sessions (refresh tokens)
-  getActiveSessions: async (userId) => {
+  getActiveSessions: async (userId, currentToken) => {
     try {
       const user = await User.findById(userId).select('refreshTokens');
       if (!user) {
         throw new Error('User not found');
       }
 
-      // Format sessions with decoded info
+      // Format sessions using stored user-agent string on token entry
       const sessions = user.refreshTokens.map((tokenObj, index) => {
-        try {
-          // Decode token to get session info (without verification for display purposes)
-          const decoded = jwt.decode(tokenObj.token);
-          return {
-            id: tokenObj._id,
-            sessionIndex: index,
-            createdAt: tokenObj.createdAt,
-            expiresAt: new Date(tokenObj.createdAt.getTime() + (7 * 24 * 60 * 60 * 1000)), // 7 days
-            userAgent: decoded?.userAgent || 'Unknown',
-            ip: decoded?.ip || 'Unknown',
-            isCurrentSession: false // Will be set by comparing with current token
-          };
-        } catch (error) {
-          return {
-            id: tokenObj._id,
-            sessionIndex: index,
-            createdAt: tokenObj.createdAt,
-            expiresAt: new Date(tokenObj.createdAt.getTime() + (7 * 24 * 60 * 60 * 1000)),
-            userAgent: 'Unknown',
-            ip: 'Unknown',
-            isCurrentSession: false
-          };
+        const uaString = tokenObj.device || '';
+        const parser = new UAParser(uaString);
+        const browser = parser.getBrowser().name || 'Unknown Browser';
+        const os = parser.getOS().name || 'Unknown OS';
+        const deviceLabel = `${browser} on ${os}`;
+
+        const isCurrent = currentToken ? tokenObj.token === currentToken : false;
+        const ip = tokenObj.ip || 'Unknown';
+        let location = 'Unknown';
+        if (isCurrent) {
+          location = 'This device';
+        } else if (isPrivateIp(ip)) {
+          location = 'Local network';
         }
+
+        return {
+          _id: tokenObj._id,
+          sessionIndex: index,
+          createdAt: tokenObj.createdAt,
+          expiresAt: new Date(tokenObj.createdAt.getTime() + (7 * 24 * 60 * 60 * 1000)), // 7 days
+          device: deviceLabel,
+          userAgent: uaString || 'Unknown',
+          ip,
+          location,
+          isCurrent,
+          lastActive: tokenObj.createdAt,
+        };
       });
 
       return sessions;
@@ -133,21 +139,31 @@ const settingsService = {
   },
 
   // Terminate specific session
-  terminateSession: async (userId, sessionId) => {
+  terminateSession: async (userId, sessionId, currentToken) => {
     try {
       const user = await User.findById(userId);
       if (!user) {
         throw new Error('User not found');
       }
 
-      // Remove the specific refresh token
-      user.refreshTokens = user.refreshTokens.filter(
-        tokenObj => tokenObj._id.toString() !== sessionId
-      );
+      // Determine if the session being terminated is the current one
+      let wasCurrent = false;
+      const remaining = [];
+      for (const tokenObj of user.refreshTokens) {
+        if (tokenObj._id.toString() === sessionId) {
+          if (currentToken && tokenObj.token === currentToken) {
+            wasCurrent = true;
+          }
+          // skip adding to remaining -> effectively remove
+          continue;
+        }
+        remaining.push(tokenObj);
+      }
+      user.refreshTokens = remaining;
 
       await user.save();
-      
-      return { message: 'Session terminated successfully' };
+
+      return { message: 'Session terminated successfully', wasCurrent };
     } catch (error) {
       throw new Error(`Failed to terminate session: ${error.message}`);
     }

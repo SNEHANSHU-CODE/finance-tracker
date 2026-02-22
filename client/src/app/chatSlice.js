@@ -1,23 +1,23 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import chatService from '../services/chatService';
 
-// Connect to socket server
+// ==== ASYNC THUNKS ====
+
 export const connectSocket = createAsyncThunk(
   'chat/connectSocket',
   async (_, { getState, rejectWithValue }) => {
     try {
       const state = getState();
       const user = state.auth?.user;
-      const token = state.auth?.token;
-      
+      const token = state.auth?.accessToken;
       const userId = user?.id || user?.userId || user?._id;
-      
+
       chatService.connect(userId, token);
-      
-      return { 
+
+      return {
         connected: true,
         userId: userId || null,
-        isGuest: !userId
+        isGuest: !userId || !token,
       };
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to connect');
@@ -25,7 +25,6 @@ export const connectSocket = createAsyncThunk(
   }
 );
 
-// Disconnect from socket
 export const disconnectSocket = createAsyncThunk(
   'chat/disconnectSocket',
   async (_, { rejectWithValue }) => {
@@ -38,44 +37,61 @@ export const disconnectSocket = createAsyncThunk(
   }
 );
 
-// Send message via socket
 export const sendMessage = createAsyncThunk(
   'chat/sendMessage',
-  async (messageData, { getState, rejectWithValue, dispatch }) => {
+  async (messageData, { getState, rejectWithValue }) => {
     try {
-      // Check connection
-      if (!chatService.isSocketConnected()) {
-        throw new Error('Not connected to chat service');
+      const state = getState();
+      const messages = state.chat?.messages || [];
+
+      const messageText = typeof messageData === 'string' ? messageData : messageData.message;
+
+      if (!messageText || typeof messageText !== 'string' || !messageText.trim()) {
+        throw new Error('Invalid message');
       }
 
-      // Add user message immediately (optimistic update)
-      dispatch(addUserMessage(messageData));
-      
-      // Get conversation history from state
-      const messages = getState().chat.messages;
+      // Get last 10 messages for context
       const conversationHistory = messages
-        .filter(m => m.type === 'user' || m.type === 'bot')
-        .filter(m => !m.isError)
-        .slice(-10) // Last 10 messages for context
-        .map(m => ({ 
-          role: m.type === 'user' ? 'user' : 'assistant', 
-          content: m.message 
+        .filter(m => (m.type === 'user' || m.type === 'bot') && !m.isError)
+        .slice(-10)
+        .map(m => ({
+          role: m.type === 'user' ? 'user' : 'assistant',
+          content: m.message,
         }));
-      
-      // Send via socket and wait for response
-      const response = await chatService.sendMessage(
-        messageData.message,
-        conversationHistory
-      );
-      
-      return response;
+
+      // Ensure socket is connected
+      if (!chatService.isSocketConnected()) {
+        const user = state.auth?.user;
+        const token = state.auth?.accessToken;
+        const userId = user?.id || user?.userId || user?._id;
+        chatService.connect(userId, token);
+
+        let connected = false;
+        for (let i = 0; i < 50; i++) {
+          if (chatService.isSocketConnected()) {
+            connected = true;
+            break;
+          }
+          await new Promise(r => setTimeout(r, 100));
+        }
+
+        if (!connected) {
+          throw new Error('Chat service not available');
+        }
+      }
+
+      // Send message — resolves immediately with { sent: true }
+      // Bot response arrives independently via the 'bot_response' socket event
+      // and is handled in ChatBot.jsx via dispatch(addBotMessage(data))
+      const result = await chatService.sendMessage(messageText, conversationHistory);
+      return result;
+
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to send message');
     }
   }
 );
 
-// Get smart suggestions
 export const getSmartSuggestions = createAsyncThunk(
   'chat/getSmartSuggestions',
   async (_, { rejectWithValue }) => {
@@ -83,33 +99,32 @@ export const getSmartSuggestions = createAsyncThunk(
       if (!chatService.isSocketConnected()) {
         throw new Error('Not connected to chat service');
       }
-      
       chatService.getSuggestions();
       return { requested: true };
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to get suggestions');
+      return rejectWithValue(error.message);
     }
   }
 );
 
-// Rate chat response
 export const rateChatResponse = createAsyncThunk(
   'chat/rateChatResponse',
-  async ({ messageId, rating, feedback = null }, { rejectWithValue }) => {
+  async ({ messageId, rating, feedback }, { rejectWithValue }) => {
     try {
       if (!chatService.isSocketConnected()) {
         throw new Error('Not connected to chat service');
       }
-      
+      if (!['up', 'down'].includes(rating)) {
+        throw new Error('Invalid rating');
+      }
       chatService.rateMessage(messageId, rating, feedback);
       return { messageId, rating, feedback };
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to rate response');
+      return rejectWithValue(error.message);
     }
   }
 );
 
-// Clear chat history
 export const clearChatHistory = createAsyncThunk(
   'chat/clearChatHistory',
   async (_, { rejectWithValue }) => {
@@ -119,10 +134,12 @@ export const clearChatHistory = createAsyncThunk(
       }
       return { cleared: true };
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to clear chat');
+      return rejectWithValue(error.message);
     }
   }
 );
+
+// ==== INITIAL STATE ====
 
 const initialState = {
   messages: [],
@@ -135,33 +152,35 @@ const initialState = {
   sessionStats: {
     messagesCount: 0,
     startTime: null,
-    lastActivity: null
-  }
+    lastActivity: null,
+  },
 };
+
+// ==== SLICE ====
 
 const chatSlice = createSlice({
   name: 'chat',
   initialState,
   reducers: {
-    // Add user message immediately (optimistic update)
     addUserMessage: (state, action) => {
       const userMessage = {
-        id: `user-${Date.now()}`,
+        id: `user-${Date.now()}-${Math.random()}`,
         type: 'user',
         message: action.payload.message,
-        timestamp: action.payload.timestamp || new Date().toISOString()
+        timestamp: action.payload.timestamp || new Date().toISOString(),
+        rated: false,
       };
-      
       state.messages.push(userMessage);
       state.sessionStats.messagesCount += 1;
       state.sessionStats.lastActivity = userMessage.timestamp;
-      
       if (!state.sessionStats.startTime) {
         state.sessionStats.startTime = userMessage.timestamp;
       }
     },
 
-    // Add bot message from socket event
+    // Bot messages arrive ONLY from socket events (bot_response).
+    // chatService.sendMessage() resolves immediately; the actual response
+    // comes asynchronously via ChatBot.jsx → dispatch(addBotMessage(data)).
     addBotMessage: (state, action) => {
       const botMessage = {
         id: action.payload.messageId || `bot-${Date.now()}`,
@@ -170,22 +189,30 @@ const chatSlice = createSlice({
         timestamp: action.payload.timestamp || new Date().toISOString(),
         provider: action.payload.provider || null,
         isError: action.payload.isError || false,
-        metadata: action.payload.metadata || null
+        metadata: action.payload.metadata || null,
+        rated: false,
+        rating: null,
       };
-      
-      state.messages.push(botMessage);
-      state.lastMessageId = botMessage.id;
-      state.sessionStats.lastActivity = botMessage.timestamp;
+
+      // Deduplication guard
+      const exists = state.messages.some(m => m.id === botMessage.id);
+      if (!exists) {
+        state.messages.push(botMessage);
+        state.lastMessageId = botMessage.id;
+        state.sessionStats.lastActivity = botMessage.timestamp;
+      } else {
+        console.warn('[chatSlice] Duplicate bot message, skipping:', botMessage.id);
+      }
+
+      // Always clear typing/loading when a bot message arrives
       state.isTyping = false;
       state.loading = false;
     },
 
-    // Set typing indicator
     setTyping: (state, action) => {
       state.isTyping = action.payload;
     },
 
-    // Set connection status
     setConnected: (state, action) => {
       state.connected = action.payload;
       if (!action.payload) {
@@ -194,59 +221,45 @@ const chatSlice = createSlice({
       }
     },
 
-    // Update suggestions from socket
     setSuggestions: (state, action) => {
-      state.suggestions = Array.isArray(action.payload) 
-        ? action.payload 
-        : action.payload.suggestions || [];
+      state.suggestions = Array.isArray(action.payload)
+        ? action.payload
+        : (action.payload?.suggestions || []);
     },
 
-    // Clear error
     clearError: (state) => {
       state.error = null;
     },
 
-    // Clear chat
     clearChat: (state) => {
       state.messages = [];
       state.error = null;
       state.isTyping = false;
       state.loading = false;
       state.lastMessageId = null;
-      state.sessionStats = {
-        messagesCount: 0,
-        startTime: null,
-        lastActivity: null
-      };
+      state.sessionStats = { ...initialState.sessionStats };
     },
 
-    // Set error
     setError: (state, action) => {
       state.error = action.payload;
       state.loading = false;
       state.isTyping = false;
     },
 
-    // Update message rating
     updateMessageRating: (state, action) => {
       const { messageId, rating } = action.payload;
-      const messageIndex = state.messages.findIndex(msg => msg.id === messageId);
-      if (messageIndex !== -1) {
-        state.messages[messageIndex].rating = rating;
-        state.messages[messageIndex].rated = true;
+      const message = state.messages.find(m => m.id === messageId);
+      if (message) {
+        message.rating = rating;
+        message.rated = true;
       }
     },
 
-    // Remove a message
     removeMessage: (state, action) => {
-      const messageId = action.payload;
-      state.messages = state.messages.filter(msg => msg.id !== messageId);
+      state.messages = state.messages.filter(m => m.id !== action.payload);
     },
 
-    // Reset state
-    resetChat: (state) => {
-      return { ...initialState };
-    }
+    resetChat: () => initialState,
   },
 
   extraReducers: (builder) => {
@@ -256,7 +269,7 @@ const chatSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(connectSocket.fulfilled, (state, action) => {
+      .addCase(connectSocket.fulfilled, (state) => {
         state.connected = true;
         state.loading = false;
         state.error = null;
@@ -275,49 +288,37 @@ const chatSlice = createSlice({
       })
 
       // Send message
+      // fulfilled: message was emitted to server; loading stays true until
+      //            bot_response arrives via socket and addBotMessage clears it.
       .addCase(sendMessage.pending, (state) => {
         state.loading = true;
         state.isTyping = true;
         state.error = null;
       })
       .addCase(sendMessage.fulfilled, (state) => {
-        // Bot message will be added via socket listener (addBotMessage)
-        // Just clear loading state
-        state.loading = false;
+        // Message was sent successfully to the socket.
+        // Do NOT clear loading/typing here — addBotMessage will do that
+        // when the actual response arrives.
+        // Do NOT add any bot message here — it arrives via socket.
       })
       .addCase(sendMessage.rejected, (state, action) => {
+        // Only fires when the emit itself failed (not connected, invalid msg, etc.)
+        // Do NOT add a bot error message here — show it in the error banner instead.
         state.loading = false;
         state.isTyping = false;
         state.error = action.payload || 'Failed to send message';
-        
-        // Add error message to chat
-        const errorMessage = {
-          id: `error-${Date.now()}`,
-          type: 'bot',
-          message: action.payload || 'Sorry, I encountered an error. Please try again.',
-          timestamp: new Date().toISOString(),
-          isError: true
-        };
-        
-        state.messages.push(errorMessage);
       })
 
-      // Get suggestions
-      .addCase(getSmartSuggestions.fulfilled, (state) => {
-        // Suggestions will be updated via socket listener (setSuggestions)
-      })
-      .addCase(getSmartSuggestions.rejected, (state, action) => {
-        // Fail silently for suggestions
-        console.error('Failed to load suggestions:', action.payload);
-      })
+      // Get suggestions — fail silently
+      .addCase(getSmartSuggestions.rejected, () => {})
 
       // Rate response
       .addCase(rateChatResponse.fulfilled, (state, action) => {
         const { messageId, rating } = action.payload;
-        const messageIndex = state.messages.findIndex(msg => msg.id === messageId);
-        if (messageIndex !== -1) {
-          state.messages[messageIndex].rating = rating;
-          state.messages[messageIndex].rated = true;
+        const message = state.messages.find(m => m.id === messageId);
+        if (message) {
+          message.rating = rating;
+          message.rated = true;
         }
       })
 
@@ -327,9 +328,9 @@ const chatSlice = createSlice({
         state.error = null;
         state.isTyping = false;
         state.loading = false;
-        state.sessionStats = initialState.sessionStats;
+        state.sessionStats = { ...initialState.sessionStats };
       });
-  }
+  },
 });
 
 export const {
@@ -343,7 +344,7 @@ export const {
   setError,
   updateMessageRating,
   removeMessage,
-  resetChat
+  resetChat,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

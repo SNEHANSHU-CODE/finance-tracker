@@ -47,9 +47,39 @@ authApiClient.interceptors.request.use(
 );
 
 export const authService = {
-    // Register new user
-    register: async (userData) => {
+    // Send OTP for registration
+    sendRegistrationOTP: async (userData) => {
         try {
+            const response = await authApiClient.post('/auth/register/send-otp', userData);
+            return response.data.data; // Return the data part of response
+        } catch (error) {
+            throw new Error(
+                error.response?.data?.message ||
+                error.message ||
+                'Failed to send OTP'
+            );
+        }
+    },
+
+    // Verify OTP for registration
+    verifyRegistrationOTP: async (otpData) => {
+        try {
+            const response = await authApiClient.post('/auth/register/verify-otp', otpData);
+            return response.data.data; // Return the data part of response
+        } catch (error) {
+            throw new Error(
+                error.response?.data?.message ||
+                error.message ||
+                'Failed to verify OTP'
+            );
+        }
+    },
+
+    // Register new user - FIXED: Now sends empty body since registration token is in cookie
+    register: async (userData = {}) => {
+        try {
+            // After OTP verification, the registration token is stored in httpOnly cookie
+            // The backend will use this cookie to complete registration
             const response = await authApiClient.post('/auth/register', userData);
             return response.data.data; // Return the data part of response
         } catch (error) {
@@ -159,13 +189,28 @@ export const authService = {
         }
     },
 
-    // Verify token validity (basic check - you'll need to add this endpoint)
+    // Verify token validity
     verifyToken: async () => {
         try {
             const response = await authApiClient.get('/auth/verify');
             return response.data.data; // Return the data part of response
         } catch (error) {
             throw new Error('Token verification failed');
+        }
+    },
+
+    // Google OAuth - Start authentication flow
+    startGoogleOAuth: async (guestId = null) => {
+        try {
+            const params = guestId ? `?guestId=${guestId}` : '';
+            const response = await authApiClient.get(`/auth/google/start${params}`);
+            return response.data; // Returns { success: true, authUrl: "..." }
+        } catch (error) {
+            throw new Error(
+                error.response?.data?.message ||
+                error.message ||
+                'Failed to start Google OAuth'
+            );
         }
     },
 };

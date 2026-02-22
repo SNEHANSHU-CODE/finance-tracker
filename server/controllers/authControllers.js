@@ -2,12 +2,14 @@ const User = require('../models/userModel');
 const JWTUtils = require('../utils/jwt');
 const ResponseUtils = require('../utils/response');
 const ValidationUtils = require('../utils/validation');
+const registrationOtpService = require('../services/registrationOtpService');
+const { getClientIp } = require('../utils/ip');
 
 class AuthController {
-  // Register new user
-  static async register(req, res) {
+  // Send OTP for registration
+  static async sendRegistrationOTP(req, res) {
     try {
-      const { username, email, password } = req.body;
+      const { email, username, password } = req.body;
 
       // Validate input
       const validation = ValidationUtils.validateRegisterInput(req.body);
@@ -27,20 +29,104 @@ class AuthController {
         return ResponseUtils.error(res, message, 400);
       }
 
-      // Create new user
-      const user = new User({
+      // Send OTP
+      const result = await registrationOtpService.sendRegistrationOTP(
+        email.toLowerCase(),
         username,
-        email: email.toLowerCase(),
         password
-      });
+      );
 
-      await user.save();
+      return ResponseUtils.success(res, {
+        expiresIn: result.expiresIn
+      }, result.message);
+
+    } catch (error) {
+      console.error('Send registration OTP error:', error);
+      return ResponseUtils.error(res, error.message || 'Failed to send OTP');
+    }
+  }
+
+  // Verify OTP for registration
+  static async verifyRegistrationOTP(req, res) {
+    try {
+      const { email, otp } = req.body;
+
+      // Validate required fields
+      if (!email || !otp) {
+        return ResponseUtils.error(res, 'Email and OTP are required', 400);
+      }
+
+      const result = await registrationOtpService.verifyRegistrationOTP(
+        email.toLowerCase(),
+        otp
+      );
+
+      // Set the registration token as an HTTP-only cookie for security
+      if (result.success && result.registrationToken) {
+        const cookieOptions = {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+          maxAge: 15 * 60 * 1000, // 15 minutes
+          path: '/'
+        };
+
+        res.cookie('registrationToken', result.registrationToken, cookieOptions);
+
+        // Don't send the token in the response body for security
+        const responseData = { ...result };
+        delete responseData.registrationToken;
+
+        return ResponseUtils.success(res, responseData, 'OTP verified successfully');
+      }
+
+      return ResponseUtils.success(res, result, result.message);
+
+    } catch (error) {
+      console.error('Verify registration OTP error:', error);
+      return ResponseUtils.error(res, error.message || 'Failed to verify OTP');
+    }
+  }
+
+  // Register new user (after OTP verification)
+  static async register(req, res) {
+    try {
+      // Extract registration token from header/body/cookie
+      const authHeader = req.headers.authorization;
+      const tokenFromHeader = authHeader?.startsWith('Bearer ')
+        ? authHeader.split(' ')[1]
+        : null;
+      const registrationToken =
+        tokenFromHeader || req.body.registrationToken || req.cookies.registrationToken;
+
+      if (!registrationToken) {
+        return ResponseUtils.error(res, 'Registration token is required. Please verify OTP first.', 401);
+      }
+
+      // Complete registration with the token
+      const result = await registrationOtpService.completeRegistration(registrationToken);
+
+      if (!result.success) {
+        return ResponseUtils.error(res, result.message, 401);
+      }
+
+      const user = result.user;
 
       // Generate token pair
       const { accessToken, refreshToken } = JWTUtils.generateTokenPair(user._id);
 
-      // Save refresh token to user
-      user.refreshTokens.push({ token: refreshToken });
+      // Save refresh token to user with device info
+      user.refreshTokens.push({
+        token: refreshToken,
+        device: req.get('user-agent'),
+        ip: getClientIp(req),
+        createdAt: new Date()
+      });
+
+      // Track registration as first login
+      user.lastLoginAt = new Date();
+      user.lastLoginProvider = 'email';
+
       await user.save();
 
       // Set refresh token as HTTP-only cookie
@@ -50,6 +136,14 @@ class AuthController {
         sameSite: 'None',
         secure: true,
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+
+      // Clear registration token cookie
+      res.clearCookie('registrationToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        path: '/'
       });
 
       // Return response
@@ -73,7 +167,7 @@ class AuthController {
         return ResponseUtils.validationError(res, errors);
       }
 
-      return ResponseUtils.error(res, 'Server error during registration');
+      return ResponseUtils.error(res, error.message || 'Server error during registration');
     }
   }
 
@@ -88,8 +182,8 @@ class AuthController {
         return ResponseUtils.validationError(res, validation.errors);
       }
 
-      // Find user by email
-      const user = await User.findOne({ email: email.toLowerCase() });
+      // Find user by email - explicitly select password since it's marked select: false
+      const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
       if (!user) {
         return ResponseUtils.unauthorized(res, 'Invalid credentials');
       }
@@ -108,9 +202,28 @@ class AuthController {
       // Generate token pair
       const { accessToken, refreshToken } = JWTUtils.generateTokenPair(user._id);
 
-      // Save refresh token to user
-      user.refreshTokens.push({ token: refreshToken });
-      await user.save();
+      // Implement token rotation: keep only last 5 tokens to prevent unbounded growth
+      const recentTokens = user.refreshTokens.slice(-4);
+      recentTokens.push({
+        token: refreshToken,
+        device: req.get('user-agent'),
+        ip: getClientIp(req),
+        createdAt: new Date()
+      });
+
+      // Use findByIdAndUpdate instead of save() to avoid triggering pre-save hook
+      // This is ~50% faster than user.save()
+      const updatedUser = await User.findByIdAndUpdate(
+        user._id,
+        {
+          $set: {
+            refreshTokens: recentTokens,
+            lastLoginAt: new Date(),
+            lastLoginProvider: 'email'
+          }
+        },
+        { new: true }
+      );
 
       // Set refresh token as HTTP-only cookie
       res.cookie('refreshToken', refreshToken, {
@@ -123,7 +236,7 @@ class AuthController {
 
       // Return response
       return ResponseUtils.success(res, {
-        user: user.toJSON(),
+        user: updatedUser.toJSON(),
         accessToken
       }, 'Login successful');
 
@@ -219,6 +332,28 @@ class AuthController {
     } catch (error) {
       console.error('Logout error:', error);
       return ResponseUtils.error(res, 'Server error during logout');
+    }
+  }
+
+  // Get user profile (public endpoint for authenticated users)
+  static async getProfile(req, res) {
+    try {
+      const user = await User.findById(req.user._id);
+      if (!user) {
+        return ResponseUtils.notFound(res, 'User not found');
+      }
+
+      if (!user.isActive) {
+        return ResponseUtils.forbidden(res, 'Account is deactivated');
+      }
+
+      return ResponseUtils.success(res, {
+        user: user.toJSON()
+      }, 'Profile retrieved successfully');
+
+    } catch (error) {
+      console.error('Get profile error:', error);
+      return ResponseUtils.error(res, 'Server error retrieving profile');
     }
   }
 

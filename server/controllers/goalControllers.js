@@ -416,6 +416,45 @@ class GoalController {
       });
     }
   }
+
+  // Migrate guest data to user account (one-time operation)
+  async migrateGuestData(req, res) {
+    try {
+      const userId = req.user.userId || req.user.id || req.user._id;
+      const { goals } = req.body;
+
+      if (!goals || !Array.isArray(goals)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Goals array is required'
+        });
+      }
+
+      // Check if user has already migrated guest data
+      const existingMigration = await goalService.checkGuestMigration(userId);
+      if (existingMigration) {
+        return res.status(400).json({
+          success: false,
+          message: 'Guest data has already been migrated for this account'
+        });
+      }
+
+      const result = await goalService.migrateGuestData(userId, goals);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Guest data migrated successfully',
+        data: result
+      });
+    } catch (error) {
+      console.error('Migrate guest data error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to migrate guest data',
+        error: error.message
+      });
+    }
+  }
 }
 
 module.exports = new GoalController();

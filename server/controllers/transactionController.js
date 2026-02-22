@@ -136,29 +136,21 @@ class TransactionController {
   }
 
   // Get category analysis
-  async getCategoryAnalysis(req, res) {
-    try {
-      const userId = req.userId;
-      const { startDate, endDate } = req.query;
+  // Get category analysis
+async getCategoryAnalysis(req, res) {
+  try {
+    const userId = req.userId;
 
-      if (!startDate || !endDate) {
-        return res.status(400).json({
-          success: false,
-          message: 'Start date and end date are required'
-        });
-      }
-
-      const result = await transactionService.getCategoryAnalysis(userId, startDate, endDate);
-      
-      res.status(200).json(result);
-    } catch (error) {
-      console.error('Get category analysis error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message || 'Failed to get category analysis'
-      });
-    }
+    const result = await transactionService.getCategoryAnalysis(userId);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Get category analysis error:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Failed to get category analysis'
+    });
   }
+}
 
   // Get recent transactions
   async getRecentTransactions(req, res) {
@@ -319,6 +311,44 @@ class TransactionController {
       res.status(400).json({
         success: false,
         message: error.message || 'Failed to export transactions'
+      });
+    }
+  }
+
+  // Migrate guest data to user account (one-time operation)
+  async migrateGuestData(req, res) {
+    try {
+      const userId = req.userId;
+      const { transactions } = req.body;
+
+      if (!transactions || !Array.isArray(transactions)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Transactions array is required'
+        });
+      }
+
+      // Check if user has already migrated guest data
+      const existingMigration = await transactionService.checkGuestMigration(userId);
+      if (existingMigration) {
+        return res.status(400).json({
+          success: false,
+          message: 'Guest data has already been migrated for this account'
+        });
+      }
+
+      const result = await transactionService.migrateGuestData(userId, transactions);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Guest data migrated successfully',
+        data: result
+      });
+    } catch (error) {
+      console.error('Migrate guest data error:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Failed to migrate guest data'
       });
     }
   }

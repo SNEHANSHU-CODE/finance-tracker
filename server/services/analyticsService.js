@@ -1,39 +1,78 @@
 const Transaction = require('../models/transactionModel');
 const Goal = require('../models/goalModel');
 const mongoose = require('mongoose');
+const { redisService } = require('../config/redis');
 
 class AnalyticsService {
   
-  // Dashboard overview data
-  static async getDashboardData(userId) {
-    const [
-      monthlyData,
-      recentTransactions,
-      goalsData,
-      savingsRate
-    ] = await Promise.all([
-      this.getCurrentMonthData(userId),
-      this.getRecentTransactions(userId),
-      this.getGoalsOverview(userId),
-      this.calculateSavingsRate(userId)
-    ]);
+  // Helper method to get data with Redis caching
+  static async getWithCache(key, fn, ttl = 300) {
+    try {
+      // Try to get from cache first
+      const cached = await redisService.get(key);
+      if (cached) {
+        console.log(`📦 Cache HIT for ${key}`);
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      console.warn(`⚠️ Cache read error: ${error.message}`);
+      // Continue without cache if Redis fails
+    }
 
-    return {
-      monthly: monthlyData,
-      recent: recentTransactions,
-      goals: goalsData,
-      savingsRate,
-      generatedAt: new Date()
-    };
+    // Cache miss or error - fetch fresh data
+    const data = await fn();
+    
+    // Try to store in cache (don't fail if Redis is down)
+    try {
+      await redisService.setex(key, ttl, JSON.stringify(data));
+      console.log(`💾 Cached ${key} for ${ttl}s`);
+    } catch (error) {
+      console.warn(`⚠️ Cache write error: ${error.message}`);
+      // Still return data even if cache fails
+    }
+    
+    return data;
+  }
+  
+  // Dashboard overview data - with caching
+  static async getDashboardData(userId) {
+    const cacheKey = `analytics:dashboard:${userId}`;
+    
+    return this.getWithCache(cacheKey, async () => {
+      const [
+        monthlyData,
+        recentTransactions,
+        goalsData,
+        savingsRate
+      ] = await Promise.all([
+        this.getCurrentMonthData(userId),
+        this.getRecentTransactions(userId),
+        this.getGoalsOverview(userId),
+        this.calculateSavingsRate(userId)
+      ]);
+
+      return {
+        monthly: monthlyData,
+        recent: recentTransactions,
+        goals: goalsData,
+        savingsRate,
+        generatedAt: new Date()
+      };
+    }, 300); // Cache for 5 minutes
   }
 
-  // Get current month financial data
+  // Get current month financial data - with caching
   static async getCurrentMonthData(userId) {
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
     
-    return await Transaction.getMonthlySummary(userId, currentMonth, currentYear);
+    const cacheKey = `analytics:current-month:${userId}:${currentYear}-${currentMonth}`;
+    
+    return this.getWithCache(cacheKey, 
+      () => Transaction.getMonthlySummary(userId, currentMonth, currentYear),
+      600 // Cache for 10 minutes
+    );
   }
 
   // Get recent transactions
@@ -62,14 +101,25 @@ class AnalyticsService {
     };
   }
 
-  // Get spending trends
+  // Get spending trends - with caching
   static async getSpendingTrends(userId, months = 6) {
-    return await Transaction.getSpendingTrends(userId, months);
+    const cacheKey = `analytics:trends:${userId}:${months}months`;
+    
+    return this.getWithCache(cacheKey,
+      () => Transaction.getSpendingTrends(userId, months),
+      900 // Cache for 15 minutes
+    );
   }
 
-  // Get category analysis
+  // Get category analysis - with caching
   static async getCategoryAnalysis(userId, startDate, endDate, type = 'Expense') {
-    return await Transaction.getCategoryAnalysis(userId, startDate, endDate, { type });
+    const dateStr = `${new Date(startDate).toISOString()}-${new Date(endDate).toISOString()}`;
+    const cacheKey = `analytics:category:${userId}:${type}:${dateStr}`;
+    
+    return this.getWithCache(cacheKey,
+      () => Transaction.getCategoryAnalysis(userId, startDate, endDate, { type }),
+      1800 // Cache for 30 minutes
+    );
   }
 
   // Get spending comparison between periods

@@ -9,9 +9,7 @@ const settingsController = {
       const userId = req.userId || req.user.userId;
       const preferences = await settingsService.getUserPreferences(userId);
       
-      return ResponseUtils.success(res, 'Preferences retrieved successfully', {
-        preferences
-      });
+      return ResponseUtils.success(res, { preferences }, 'Preferences retrieved successfully');
     } catch (error) {
       console.error('Get preferences error:', error);
       return ResponseUtils.serverError(res, error.message || 'Failed to fetch preferences');
@@ -38,9 +36,7 @@ const settingsController = {
         theme
       });
       
-      return ResponseUtils.success(res, 'Preferences updated successfully', {
-        preferences: updatedPreferences
-      });
+      return ResponseUtils.success(res, { preferences: updatedPreferences }, 'Preferences updated successfully');
     } catch (error) {
       console.error('Update preferences error:', error);
       return ResponseUtils.serverError(res, error.message || 'Failed to update preferences');
@@ -53,9 +49,7 @@ const settingsController = {
       const userId = req.userId;
       const defaultPreferences = await settingsService.resetUserPreferences(userId);
       
-      return ResponseUtils.success(res, 'Preferences reset to default successfully', {
-        preferences: defaultPreferences
-      });
+      return ResponseUtils.success(res, { preferences: defaultPreferences }, 'Preferences reset to default successfully');
     } catch (error) {
       console.error('Reset preferences error:', error);
       return ResponseUtils.serverError(res, error.message || 'Failed to reset preferences');
@@ -66,11 +60,10 @@ const settingsController = {
   getActiveSessions: async (req, res) => {
     try {
       const userId = req.userId;
-      const sessions = await settingsService.getActiveSessions(userId);
+      const currentToken = req.cookies?.refreshToken;
+      const sessions = await settingsService.getActiveSessions(userId, currentToken);
       
-      return ResponseUtils.success(res, 'Active sessions retrieved successfully', {
-        sessions
-      });
+      return ResponseUtils.success(res, { sessions }, 'Active sessions retrieved successfully');
     } catch (error) {
       console.error('Get active sessions error:', error);
       return ResponseUtils.serverError(res, error.message || 'Failed to fetch active sessions');
@@ -82,10 +75,21 @@ const settingsController = {
     try {
       const userId = req.userId;
       const { sessionId } = req.params;
-      
-      await settingsService.terminateSession(userId, sessionId);
-      
-      return ResponseUtils.success(res, 'Session terminated successfully');
+      const currentToken = req.cookies?.refreshToken;
+
+      const result = await settingsService.terminateSession(userId, sessionId, currentToken);
+
+      // If the current session was terminated, clear the refresh token cookie
+      if (result.wasCurrent) {
+        res.clearCookie('refreshToken', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'None',
+          secure: true
+        });
+      }
+
+      return ResponseUtils.success(res, { currentSessionTerminated: !!result.wasCurrent }, 'Session terminated successfully');
     } catch (error) {
       console.error('Terminate session error:', error);
       return ResponseUtils.serverError(res, error.message || 'Failed to terminate session');
@@ -96,13 +100,12 @@ const settingsController = {
   terminateAllSessions: async (req, res) => {
     try {
       const userId = req.userId;
-      const currentToken = req.token; // From auth middleware
+      // Use refresh token cookie as the current session identifier
+      const currentToken = req.cookies?.refreshToken;
       
       const remainingSessions = await settingsService.terminateAllSessions(userId, currentToken);
       
-      return ResponseUtils.success(res, 'All other sessions terminated successfully', {
-        remainingSessions
-      });
+      return ResponseUtils.success(res, { remainingSessions }, 'All other sessions terminated successfully');
     } catch (error) {
       console.error('Terminate all sessions error:', error);
       return ResponseUtils.serverError(res, error.message || 'Failed to terminate sessions');
@@ -119,10 +122,10 @@ const settingsController = {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="user-data-${userId}.json"`);
       
-      return ResponseUtils.success(res, 'User data exported successfully', {
+      return ResponseUtils.success(res, {
         data: userData,
         exportedAt: new Date().toISOString()
-      });
+      }, 'User data exported successfully');
     } catch (error) {
       console.error('Export user data error:', error);
       return ResponseUtils.serverError(res, error.message || 'Failed to export user data');

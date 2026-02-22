@@ -1,0 +1,37 @@
+.google-login-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  transition: box-shadow 0.2s;
+  min-width: 180px;
+}
+.google-login-button:hover:not(:disabled) {
+  box-shadow: 0 2px 8px rgba(66,133,244,0.15);
+  border-color: #4285F4;
+}
+.google-login-button.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+.google-icon {
+  width: 22px;
+  height: 22px;
+  margin-right: 0.5rem;
+}
+@media (max-width: 500px) {
+  .google-login-button {
+    min-width: 120px;
+    font-size: 0.95rem;
+  }
+  .google-icon {
+    width: 18px;
+    height: 18px;
+  }
+}

@@ -48,7 +48,7 @@ const reminderService = {
     return response.data;
   },
   
-  async updateReminder(id, data) { // Fixed: Added id parameter
+  async updateReminder(id, data) {
     const response = await apiClient.put(`/reminders/${id}`, data);
     return response.data;
   },

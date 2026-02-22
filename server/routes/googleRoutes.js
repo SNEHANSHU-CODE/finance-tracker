@@ -8,6 +8,9 @@ const { authenticateToken } = require('../middleware/auth');
 
 const googleRouter = express.Router();
 
+// Get frontend URL from environment
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+
 // Save tokens to both Redis and MongoDB
 const saveTokensComplete = async (userId, tokens) => {
   console.log('Saving tokens for user:', userId);
@@ -35,10 +38,12 @@ const saveTokensComplete = async (userId, tokens) => {
         throw new Error(`User with ID ${userId} not found`);
       }
       
-      console.log(`Refresh token saved to DB for user: ${userId}`);
+      console.log(`✅ Refresh token saved to DB for user: ${userId}`);
+    } else {
+      console.log('⚠️  No refresh token received (user may have already authorized)');
     }
   } catch (error) {
-    console.error('Error in saveTokensComplete:', error);
+    console.error('❌ Error in saveTokensComplete:', error);
     throw error;
   }
 };
@@ -55,7 +60,7 @@ const getAuthorizedClient = async (userId) => {
       // Fallback to DB refresh token
       const user = await User.findById(userId);
       if (!user || !user.googleRefreshToken) {
-        throw new Error('Google tokens not found in Redis or DB. Please reconnect your Google account.');
+        throw new Error('Google tokens not found. Please reconnect your Google account.');
       }
 
       // Use refresh token to get new access token
@@ -67,39 +72,40 @@ const getAuthorizedClient = async (userId) => {
         
         // Save the new tokens
         await saveGoogleTokens(userId, tokens);
-        console.log('Access token refreshed and saved for user:', userId);
+        console.log('✅ Access token refreshed and saved');
       } catch (refreshError) {
-        console.error('Failed to refresh access token:', refreshError);
-        throw new Error('Failed to refresh Google access token. Please reconnect your Google account.');
+        console.error('❌ Failed to refresh access token:', refreshError);
+        throw new Error('Failed to refresh Google access token. Please reconnect.');
       }
     }
 
     // Set credentials and return calendar client
     oauth2Client.setCredentials(tokens);
     
-    // Verify the token is still valid by making a test call
+    // Verify the token is still valid
     try {
       await oauth2Client.getAccessToken();
     } catch (tokenError) {
-      console.error('Token validation failed:', tokenError);
-      throw new Error('Google access token is invalid. Please reconnect your Google account.');
+      console.error('❌ Token validation failed:', tokenError);
+      throw new Error('Google access token is invalid. Please reconnect.');
     }
 
     return google.calendar({ version: 'v3', auth: oauth2Client });
   } catch (error) {
-    console.error('Error in getAuthorizedClient:', error);
+    console.error('❌ Error in getAuthorizedClient:', error);
     throw error;
   }
 };
 
 const syncAllRemindersToGoogle = async (userId) => {
   try {
-    console.log(`Starting Google Calendar sync for user: ${userId}`);
+    console.log(`🔄 Starting Google Calendar sync for user: ${userId}`);
     const calendar = await getAuthorizedClient(userId);
     const reminders = await Reminder.find({ userId });
 
-    console.log(`Found ${reminders.length} reminders to sync`);
+    console.log(`📅 Found ${reminders.length} reminders to sync`);
 
+    let syncedCount = 0;
     for (const reminder of reminders) {
       if (!reminder.calendarEventId) {
         try {
@@ -123,17 +129,19 @@ const syncAllRemindersToGoogle = async (userId) => {
 
           reminder.calendarEventId = data.id;
           await reminder.save();
+          syncedCount++;
           
-          console.log(`Synced reminder "${reminder.title}" to Google Calendar`);
+          console.log(`✅ Synced: "${reminder.title}"`);
         } catch (syncError) {
-          console.error(`Failed to sync reminder "${reminder.title}":`, syncError.message);
+          console.error(`❌ Failed to sync "${reminder.title}":`, syncError.message);
         }
       }
     }
     
-    console.log('Google Calendar sync completed');
+    console.log(`✅ Sync completed: ${syncedCount}/${reminders.length} reminders synced`);
+    return syncedCount;
   } catch (error) {
-    console.error('Error in syncAllRemindersToGoogle:', error);
+    console.error('❌ Error in syncAllRemindersToGoogle:', error);
     throw error;
   }
 };
@@ -141,25 +149,31 @@ const syncAllRemindersToGoogle = async (userId) => {
 // Step 1: Frontend requests Google OAuth URL
 googleRouter.post('/', authenticateToken, (req, res) => {
   try {
-    const userId = req.userId.toString(); // Convert ObjectId to string
-    console.log('Generating OAuth URL for user:', userId);
+    const userId = req.userId.toString();
+    console.log('🔐 Generating OAuth URL for user:', userId);
     
-    const url = getAuthUrl(userId); // userId goes into 'state'
+    const url = getAuthUrl(userId);
+    console.log('✅ OAuth URL generated successfully');
+    
     res.status(200).json({ success: true, url });
   } catch (error) {
-    console.error('Error generating OAuth URL:', error);
-    res.status(500).json({ success: false, message: 'Failed to generate OAuth URL' });
+    console.error('❌ Error generating OAuth URL:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to generate OAuth URL',
+      error: error.message 
+    });
   }
 });
 
 // Optional: Server-initiated redirect
 googleRouter.get('/auth', authenticateToken, (req, res) => {
   try {
-    const userId = req.userId.toString(); // Convert ObjectId to string
+    const userId = req.userId.toString();
     const url = getAuthUrl(userId);
     res.redirect(url);
   } catch (error) {
-    console.error('Error in OAuth redirect:', error);
+    console.error('❌ Error in OAuth redirect:', error);
     res.status(500).json({ success: false, message: 'OAuth redirect failed' });
   }
 });
@@ -169,61 +183,68 @@ googleRouter.get('/callback', async (req, res) => {
   try {
     const { code, state: userId, error: oauthError } = req.query;
     
+    console.log('📥 OAuth callback received');
+    console.log('Code present:', !!code);
+    console.log('User ID:', userId);
+    console.log('Error:', oauthError);
+    
     // Check for OAuth errors
     if (oauthError) {
-      console.error('OAuth error:', oauthError);
-      return res.redirect('http://localhost:5173/dashboard/reminders?googleConnected=false&error=oauth_denied');
+      console.error('❌ OAuth error:', oauthError);
+      return res.redirect(`${CLIENT_URL}/dashboard/reminders?googleConnected=false&error=oauth_denied`);
     }
 
     if (!code) {
-      console.error('No authorization code received');
-      return res.redirect('http://localhost:5173/dashboard/reminders?googleConnected=false&error=no_code');
+      console.error('❌ No authorization code received');
+      return res.redirect(`${CLIENT_URL}/dashboard/reminders?googleConnected=false&error=no_code`);
     }
 
     if (!userId) {
-      console.error('No user ID in state parameter');
-      return res.redirect('http://localhost:5173/dashboard/reminders?googleConnected=false&error=invalid_state');
+      console.error('❌ No user ID in state parameter');
+      return res.redirect(`${CLIENT_URL}/dashboard/reminders?googleConnected=false&error=invalid_state`);
     }
 
-    console.log('Processing OAuth callback for user:', userId);
-    console.log('State parameter received:', typeof userId, userId);
-
-    // Validate that userId is a valid ObjectId string
+    // Validate userId format
     if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
-      console.error('Invalid user ID format in state parameter:', userId);
-      return res.redirect('http://localhost:5173/dashboard/reminders?googleConnected=false&error=invalid_user_id');
+      console.error('❌ Invalid user ID format:', userId);
+      return res.redirect(`${CLIENT_URL}/dashboard/reminders?googleConnected=false&error=invalid_user_id`);
     }
 
+    console.log('🔄 Exchanging code for tokens...');
+    
     // Exchange code for tokens
     const { tokens } = await oauth2Client.getToken(code);
-    console.log('Received tokens from Google:', {
+    console.log('✅ Tokens received:', {
       hasAccessToken: !!tokens.access_token,
       hasRefreshToken: !!tokens.refresh_token,
-      expiryDate: tokens.expiry_date
+      expiryDate: new Date(tokens.expiry_date).toLocaleString()
     });
 
-    // Save tokens to both Redis and DB
+    // Save tokens
     await saveTokensComplete(userId, tokens);
 
     // Set credentials for immediate use
     oauth2Client.setCredentials(tokens);
 
-    // Sync existing reminders to Google Calendar
-    await syncAllRemindersToGoogle(userId);
+    // Sync existing reminders
+    console.log('🔄 Syncing reminders to Google Calendar...');
+    const syncedCount = await syncAllRemindersToGoogle(userId);
+    console.log(`✅ Synced ${syncedCount} reminders`);
 
-    console.log('Google OAuth flow completed successfully for user:', userId);
-    res.redirect('http://localhost:5173/dashboard/reminders?googleConnected=true');
+    console.log('✅ Google OAuth flow completed successfully');
+    res.redirect(`${CLIENT_URL}/dashboard/reminders?googleConnected=true`);
     
   } catch (error) {
-    console.error('Google OAuth Callback Error:', error);
-    res.redirect(`http://localhost:5173/dashboard/reminders?googleConnected=false&error=${encodeURIComponent(error.message)}`);
+    console.error('❌ Google OAuth Callback Error:', error);
+    console.error('Error stack:', error.stack);
+    res.redirect(`${CLIENT_URL}/dashboard/reminders?googleConnected=false&error=${encodeURIComponent(error.message)}`);
   }
 });
 
 // Route to check Google connection status
 googleRouter.get('/status', authenticateToken, async (req, res) => {
   try {
-    const userId = req.userId.toString(); // Convert ObjectId to string
+    const userId = req.userId.toString();
     const { getGoogleTokens } = require('../utils/googleTokenCache');
     
     // Check Redis for tokens
@@ -236,6 +257,12 @@ googleRouter.get('/status', authenticateToken, async (req, res) => {
     
     const isConnected = hasRedisTokens || hasRefreshToken;
     
+    console.log(`📊 Connection status for user ${userId}:`, {
+      connected: isConnected,
+      hasAccessToken: hasRedisTokens,
+      hasRefreshToken
+    });
+    
     res.json({
       success: true,
       connected: isConnected,
@@ -243,7 +270,7 @@ googleRouter.get('/status', authenticateToken, async (req, res) => {
       hasRefreshToken: hasRefreshToken
     });
   } catch (error) {
-    console.error('Error checking Google connection status:', error);
+    console.error('❌ Error checking Google connection status:', error);
     res.status(500).json({ success: false, message: 'Failed to check connection status' });
   }
 });
@@ -251,7 +278,7 @@ googleRouter.get('/status', authenticateToken, async (req, res) => {
 // Route to disconnect Google account
 googleRouter.delete('/disconnect', authenticateToken, async (req, res) => {
   try {
-    const userId = req.userId.toString(); // Convert ObjectId to string
+    const userId = req.userId.toString();
     
     // Remove from Redis
     const { deleteGoogleTokens } = require('../utils/googleTokenCache');
@@ -260,10 +287,10 @@ googleRouter.delete('/disconnect', authenticateToken, async (req, res) => {
     // Remove refresh token from DB
     await User.findByIdAndUpdate(userId, { googleRefreshToken: null });
     
-    console.log('Google account disconnected for user:', userId);
+    console.log('🔓 Google account disconnected for user:', userId);
     res.json({ success: true, message: 'Google account disconnected successfully' });
   } catch (error) {
-    console.error('Error disconnecting Google account:', error);
+    console.error('❌ Error disconnecting Google account:', error);
     res.status(500).json({ success: false, message: 'Failed to disconnect Google account' });
   }
 });

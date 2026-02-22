@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { guestStorage } from '../utils/guestStorage';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -14,9 +15,14 @@ const goalApiClient = axios.create({
 
 // Token getter function - will be set by store
 let getToken = () => null;
+let isGuestMode = false;
 
 export const setTokenGetter = (tokenGetter) => {
   getToken = tokenGetter;
+};
+
+export const setGuestMode = (guest) => {
+  isGuestMode = guest;
 };
 
 // Request interceptor to add auth token
@@ -48,6 +54,30 @@ goalApiClient.interceptors.response.use(
 class GoalService {
   // Get all goals with optional filters
   async getGoals(filters = {}) {
+    if (isGuestMode) {
+      const goals = guestStorage.getGoals();
+      let filtered = [...goals];
+      
+      if (filters.category) {
+        filtered = filtered.filter(g => g.category === filters.category);
+      }
+      if (filters.status) {
+        filtered = filtered.filter(g => g.status === filters.status);
+      }
+      if (filters.priority) {
+        filtered = filtered.filter(g => g.priority === filters.priority);
+      }
+      
+      return {
+        data: {
+          goals: filtered,
+          total: filtered.length,
+          page: 1,
+          totalPages: 1
+        }
+      };
+    }
+    
     const params = new URLSearchParams();
     
     Object.keys(filters).forEach(key => {
@@ -69,18 +99,44 @@ class GoalService {
 
   // Create new goal
   async createGoal(goalData) {
+    if (isGuestMode) {
+      const goal = {
+        ...goalData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        status: 'active',
+        progress: 0,
+      };
+      guestStorage.addGoal(goal);
+      return { data: goal };
+    }
+    
     const response = await goalApiClient.post('/', goalData);
     return response;
   }
 
   // Update goal
   async updateGoal(goalId, goalData) {
+    if (isGuestMode) {
+      const updated = {
+        ...goalData,
+        updatedAt: new Date().toISOString(),
+      };
+      guestStorage.updateGoal(goalId, updated);
+      return { data: { ...guestStorage.getGoals().find(g => g.id === goalId), ...updated } };
+    }
+    
     const response = await goalApiClient.put(`/${goalId}`, goalData);
     return response;
   }
 
   // Delete goal
   async deleteGoal(goalId) {
+    if (isGuestMode) {
+      guestStorage.deleteGoal(goalId);
+      return { data: { message: 'Goal deleted successfully' } };
+    }
+    
     const response = await goalApiClient.delete(`/${goalId}`);
     return response;
   }
@@ -299,6 +355,16 @@ class GoalService {
       }
       return true;
     });
+  }
+
+  // Migrate guest data
+  async migrateGuestData(data) {
+    if (isGuestMode) {
+      throw new Error('Cannot migrate data while in guest mode');
+    }
+    
+    const response = await goalApiClient.post('/migrate-guest-data', data);
+    return response.data;
   }
 }
 

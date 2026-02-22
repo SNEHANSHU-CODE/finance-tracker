@@ -3,13 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import { loginUser, clearError } from '../app/authSlice';
+import { MdEmail, MdLock, MdLogin } from 'react-icons/md';
+import { FcGoogle } from 'react-icons/fc';
+import { loginUser, clearFormError, clearOAuthError, migrateGuestData, setGuestMode } from '../app/authSlice';
+import GoogleLoginButton from '../components/GoogleLoginButton';
 
 export default function Login() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
-    const { loading, error } = useSelector((state) => state.auth);
-    
+    const { loading, formError, oauthError } = useSelector((state) => state.auth);
+
     const [login, setLogin] = useState({
         email: "",
         password: ""
@@ -24,9 +27,9 @@ export default function Login() {
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: '' }));
         }
-        // Clear Redux error
-        if (error) {
-            dispatch(clearError());
+        // Clear form error only
+        if (formError) {
+            dispatch(clearFormError());
         }
     }
 
@@ -57,6 +60,15 @@ export default function Login() {
         if (validate()) {
             try {
                 await dispatch(loginUser(login)).unwrap();
+
+                // Try to migrate guest data if any exists
+                try {
+                    await dispatch(migrateGuestData()).unwrap();
+                } catch (migrationError) {
+                    console.warn('Guest data migration failed:', migrationError);
+                    // Don't block login if migration fails
+                }
+
                 navigate('/dashboard'); // Redirect to dashboard or home
             } catch (error) {
                 console.error('Login failed:', error);
@@ -65,73 +77,162 @@ export default function Login() {
     }
 
     return (
-        <div className="container mt-5 mb-4" style={{ maxWidth: '500px' }}>
-            <h3 className="mb-4 text-center">Login</h3>
-            <form onSubmit={handleSubmit} className="p-4 border rounded shadow-sm bg-white">
-                {error && (
-                    <div className="alert alert-danger" role="alert">
-                        {error}
-                    </div>
-                )}
-                
-                <div className="mb-3">
-                    <label htmlFor='email' className="form-label">Email</label>
-                    <input
-                        type='email'
-                        name='email'
-                        id="email"
-                        autoComplete='email'
-                        value={login.email}
-                        onChange={handleChange}
-                        className={`form-control ${errors.email ? 'is-invalid' : ''}`}
-                        disabled={loading}
-                    />
-                    {errors.email && <div className="invalid-feedback">{errors.email}</div>}
-                </div>
-                
-                <div className="mb-3 position-relative">
-                    <label htmlFor='password' className="form-label">Password</label>
-                    <input
-                        type={showPassword ? "text" : "password"}
-                        name='password'
-                        id='password'
-                        autoComplete="current-password"
-                        value={login.password}
-                        onChange={handleChange}
-                        className={`form-control ${errors.password ? 'is-invalid' : ''}`}
-                        disabled={loading}
-                    />
-                    <span
-                        onClick={togglePasswordVisibility}
-                        style={{ 
-                            position: 'absolute', 
-                            right: '10px', 
-                            top: '35px', 
-                            cursor: 'pointer',
-                            zIndex: 5
-                        }}
-                    >
-                        {showPassword ? <FaEyeSlash /> : <FaEye />}
-                    </span>
-                    {errors.password && <div className="invalid-feedback">{errors.password}</div>}
-                </div>
-                
-                <button 
-                    className="btn btn-success w-100" 
-                    type='submit'
-                    disabled={loading}
-                >
-                    {loading ? 'Logging in...' : 'Login'}
-                </button>
-                
-                <p className='mt-3 text-center'>
-                    Don't have an account? <Link to="/signup">Sign Up</Link>
-                </p>
+        <div className="container-fluid py-4 d-flex align-items-center justify-content-center bg-light">
+            <div className="row w-100 justify-content-center nav-top-margin">
+                <div className="col-12 col-sm-8 col-md-6 col-lg-4 col-xl-3">
+                    <div className="card shadow-lg border-0">
+                        <div className="card-body p-4">
+                            {/* Header */}
+                            <div className="text-center mb-4">
+                                <div className="mb-3">
+                                    <MdLogin size={48} className="text-primary" />
+                                </div>
+                                <h4 className="card-title fw-bold">Welcome Back</h4>
+                                <p className="text-muted small">
+                                    Sign in to continue to your account
+                                </p>
+                            </div>
 
-                <p className='mt-3 text-center'>
-                    Forget password? <Link to="/resetpassword">Reset password</Link>
-                </p>
-            </form>
+                            {/* Form Errors - Email/Password */}
+                            {formError && (
+                                <div className="alert alert-danger py-2 mb-3" role="alert">
+                                    <strong>Login Error:</strong> {formError}
+                                </div>
+                            )}
+
+                            {/* Login Form */}
+                            <form onSubmit={handleSubmit}>
+                                {/* Email Input */}
+                                <div className="mb-3">
+                                    <label htmlFor='email' className="form-label fw-semibold">
+                                        Email Address
+                                    </label>
+                                    <div className="input-group">
+                                        <span className="input-group-text bg-light">
+                                            <MdEmail className="text-muted" />
+                                        </span>
+                                        <input
+                                            type='email'
+                                            name='email'
+                                            id="email"
+                                            autoComplete='username'
+                                            className={`form-control ${errors.email ? 'is-invalid' : ''}`}
+                                            placeholder="Enter your email"
+                                            value={login.email}
+                                            onChange={handleChange}
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                    {errors.email && (
+                                        <div className="invalid-feedback d-block">
+                                            {errors.email}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Password Input */}
+                                <div className="mb-3">
+                                    <label htmlFor='password' className="form-label fw-semibold">
+                                        Password
+                                    </label>
+                                    <div className="input-group">
+                                        <span className="input-group-text bg-light">
+                                            <MdLock className="text-muted" />
+                                        </span>
+                                        <input
+                                            type={showPassword ? "text" : "password"}
+                                            name='password'
+                                            id='password'
+                                            autoComplete="current-password"
+                                            className={`form-control ${errors.password ? 'is-invalid' : ''}`}
+                                            placeholder="Enter your password"
+                                            value={login.password}
+                                            onChange={handleChange}
+                                            disabled={loading}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-secondary"
+                                            onClick={togglePasswordVisibility}
+                                            disabled={loading}
+                                        >
+                                            {showPassword ? <FaEyeSlash /> : <FaEye />}
+                                        </button>
+                                    </div>
+                                    {errors.password && (
+                                        <div className="invalid-feedback d-block">
+                                            {errors.password}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Forgot Password Link */}
+                                <div className="text-end mb-3">
+                                    <Link to="/resetpassword" className="text-decoration-none small">
+                                        Forgot password?
+                                    </Link>
+                                </div>
+
+                                {/* Submit Button */}
+                                <button
+                                    className="btn btn-primary w-100 py-2"
+                                    type='submit'
+                                    disabled={loading}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            Logging in...
+                                        </>
+                                    ) : (
+                                        'Login'
+                                    )}
+                                </button>
+                            </form>
+
+                            {/* Divider */}
+                            <div className="d-flex align-items-center my-3">
+                                <hr className="flex-grow-1" />
+                                <span className="mx-2 text-muted small">or</span>
+                                <hr className="flex-grow-1" />
+                            </div>
+
+                            {/* Google OAuth & Guest Options */}
+                            <div className="d-grid gap-2 mb-3">
+                                <GoogleLoginButton className="btn-outline-secondary w-100" />
+                                <button
+                                    className="btn btn-outline-secondary w-100"
+                                    type='button'
+                                    onClick={() => {
+                                        dispatch(setGuestMode());
+                                        navigate('/dashboard');
+                                    }}
+                                    disabled={loading}
+                                >
+                                    Continue as Guest
+                                </button>
+                            </div>
+
+                            {/* OAuth Errors - Google Sign In */}
+                            {oauthError && (
+                                <div className="alert alert-warning py-2 mb-3" role="alert">
+                                    <strong>OAuth Error:</strong> {oauthError}
+                                </div>
+                            )}
+
+                            {/* Sign Up Link */}
+                            <div className="text-center mt-3">
+                                <p className='text-muted small mb-0'>
+                                    Don't have an account?{' '}
+                                    <Link to="/signup" className="text-decoration-none fw-semibold">
+                                        Sign Up
+                                    </Link>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     )
 }

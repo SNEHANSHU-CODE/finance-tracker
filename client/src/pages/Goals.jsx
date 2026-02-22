@@ -31,9 +31,11 @@ import {
   selectGoalsError,
   selectDashboardStats,
 } from '../utils/goalSelectors';
+import { usePreferences } from '../hooks/usePreferences';
 
 export default function Goals() {
   const dispatch = useDispatch();
+  const { t, formatCurrency: formatCurrencyPref, formatDate: formatDatePref } = usePreferences();
 
   const auth = useSelector(state => state.auth);
   const userId = useSelector(state => state.auth.user?.userId);
@@ -252,13 +254,10 @@ export default function Goals() {
     }
   };
 
-  const formatCurrency = (amount) => {
-    return goalService.formatCurrency(amount || 0);
-  };
-
+  const formatCurrency = (amount) => formatCurrencyPref(amount || 0);
   const formatDate = (dateString) => {
-    if (!dateString) return 'No date set';
-    return goalService.formatDate(dateString);
+    if (!dateString) return t('no_date_set');
+    return formatDatePref(dateString);
   };
 
   // Loading state
@@ -267,8 +266,8 @@ export default function Goals() {
       <div className="container-fluid p-0">
         <div className="text-center py-5">
           <FaSpinner className="fa-spin text-primary mb-3" size={48} />
-          <h5>Loading Goals...</h5>
-          <p className="text-muted">Please wait while we fetch your financial goals.</p>
+          <h5>{t('loading_goals')}</h5>
+          <p className="text-muted">{t('loading_goals_subtitle')}</p>
         </div>
       </div>
     );
@@ -279,7 +278,7 @@ export default function Goals() {
       {/* Error Alert */}
       {error && (
         <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          <strong>Error:</strong> {error}
+          <strong>{t('error')}:</strong> {error}
           <button
             type="button"
             className="btn-close"
@@ -293,8 +292,8 @@ export default function Goals() {
         <div className="col-12">
           <div className="d-flex justify-content-between align-items-center">
             <div>
-              <h4 className="mb-1">Financial Goals</h4>
-              <p className="text-muted mb-0">Track your savings goals and progress</p>
+              <h4 className="mb-1">{t('financial_goals')}</h4>
+              <p className="text-muted mb-0">{t('track_goals_subtitle')}</p>
             </div>
             <button
               className="btn btn-primary d-flex align-items-center gap-2"
@@ -302,7 +301,7 @@ export default function Goals() {
               disabled={loading}
             >
               <FaPlus size={14} />
-              Add New Goal
+              {t('add_new_goal')}
             </button>
           </div>
         </div>
@@ -319,7 +318,7 @@ export default function Goals() {
                 </div>
               </div>
               <h5 className="fw-bold">{dashboardStats.totalGoals || 0}</h5>
-              <p className="text-muted mb-0">Total Goals</p>
+              <p className="text-muted mb-0">{t('total_goals')}</p>
             </div>
           </div>
         </div>
@@ -332,7 +331,7 @@ export default function Goals() {
                 </div>
               </div>
               <h5 className="fw-bold">{dashboardStats.completedGoals || 0}</h5>
-              <p className="text-muted mb-0">Completed</p>
+              <p className="text-muted mb-0">{t('completed')}</p>
             </div>
           </div>
         </div>
@@ -345,7 +344,7 @@ export default function Goals() {
                 </div>
               </div>
               <h5 className="fw-bold">{formatCurrency(dashboardStats.totalSavedAmount)}</h5>
-              <p className="text-muted mb-0">Total Saved</p>
+              <p className="text-muted mb-0">{t('total_saved')}</p>
             </div>
           </div>
         </div>
@@ -358,7 +357,7 @@ export default function Goals() {
                 </div>
               </div>
               <h5 className="fw-bold">{formatCurrency(dashboardStats.totalTargetAmount)}</h5>
-              <p className="text-muted mb-0">Total Target</p>
+              <p className="text-muted mb-0">{t('total_target')}</p>
             </div>
           </div>
         </div>
@@ -368,7 +367,7 @@ export default function Goals() {
       {activeGoals && activeGoals.length > 0 && (
         <div className="row mb-4">
           <div className="col-12">
-            <h5 className="mb-3">Active Goals</h5>
+            <h5 className="mb-3">{t('active_goals')}</h5>
             <div className="row g-3">
               {activeGoals.map((goal) => {
                 const percentage = getProgressPercentage(goal.savedAmount, goal.targetAmount);
@@ -394,26 +393,26 @@ export default function Goals() {
                           </div>
                           <div className="dropdown">
                             <button className="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-                              Actions
+                              {t('actions')}
                             </button>
                             <ul className="dropdown-menu">
                               <li>
                                 <button className="dropdown-item" onClick={() => handleAddFunds(goal)}>
                                   <FaPlus className="me-2" size={12} />
-                                  Add Funds
+                                  {t('add_funds')}
                                 </button>
                               </li>
                               <li>
                                 <button className="dropdown-item" onClick={() => handleEdit(goal)}>
                                   <FaEdit className="me-2" size={12} />
-                                  Edit Goal
+                                  {t('edit_goal')}
                                 </button>
                               </li>
                               <li><hr className="dropdown-divider" /></li>
                               <li>
                                 <button className="dropdown-item text-danger" onClick={() => handleDelete(goal)}>
                                   <FaTrash className="me-2" size={12} />
-                                  Delete
+                                  {t('delete')}
                                 </button>
                               </li>
                             </ul>
@@ -422,7 +421,7 @@ export default function Goals() {
 
                         <div className="mb-3">
                           <div className="d-flex justify-content-between align-items-center mb-2">
-                            <span className="text-muted">Progress</span>
+                            <span className="text-muted">{t('progress')}</span>
                             <span className="fw-medium">{percentage.toFixed(1)}%</span>
                           </div>
                           <div className="progress" style={{ height: '8px' }}>
@@ -437,13 +436,13 @@ export default function Goals() {
                           <div className="col-6">
                             <div className="text-center p-2 bg-light rounded">
                               <div className="fw-bold text-success">{formatCurrency(goal.savedAmount || 0)}</div>
-                              <small className="text-muted">Saved</small>
+                              <small className="text-muted">{t('saved')}</small>
                             </div>
                           </div>
                           <div className="col-6">
                             <div className="text-center p-2 bg-light rounded">
                               <div className="fw-bold text-primary">{formatCurrency(goal.targetAmount)}</div>
-                              <small className="text-muted">Target</small>
+                              <small className="text-muted">{t('target')}</small>
                             </div>
                           </div>
                         </div>
@@ -456,10 +455,10 @@ export default function Goals() {
                           <div className={`text-${daysRemaining < 30 ? 'danger' : 'muted'}`}>
                             <small>
                               {daysRemaining > 0
-                                ? `${daysRemaining} days left`
+                                ? t('days_left', { count: daysRemaining })
                                 : daysRemaining === 0
-                                  ? 'Due today'
-                                  : `${Math.abs(daysRemaining)} days overdue`
+                                  ? t('due_today')
+                                  : t('days_overdue', { count: Math.abs(daysRemaining) })
                               }
                             </small>
                           </div>
@@ -478,7 +477,7 @@ export default function Goals() {
       {completedGoals && completedGoals.length > 0 && (
         <div className="row">
           <div className="col-12">
-            <h5 className="mb-3 text-success">Completed Goals 🎉</h5>
+            <h5 className="mb-3 text-success">{t('completed_goals')}</h5>
             <div className="row g-3">
               {completedGoals.map((goal) => (
                 <div key={goal._id} className="col-lg-6 col-xl-4">
@@ -522,13 +521,13 @@ export default function Goals() {
 
                       <div className="text-center p-3 bg-success bg-opacity-10 rounded">
                         <div className="fw-bold text-success">{formatCurrency(goal.targetAmount)}</div>
-                        <small className="text-success">Goal Achieved!</small>
+                        <small className="text-success">{t('goal_achieved')}</small>
                       </div>
 
                       <div className="d-flex justify-content-between align-items-center mt-3">
                         <div className="d-flex align-items-center text-muted">
                           <FaCalendarAlt className="me-1" size={12} />
-                          <small>Target: {formatDate(goal.targetDate)}</small>
+                          <small>{t('target_label')} {formatDate(goal.targetDate)}</small>
                         </div>
                       </div>
                     </div>
@@ -548,14 +547,14 @@ export default function Goals() {
               <div className="mb-4">
                 <FaDollarSign size={64} className="text-muted opacity-50" />
               </div>
-              <h5>No Goals Yet</h5>
-              <p className="text-muted mb-4">Start by creating your first financial goal to track your progress.</p>
+              <h5>{t('no_goals_yet')}</h5>
+              <p className="text-muted mb-4">{t('create_first_goal_subtitle')}</p>
               <button
                 className="btn btn-primary"
                 onClick={() => setShowAddModal(true)}
               >
                 <FaPlus className="me-2" />
-                Create Your First Goal
+                {t('create_first_goal')}
               </button>
             </div>
           </div>
@@ -569,7 +568,7 @@ export default function Goals() {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  {editingGoal ? 'Edit Goal' : 'Add New Goal'}
+                  {editingGoal ? t('edit_goal') : t('add_new_goal')}
                 </h5>
                 <button
                   type="button"
@@ -581,18 +580,18 @@ export default function Goals() {
                 <div className="modal-body">
                   <div className="row g-3">
                     <div className="col-12">
-                      <label className="form-label">Goal Name</label>
+                      <label className="form-label">{t('goal_name')}</label>
                       <input
                         type="text"
                         className="form-control"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="e.g., Emergency Fund, New Car, Vacation"
+                        placeholder={t('goal_name_placeholder')}
                         required
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">Target Amount</label>
+                      <label className="form-label">{t('target_amount')}</label>
                       <div className="input-group">
                         <span className="input-group-text">$</span>
                         <input
@@ -607,7 +606,7 @@ export default function Goals() {
                       </div>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">Target Date</label>
+                      <label className="form-label">{t('target_date')}</label>
                       <input
                         type="date"
                         className="form-control"
@@ -618,28 +617,28 @@ export default function Goals() {
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">Priority</label>
+                      <label className="form-label">{t('priority')}</label>
                       <select
                         className="form-select"
                         value={formData.priority}
                         onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                       >
-                        <option value="Low">Low</option>
-                        <option value="Medium">Medium</option>
-                        <option value="High">High</option>
+                        <option value="Low">{t('low')}</option>
+                        <option value="Medium">{t('medium')}</option>
+                        <option value="High">{t('high')}</option>
                       </select>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">Category</label>
+                      <label className="form-label">{t('category')}</label>
                       <select
                         className="form-select"
                         value={formData.category}
                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                         required
                       >
-                        <option value="">Select Category</option>
+                        <option value="">{t('select_category')}</option>
                         {categories.map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
+                          <option key={cat} value={cat}>{t(`goal_cat_${cat.toLowerCase()}`)}</option>
                         ))}
                       </select>
                     </div>
@@ -651,7 +650,7 @@ export default function Goals() {
                     className="btn btn-secondary"
                     onClick={resetForm}
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button
                     type="submit"
@@ -661,10 +660,10 @@ export default function Goals() {
                     {loading ? (
                       <>
                         <FaSpinner className="fa-spin me-2" />
-                        {editingGoal ? 'Updating...' : 'Creating...'}
+                        {editingGoal ? t('updating') : t('creating')}
                       </>
                     ) : (
-                      editingGoal ? 'Update Goal' : 'Create Goal'
+                      editingGoal ? t('update_goal') : t('create_goal')
                     )}
                   </button>
                 </div>
@@ -682,7 +681,7 @@ export default function Goals() {
               <div className="modal-header border-0 pb-0">
                 <h5 className="modal-title text-danger">
                   <FaTrash className="me-2" />
-                  Delete Goal
+                  {t('delete_goal')}
                 </h5>
                 <button
                   type="button"
@@ -700,8 +699,8 @@ export default function Goals() {
                     <div className="bg-danger bg-opacity-10 rounded-circle d-inline-flex p-3 mb-3">
                       <FaTrash className="text-danger" size={32} />
                     </div>
-                    <h6 className="mb-2">Are you sure you want to delete this goal?</h6>
-                    <p className="text-muted mb-0">This action cannot be undone and all progress will be lost.</p>
+                    <h6 className="mb-2">{t('delete_goal_confirm')}</h6>
+                    <p className="text-muted mb-0">{t('cannot_undo_goal_warning')}</p>
                   </div>
 
                   {/* Goal Details Preview */}
@@ -722,7 +721,7 @@ export default function Goals() {
                             {formatCurrency(goalToDelete.targetAmount)}
                           </div>
                           <small className="text-muted">
-                            Target: {formatDate(goalToDelete.targetDate)}
+                            {t('target_label')} {formatDate(goalToDelete.targetDate)}
                           </small>
                         </div>
                       </div>
@@ -730,7 +729,7 @@ export default function Goals() {
                       {/* Progress Bar */}
                       <div className="mb-3">
                         <div className="d-flex justify-content-between align-items-center mb-2">
-                          <span className="text-muted small">Current Progress</span>
+                          <span className="text-muted small">{t('current_progress')}</span>
                           <span className="fw-medium small">
                             {getProgressPercentage(goalToDelete.savedAmount, goalToDelete.targetAmount).toFixed(1)}%
                           </span>
@@ -757,7 +756,7 @@ export default function Goals() {
                             <div className="fw-bold text-success small">
                               {formatCurrency(goalToDelete.savedAmount || 0)}
                             </div>
-                            <small className="text-muted">Saved</small>
+                            <small className="text-muted">{t('saved')}</small>
                           </div>
                         </div>
                         <div className="col-6">
@@ -765,7 +764,7 @@ export default function Goals() {
                             <div className="fw-bold text-warning small">
                               {formatCurrency(goalToDelete.targetAmount - (goalToDelete.savedAmount || 0))}
                             </div>
-                            <small className="text-muted">Remaining</small>
+                            <small className="text-muted">{t('remaining')}</small>
                           </div>
                         </div>
                       </div>
@@ -773,7 +772,7 @@ export default function Goals() {
                       {/* Priority Badge */}
                       <div className="mt-3 text-center">
                         <span className={`badge bg-${priorityColors[goalToDelete.priority]} bg-opacity-10 text-${priorityColors[goalToDelete.priority]} text-capitalize`}>
-                          {goalToDelete.priority} Priority
+                          {goalToDelete.priority} {t('priority')}
                         </span>
                       </div>
                     </div>
@@ -783,7 +782,7 @@ export default function Goals() {
                   {goalToDelete.savedAmount > 0 && (
                     <div className="alert alert-warning mt-3 mb-0">
                       <small>
-                        <strong>Warning:</strong> This goal has {formatCurrency(goalToDelete.savedAmount)} in savings that will be lost.
+                        <strong>{t('warning')}</strong> {t('goal_savings_lost_warning', { amount: formatCurrency(goalToDelete.savedAmount) })}
                       </small>
                     </div>
                   )}
@@ -800,7 +799,7 @@ export default function Goals() {
                   }}
                   disabled={loading}
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   type="button"
@@ -811,12 +810,12 @@ export default function Goals() {
                   {loading ? (
                     <>
                       <FaSpinner className="fa-spin me-2" />
-                      Deleting...
+                      {t('deleting')}
                     </>
                   ) : (
                     <>
                       <FaTrash className="me-2" />
-                      Delete Goal
+                      {t('delete_goal')}
                     </>
                   )}
                 </button>
@@ -832,7 +831,7 @@ export default function Goals() {
           <div className="modal-dialog modal-dialog-centered modal-sm">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Add Funds</h5>
+                <h5 className="modal-title">{t('add_funds')}</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -842,10 +841,10 @@ export default function Goals() {
               <form onSubmit={submitAddFunds}>
                 <div className="modal-body">
                   <div className="mb-3">
-                    <label className="form-label">Goal: {selectedGoal.name}</label>
+                    <label className="form-label">{t('goal_label')} {selectedGoal.name}</label>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label">Amount to Add</label>
+                    <label className="form-label">{t('amount_to_add')}</label>
                     <div className="input-group">
                       <span className="input-group-text">$</span>
                       <input
@@ -860,7 +859,7 @@ export default function Goals() {
                       />
                     </div>
                     <div className="form-text">
-                      Remaining: {formatCurrency(selectedGoal.targetAmount - (selectedGoal.savedAmount || 0))}
+                      {t('remaining_label')} {formatCurrency(selectedGoal.targetAmount - (selectedGoal.savedAmount || 0))}
                     </div>
                   </div>
                 </div>
@@ -870,7 +869,7 @@ export default function Goals() {
                     className="btn btn-secondary"
                     onClick={() => setShowAddFundsModal(false)}
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button
                     type="submit"
@@ -880,10 +879,10 @@ export default function Goals() {
                     {loading ? (
                       <>
                         <FaSpinner className="fa-spin me-2" />
-                        Adding...
+                        {t('adding')}
                       </>
                     ) : (
-                      'Add Funds'
+                      t('add_funds')
                     )}
                   </button>
                 </div>

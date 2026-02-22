@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { useSettings } from "../context/SettingsContext";
 
 import { 
   FaDollarSign, 
@@ -28,6 +29,7 @@ import { recentTransactions, fetchDashboardStats, fetchCategoryAnalysis } from "
 
 export default function Dashboard() {
   const dispatch = useDispatch();
+  const { formatCurrency: formatCurrencyFromSettings, formatDate: formatDateFromSettings, t } = useSettings();
   
   // State management
   const [recentTransaction, setRecentTransaction] = useState([]);
@@ -36,70 +38,86 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  useEffect(() => {
+    console.log("Category Data:", categoryData);
+  }, [categoryData]);
+
   // Get Redux state for additional debugging
   const transactionState = useSelector(state => state.transactions || {});
 
   // Enhanced useEffect with comprehensive error handling
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Check if dispatch functions exist
-        if (typeof recentTransactions !== 'function') {
-          throw new Error('recentTransactions action is not defined');
-        }
-        if (typeof fetchDashboardStats !== 'function') {
-          throw new Error('fetchDashboardStats action is not defined');
-        }
-        
-        // Fetch recent transactions
-        const result = await dispatch(recentTransactions()).unwrap();
-        
-        // Validate recent transactions data
-        if (!Array.isArray(result)) {
-          setRecentTransaction([]);
-        } else {
-          setRecentTransaction(result);
-        }
-        
-        // Fetch dashboard stats
-        const dashboard = await dispatch(fetchDashboardStats()).unwrap();
-        
-        // Validate dashboard data structure
-        if (!dashboard || typeof dashboard !== 'object') {
-          setDashboardData({});
-        } else {
-          setDashboardData(dashboard);
-        }
-
-        // Fetch Catagory data
-        const category = await dispatch(fetchCategoryAnalysis()).unwrap();
-
-        // Validate catagory data
-        if(!category){
-          setCategoryData([]);
-          console.log(category);
-        }
-        else{
-          setCategoryData(category);
-          console.log(category);
-        }
-        
-      } catch (error) {
-        setError(error.message || 'Failed to load dashboard data');
-        
-        // Set empty defaults on error
-        setRecentTransaction([]);
-        setDashboardData({});
-      } finally {
-        setIsLoading(false);
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Check if dispatch functions exist
+      if (typeof recentTransactions !== 'function') {
+        throw new Error('recentTransactions action is not defined');
       }
-    };
-    
-    fetchData();
-  }, [dispatch]);
+      if (typeof fetchDashboardStats !== 'function') {
+        throw new Error('fetchDashboardStats action is not defined');
+      }
+      if (typeof fetchCategoryAnalysis !== 'function') {
+        throw new Error('fetchCategoryAnalysis action is not defined');
+      }
+      
+      // Fetch recent transactions
+      const result = await dispatch(recentTransactions()).unwrap();
+      
+      // Validate recent transactions data
+      if (!Array.isArray(result)) {
+        setRecentTransaction([]);
+      } else {
+        setRecentTransaction(result);
+      }
+      
+      // Fetch dashboard stats
+      const dashboard = await dispatch(fetchDashboardStats()).unwrap();
+      
+      // Validate dashboard data structure
+      if (!dashboard || typeof dashboard !== 'object') {
+        setDashboardData({});
+      } else {
+        setDashboardData(dashboard);
+      }
+
+      // Fetch Category data
+      console.log('Fetching category analysis...');
+      const category = await dispatch(fetchCategoryAnalysis()).unwrap();
+      
+      console.log('Category analysis response:', category);
+      console.log('Category type:', typeof category);
+      console.log('Category categories:', category?.categories);
+      
+      // Validate category data structure
+      if (!category || typeof category !== 'object') {
+        console.log('Invalid category data structure');
+        setCategoryData({ categories: [] });
+      } else if (!category.categories || !Array.isArray(category.categories)) {
+        console.log('Missing or invalid categories array');
+        setCategoryData({ ...category, categories: [] });
+      } else {
+        console.log('Valid category data:', category);
+        setCategoryData(category);
+      }
+      
+    } catch (error) {
+      console.error('Dashboard fetch error:', error);
+      setError(error.message || 'Failed to load dashboard data');
+      
+      // Set empty defaults on error
+      setRecentTransaction([]);
+      setDashboardData({});
+      setCategoryData({ categories: [] });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  fetchData();
+}, [dispatch]);
 
   // Enhanced financial summary with better fallbacks
   const getFinancialSummary = () => {
@@ -173,27 +191,13 @@ export default function Dashboard() {
 
   // Utility functions with null checks
   const formatCurrency = (amount) => {
-    if (amount === null || amount === undefined || isNaN(amount)) {
-      return '$0.00';
-    }
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(Math.abs(amount));
+    // Use settings-based formatter which respects user's currency setting
+    return formatCurrencyFromSettings(amount);
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'No date';
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-    } catch (error) {
-      console.error('Error formatting date:', dateString, error);
-      return 'Invalid date';
-    }
+    // Use settings-based formatter which respects user's language setting
+    return formatDateFromSettings(dateString) || 'No date';
   };
 
   const getTransactionIcon = (transaction) => {
@@ -221,9 +225,9 @@ export default function Dashboard() {
       <div className="container-fluid p-0">
         <div className="text-center p-5">
           <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
+            <span className="visually-hidden">{t('loading')}</span>
           </div>
-          <p className="mt-3">Loading dashboard data...</p>
+          <p className="mt-3">{t('loading')}</p>
         </div>
       </div>
     );
@@ -237,13 +241,13 @@ export default function Dashboard() {
           <div className="d-flex align-items-center">
             <FaExclamationTriangle className="me-2" />
             <div>
-              <h4 className="alert-heading mb-1">Error Loading Dashboard</h4>
+              <h4 className="alert-heading mb-1">{t('error_loading_dashboard')}</h4>
               <p className="mb-2">{error}</p>
               <button 
                 className="btn btn-outline-danger btn-sm" 
                 onClick={() => window.location.reload()}
               >
-                Retry
+                {t('retry')}
               </button>
             </div>
           </div>
@@ -261,8 +265,8 @@ export default function Dashboard() {
         <div className="col-12">
           <div className="d-flex justify-content-between align-items-center flex-wrap">
             <div>
-              <h4 className="mb-1">Dashboard Overview</h4>
-              <p className="text-muted mb-0">Welcome back! Here's your financial summary</p>
+              <h4 className="mb-1">{t('dashboard_overview')}</h4>
+              <p className="text-muted mb-0">{t('dashboard_welcome')}</p>
             </div>
           </div>
         </div>
@@ -279,10 +283,10 @@ export default function Dashboard() {
                 </div>
               </div>
               <h4 className="fw-bold text-primary">{formatCurrency(financialSummary.totalBalance)}</h4>
-              <p className="text-muted mb-0">Net Balance</p>
+              <p className="text-muted mb-0">{t('net_balance')}</p>
               <small className="text-success">
                 {(dashboardData.monthly?.summary?.netSavings || 0) > 0 ? '+' : ''}
-                {formatCurrency(dashboardData.monthly?.summary?.netSavings || 0)} this month
+                {t('saved_amount', { amount: formatCurrency(dashboardData.monthly?.summary?.netSavings || 0) })}
               </small>
             </div>
           </div>
@@ -297,10 +301,10 @@ export default function Dashboard() {
                 </div>
               </div>
               <h4 className="fw-bold text-success">{formatCurrency(financialSummary.monthlyIncome)}</h4>
-              <p className="text-muted mb-0">Monthly Income</p>
+              <p className="text-muted mb-0">{t('monthly_income')}</p>
               <small className="text-success">
                 <FaArrowUp size={12} className="me-1" />
-                {dashboardData.monthly?.summary?.transactionCount || 0} transactions
+                {t('transactions_count', { count: dashboardData.monthly?.summary?.transactionCount || 0 })}
               </small>
             </div>
           </div>
@@ -315,10 +319,10 @@ export default function Dashboard() {
                 </div>
               </div>
               <h4 className="fw-bold text-danger">{formatCurrency(financialSummary.monthlyExpenses)}</h4>
-              <p className="text-muted mb-0">Monthly Expenses</p>
+              <p className="text-muted mb-0">{t('monthly_expenses')}</p>
               <small className="text-muted">
                 <FaArrowDown size={12} className="me-1" />
-                Across {categoryData?.categories?.length} categories
+                {t('across_categories', { count: categoryData?.categories?.length || 0 })}
               </small>
             </div>
           </div>
@@ -333,10 +337,10 @@ export default function Dashboard() {
                 </div>
               </div>
               <h4 className="fw-bold text-info">{financialSummary.savingsRate}%</h4>
-              <p className="text-muted mb-0">Savings Rate</p>
+              <p className="text-muted mb-0">{t('savings_rate')}</p>
               <small className="text-info">
                 <FaChartLine size={12} className="me-1" />
-                {formatCurrency(dashboardData.monthly?.summary?.netSavings || 0)} saved
+                {t('saved_amount', { amount: formatCurrency(dashboardData.monthly?.summary?.netSavings || 0) })}
               </small>
             </div>
           </div>
@@ -349,10 +353,10 @@ export default function Dashboard() {
           <div className="card border-0 shadow-sm">
             <div className="card-header bg-transparent border-0 pt-3">
               <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">Recent Transactions</h5>
+                <h5 className="mb-0">{t('recent_transactions')}</h5>
                 <Link to="/dashboard/transactions" className="btn btn-outline-primary btn-sm">
                   <FaEye size={12} className="me-1" />
-                  View All
+                  {t('view_all')}
                 </Link>
               </div>
             </div>
@@ -404,7 +408,7 @@ export default function Dashboard() {
                       <tr>
                         <td colSpan="5" className="text-center text-muted py-4">
                           <FaExclamationTriangle className="me-2" />
-                          No recent transactions found
+                          {t('no_recent_transactions')}
                         </td>
                       </tr>
                     )}
@@ -424,7 +428,7 @@ export default function Dashboard() {
             <div className="card border-0 shadow-sm">
               <div className="card-body text-center text-muted py-4">
                 <FaChartLine size={48} className="mb-3 opacity-50" />
-                <p className="mb-0">No category data available</p>
+                <p className="mb-0">{t('no_category_data')}</p>
               </div>
             </div>
           )}
@@ -438,9 +442,9 @@ export default function Dashboard() {
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <h6 className="text-muted mb-1">Savings Rate</h6>
+                  <h6 className="text-muted mb-1">{t('savings_rate')}</h6>
                   <h4 className="fw-bold text-success mb-0">{financialSummary.savingsRate}%</h4>
-                  <small className="text-muted">of monthly income</small>
+                  <small className="text-muted">{t('of_monthly_income') || ''}</small>
                 </div>
                 <div className="p-3 bg-success bg-opacity-10 rounded-circle">
                   <FaPiggyBank className="text-success" size={24} />
@@ -455,11 +459,11 @@ export default function Dashboard() {
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <h6 className="text-muted mb-1">Available to Spend</h6>
+                  <h6 className="text-muted mb-1">{t('available_to_spend')}</h6>
                   <h4 className="fw-bold text-primary mb-0">
                     {formatCurrency(financialSummary.monthlyIncome - financialSummary.monthlyExpenses)}
                   </h4>
-                  <small className="text-muted">remaining this month</small>
+                  <small className="text-muted">{t('remaining_this_month')}</small>
                 </div>
                 <div className="p-3 bg-primary bg-opacity-10 rounded-circle">
                   <FaCreditCard className="text-primary" size={24} />

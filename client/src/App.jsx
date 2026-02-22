@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect } from 'react'
+import { useSelector, useDispatch } from 'react-redux';
 
 import PWAManager from './pwa/PWAManager';
+import { SettingsProvider } from './context/SettingsContext';
+import { fetchUserPreferences } from './app/authSlice';
+import sessionManager from './utils/sessionManager';
 
 import AppRouter from './routes/AppRouter'
 import Navbar from './components/Navbar'
@@ -9,28 +13,43 @@ import ScrollToTop from './components/ScrollToTop';
 import Chatbot from './components/ChatBot';
 
 function App() {
-  // const [theme, setTheme] = useState('');
-  // setTheme('dark');
+  const dispatch = useDispatch();
+  const isAuthenticated = useSelector((state) => state.auth?.isAuthenticated);
+  const accessToken = useSelector((state) => state.auth?.accessToken);
 
-  // const toggleTheme = () => {
-  //   const newTheme = theme === 'dark' ? 'light' : 'dark';
-  //   setTheme(newTheme);
-  //   localStorage.setItem('theme', newTheme);
-  // };
+  // Initialize preferences and session on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Fetch preferences from server
+      dispatch(fetchUserPreferences());
+      
+      // Setup session tracking
+      if (accessToken) {
+        const cleanup = sessionManager.setupInactivityTracker(
+          30 * 60 * 1000, // 30 minutes
+          () => {
+            // Session expired callback
+            console.log('Session expired due to inactivity');
+            dispatch({ type: 'auth/logout' });
+          }
+        );
+        
+        return cleanup;
+      }
+    }
+  }, [isAuthenticated, accessToken, dispatch]);
 
-  // useEffect(() => {
-    document.body.classList.remove('light', 'dark');
-    document.body.classList.add('light');
-  // }, []);
   return (
-    <>
-      <PWAManager />
-      <ScrollToTop />
-      <Navbar />
-      <Chatbot />
-      <AppRouter />
-      <Footer />
-    </>
+    <SettingsProvider>
+      <div>
+        <PWAManager />
+        <ScrollToTop />
+        <Navbar />
+        <Chatbot />
+        <AppRouter />
+        <Footer />
+      </div>
+    </SettingsProvider>
   )
 }
 

@@ -3,10 +3,12 @@ import { FaEdit, FaSave, FaTimes, FaUser, FaEnvelope, FaTrash, FaKey, FaEye, FaE
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { updateUserPassword, updateUserProfile, deleteUserAccount } from '../app/authSlice';
+import { usePreferences } from '../hooks/usePreferences';
 
 const ProfilePage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { t } = usePreferences();
   
   // Get user details from auth state of Redux store
   const { user, loading } = useSelector((state) => state.auth);
@@ -52,15 +54,15 @@ const ProfilePage = () => {
     const emailRegex = /^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/;
 
     if (!editData.username.trim()) {
-      newErrors.username = 'Username is required.';
+      newErrors.username = t('username_required');
     } else if (!nameRegex.test(editData.username)) {
-      newErrors.username = 'Username should be at least 3 characters and contain only letters.';
+      newErrors.username = t('username_invalid');
     }
 
     if (!editData.email.trim()) {
-      newErrors.email = 'Email is required.';
+      newErrors.email = t('email_required');
     } else if (!emailRegex.test(editData.email)) {
-      newErrors.email = 'Invalid email format.';
+      newErrors.email = t('invalid_email_format');
     }
 
     setErrors(newErrors);
@@ -133,19 +135,19 @@ const ProfilePage = () => {
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
     if (!newPassword.currentPassword.trim()) {
-      newErrors.currentPassword = 'Current password is required.';
+      newErrors.currentPassword = t('current_password_required');
     }
 
     if (!newPassword.newPassword.trim()) {
-      newErrors.newPassword = 'New password is required.';
+      newErrors.newPassword = t('new_password_required');
     } else if (!passwordRegex.test(newPassword.newPassword)) {
-      newErrors.newPassword = 'Password must be 8+ chars, with uppercase, lowercase, digit & special char.';
+      newErrors.newPassword = t('password_rule_msg');
     }
 
     if (!newPassword.confirmPassword.trim()) {
-      newErrors.confirmPassword = 'Please confirm your password.';
+      newErrors.confirmPassword = t('confirm_password_required');
     } else if (newPassword.newPassword !== newPassword.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match.';
+      newErrors.confirmPassword = t('passwords_do_not_match');
     }
 
     setPasswordErrors(newErrors);
@@ -174,7 +176,7 @@ const ProfilePage = () => {
       } catch (error) {
         console.error('Password update failed:', error);
         // Set error message for display
-        setPasswordErrors({ submit: 'Password update failed. Please try again.' });
+        setPasswordErrors({ submit: t('password_update_failed') });
       }
     }
   };
@@ -193,11 +195,11 @@ const ProfilePage = () => {
     const newErrors = {};
     
     if (!deleteConfirm.password.trim()) {
-      newErrors.password = 'Password is required to delete account.';
+      newErrors.password = t('delete_password_required');
     }
     
     if (deleteConfirm.confirmDeletion !== 'DELETE') {
-      newErrors.confirmDeletion = 'Please type "DELETE" to confirm.';
+      newErrors.confirmDeletion = t('type_delete_to_confirm');
     }
 
     setDeleteErrors(newErrors);
@@ -211,7 +213,7 @@ const ProfilePage = () => {
         navigate('/');
       } catch (error) {
         console.error('Account deletion failed:', error);
-        setDeleteErrors({ submit: 'Account deletion failed. Please try again.' });
+        setDeleteErrors({ submit: t('account_deletion_failed') });
       }
     }
   };
@@ -236,21 +238,21 @@ const ProfilePage = () => {
             {/* Header */}
             <div className="d-flex align-items-center mb-4">
               <FaUser className="me-3 text-primary" size={28} />
-              <h2 className="mb-0 fw-bold text-dark">Profile</h2>
+              <h2 className="mb-0 fw-bold text-dark">{t('profile')}</h2>
             </div>
 
             {/* Profile Info Card */}
             <div className="card shadow-sm border-0 mb-4">
               <div className="card-body p-4">
                 <div className="d-flex justify-content-between align-items-start mb-4">
-                  <h5 className="card-title mb-0 fw-bold">Personal Information</h5>
+                  <h5 className="card-title mb-0 fw-bold">{t('personal_information')}</h5>
                   {!isEditing ? (
                     <button
                       className="btn btn-outline-primary btn-sm d-flex align-items-center"
                       onClick={handleEdit}
                     >
                       <FaEdit className="me-2" />
-                      Edit
+                      {t('edit')}
                     </button>
                   ) : (
                     <div className="d-flex gap-2">
@@ -259,14 +261,14 @@ const ProfilePage = () => {
                         onClick={handleSave}
                       >
                         <FaSave className="me-2" />
-                        Save
+                        {t('save')}
                       </button>
                       <button
                         className="btn btn-outline-secondary btn-sm d-flex align-items-center"
                         onClick={handleCancel}
                       >
                         <FaTimes className="me-2" />
-                        Cancel
+                        {t('cancel')}
                       </button>
                     </div>
                   )}
@@ -279,7 +281,7 @@ const ProfilePage = () => {
                       <div className="col-12">
                         <label className="form-label fw-semibold text-muted mb-1">
                           <FaUser className="me-2" />
-                          Full Name
+                          {t('full_name')}
                         </label>
                         {!isEditing ? (
                           <p className="form-control-plaintext fw-bold text-dark mb-0">
@@ -306,7 +308,7 @@ const ProfilePage = () => {
                       <div className="col-12 col-lg-6">
                         <label className="form-label fw-semibold text-muted mb-1">
                           <FaEnvelope className="me-2" />
-                          Email Address
+                          {t('email_address')}
                         </label>
                         {!isEditing ? (
                           <p className="form-control-plaintext text-dark mb-0">
@@ -339,7 +341,7 @@ const ProfilePage = () => {
               <div className="card-header bg-transparent border-0 pt-3">
                 <h5 className="mb-0 d-flex align-items-center gap-2 text-primary">
                   <FaKey size={16} />
-                  Change Password
+                  {t('change_password')}
                 </h5>
               </div>
               <div className="card-body pt-2">
@@ -353,14 +355,14 @@ const ProfilePage = () => {
                 <form className="row g-3" onSubmit={handlePasswordUpdate}>
                   <div className="col-md-6 position-relative">
                     <label htmlFor="currentPassword" className="form-label">
-                      Current Password
+                      {t('current_password')}
                     </label>
                     <input
                       type={showCurrPassword ? "text" : "password"}
                       className={`form-control ${passwordErrors.currentPassword ? 'is-invalid' : ''}`}
                       id="currentPassword"
                       name="currentPassword"
-                      placeholder="Enter current password"
+                      placeholder={t('enter_current_password')}
                       value={newPassword.currentPassword}
                       onChange={handlePasswordChange}
                     />
@@ -385,14 +387,14 @@ const ProfilePage = () => {
                   
                   <div className="col-md-6 position-relative">
                     <label htmlFor="newPassword" className="form-label">
-                      New Password
+                      {t('new_password')}
                     </label>
                     <input
                       type={showNewPassword ? "text" : "password"}
                       className={`form-control ${passwordErrors.newPassword ? 'is-invalid' : ''}`}
                       id="newPassword"
                       name="newPassword"
-                      placeholder="Enter new password"
+                      placeholder={t('enter_new_password')}
                       value={newPassword.newPassword}
                       onChange={handlePasswordChange}
                     />
@@ -417,14 +419,14 @@ const ProfilePage = () => {
                   
                   <div className="col-md-6 position-relative">
                     <label htmlFor="confirmPassword" className="form-label">
-                      Confirm New Password
+                      {t('confirm_new_password')}
                     </label>
                     <input
                       type={showConfirmPassword ? "text" : "password"}
                       className={`form-control ${passwordErrors.confirmPassword ? 'is-invalid' : ''}`}
                       id="confirmPassword"
                       name="confirmPassword"
-                      placeholder="Confirm new password"
+                      placeholder={t('confirm_new_password_placeholder')}
                       value={newPassword.confirmPassword}
                       onChange={handlePasswordChange}
                     />
@@ -456,10 +458,10 @@ const ProfilePage = () => {
                       {loading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          Updating...
+                          {t('updating')}
                         </>
                       ) : (
-                        'Update Password'
+                        t('update_password')
                       )}
                     </button>
                   </div>
@@ -472,19 +474,19 @@ const ProfilePage = () => {
               <div className="card-header bg-transparent border-0 pt-3">
                 <h5 className="mb-0 d-flex align-items-center gap-2 text-danger">
                   <FaTrash size={16} />
-                  Danger Zone
+                  {t('danger_zone')}
                 </h5>
               </div>
               <div className="card-body pt-2">
                 <div className="alert alert-danger d-flex align-items-start gap-3">
                   <FaTrash className="mt-1" size={16} />
                   <div className="flex-grow-1">
-                    <h6 className="alert-heading">Delete Account</h6>
+                    <h6 className="alert-heading">{t('delete_account')}</h6>
                     <p className="mb-2">
-                      Permanently delete your account and all associated data. This action cannot be undone.
+                      {t('delete_account_description')}
                     </p>
                     <button className="btn btn-danger btn-sm" onClick={openDeleteModal}>
-                      Delete My Account
+                      {t('delete_my_account')}
                     </button>
                   </div>
                 </div>
@@ -502,13 +504,13 @@ const ProfilePage = () => {
               <div className="modal-header border-0">
                 <h5 className="modal-title text-danger">
                   <FaTrash className="me-2" />
-                  Delete Account
+                  {t('delete_account')}
                 </h5>
                 <button type="button" className="btn-close" onClick={closeDeleteModal}></button>
               </div>
               <div className="modal-body">
                 <div className="alert alert-danger">
-                  <strong>Warning!</strong> This action cannot be undone. All your data will be permanently deleted.
+                  <strong>{t('warning')}</strong> {t('irreversible_warning')}
                 </div>
                 
                 {deleteErrors.submit && (
@@ -520,14 +522,14 @@ const ProfilePage = () => {
                 <form>
                   <div className="mb-3">
                     <label htmlFor="deletePassword" className="form-label">
-                      Enter your password to confirm:
+                      {t('enter_password_to_confirm')}
                     </label>
                     <input
                       type="password"
                       className={`form-control ${deleteErrors.password ? 'is-invalid' : ''}`}
                       id="deletePassword"
                       name="password"
-                      placeholder="Enter your password"
+                      placeholder={t('enter_password')}
                       value={deleteConfirm.password}
                       onChange={handleDeleteConfirmChange}
                     />
@@ -540,14 +542,14 @@ const ProfilePage = () => {
                   
                   <div className="mb-3">
                     <label htmlFor="confirmDeletion" className="form-label">
-                      Type "DELETE" to confirm:
+                      {t('type_delete_to_confirm_label')}
                     </label>
                     <input
                       type="text"
                       className={`form-control ${deleteErrors.confirmDeletion ? 'is-invalid' : ''}`}
                       id="confirmDeletion"
                       name="confirmDeletion"
-                      placeholder="Type DELETE"
+                      placeholder={t('type_delete_placeholder')}
                       value={deleteConfirm.confirmDeletion}
                       onChange={handleDeleteConfirmChange}
                     />
@@ -561,7 +563,7 @@ const ProfilePage = () => {
               </div>
               <div className="modal-footer border-0">
                 <button type="button" className="btn btn-secondary" onClick={closeDeleteModal}>
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button 
                   type="button" 
@@ -572,10 +574,10 @@ const ProfilePage = () => {
                   {loading ? (
                     <>
                       <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                      Deleting...
+                      {t('deleting')}
                     </>
                   ) : (
-                    'Delete Account'
+                    t('delete_account')
                   )}
                 </button>
               </div>

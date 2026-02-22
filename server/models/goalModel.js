@@ -48,7 +48,12 @@ const goalSchema = new mongoose.Schema({
   description: {
     type: String,
     maxlength: [200, 'Description cannot exceed 200 characters']
-  }
+  },
+  isGuestMigrated: {
+    type: Boolean,
+    default: false
+  },
+  migratedAt: Date
 }, {
   timestamps: true
 });

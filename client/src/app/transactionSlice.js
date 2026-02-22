@@ -120,17 +120,10 @@ export const fetchCategoryAnalysis = createAsyncThunk(
   'transaction/fetchCategoryAnalysis',
   async (_, { rejectWithValue }) => {
     try {
-      // Calculate dates for the past year
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setFullYear(endDate.getFullYear() - 1);
-      
-      const response = await transactionService.getCategoryAnalysis(
-        startDate.toISOString(),
-        endDate.toISOString()
-      );
-      return response.data;
+      const response = await transactionService.getCategoryAnalysis();
+      return response.data; 
     } catch (error) {
+      console.error('fetchCategoryAnalysis error:', error);
       return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
@@ -298,9 +291,20 @@ const transactionSlice = createSlice({
       })
       
       // Category analysis
-      .addCase(fetchCategoryAnalysis.fulfilled, (state, action) => {
-        state.categoryAnalysis = action.payload;
-      })
+       .addCase(fetchCategoryAnalysis.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    })
+    .addCase(fetchCategoryAnalysis.fulfilled, (state, action) => {
+      state.loading = false;
+      state.categoryAnalysis = action.payload; // This should be the analysis object
+      console.log('Category analysis stored:', action.payload);
+    })
+    .addCase(fetchCategoryAnalysis.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+      console.error('Category analysis rejected:', action.payload);
+    })
       
       // Spending trends
       .addCase(fetchSpendingTrends.fulfilled, (state, action) => {

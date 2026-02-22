@@ -102,11 +102,16 @@ const transactionSchema = new mongoose.Schema({
   metadata: {
     source: {
       type: String,
-      enum: ['manual', 'import', 'api', 'recurring'],
+      enum: ['manual', 'import', 'api', 'recurring', 'guest-migration'],
       default: 'manual'
     },
     deviceInfo: String,
-    ipAddress: String
+    ipAddress: String,
+    isGuestMigrated: {
+      type: Boolean,
+      default: false
+    },
+    migratedAt: Date
   }
 }, {
   timestamps: true,
@@ -350,52 +355,55 @@ transactionSchema.statics.getMonthlySummary = async function(userId, month, year
 };
 
 // Static method for advanced category analysis
-transactionSchema.statics.getCategoryAnalysis = async function(userId, startDate, endDate, options = {}) {
-  const { type = 'Expense', includeSubcategories = false } = options;
-  
+transactionSchema.statics.getCategoryAnalysis = async function (userId) {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setFullYear(endDate.getFullYear() - 1);
+
   const pipeline = [
     {
       $match: {
         userId: new mongoose.Types.ObjectId(userId),
-        date: { $gte: new Date(startDate), $lte: new Date(endDate) },
-        type
+        type: 'Expense',
+        date: { $gte: startDate, $lte: endDate }
       }
     },
     {
       $group: {
         _id: '$category',
-        totalAmount: { $sum: { $abs: '$amount' } },
-        transactionCount: { $sum: 1 },
-        averageAmount: { $avg: { $abs: '$amount' } },
-        tags: { $push: '$tags' }
+        totalAmount: { $sum: { $abs: '$amount' } }
       }
     },
     {
       $sort: { totalAmount: -1 }
     }
   ];
-  
+
   const results = await this.aggregate(pipeline);
-  const totalAmount = results.reduce((sum, item) => sum + item.totalAmount, 0);
-  
-  const analysis = results.map(item => ({
+
+  const totalAmount = results.reduce(
+    (sum, item) => sum + item.totalAmount,
+    0
+  );
+
+  const categories = results.map(item => ({
     category: item._id,
-    amount: Math.round(item.totalAmount * 100) / 100,
-    percentage: totalAmount > 0 ? Math.round((item.totalAmount / totalAmount) * 100 * 100) / 100 : 0,
-    transactionCount: item.transactionCount,
-    averageAmount: Math.round(item.averageAmount * 100) / 100,
-    commonTags: this.getCommonTags(item.tags.flat())
+    amount: Number(item.totalAmount.toFixed(2)),
+    percentage: totalAmount
+      ? Number(((item.totalAmount / totalAmount) * 100).toFixed(2))
+      : 0
   }));
-  
+
   return {
-    type,
+    type: 'Expense',
     period: { startDate, endDate },
-    totalAmount: Math.round(totalAmount * 100) / 100,
-    categories: analysis,
-    topCategory: analysis[0] || null,
-    categoryCount: analysis.length
+    totalAmount: Number(totalAmount.toFixed(2)),
+    categories,
+    topCategory: categories[0] || null,
+    categoryCount: categories.length
   };
 };
+
 
 // Helper method to find common tags
 transactionSchema.statics.getCommonTags = function(tags) {

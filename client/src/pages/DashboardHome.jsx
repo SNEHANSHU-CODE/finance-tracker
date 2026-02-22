@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { Link, Outlet } from "react-router-dom";
+import { usePreferences } from "../hooks/usePreferences";
 
 export default function DashboardHome() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { t } = usePreferences();
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -27,25 +29,25 @@ export default function DashboardHome() {
         >
           <ul className="nav flex-column">
             <li className="nav-item">
-              <Link className="nav-link text-white" to="/dashboard">Dashboard</Link>
+              <Link className="nav-link text-white" to="/dashboard">{t('dashboard')}</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white" to="/dashboard/transactions">Transactions</Link>
+              <Link className="nav-link text-white" to="/dashboard/transactions">{t('transactions')}</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white" to="/dashboard/analytics">Analytics</Link>
+              <Link className="nav-link text-white" to="/dashboard/analytics">{t('analytics_dashboard')}</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white" to="/dashboard/goals">Goals</Link>
+              <Link className="nav-link text-white" to="/dashboard/goals">{t('goals')}</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white" to="/dashboard/reminders">Reminders</Link>
+              <Link className="nav-link text-white" to="/dashboard/reminders">{t('reminders')}</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white" to="/dashboard/settings">Settings</Link>
+              <Link className="nav-link text-white" to="/dashboard/settings">{t('settings')}</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white" to="/dashboard/profile">Profile</Link>
+              <Link className="nav-link text-white" to="/dashboard/profile">{t('profile')}</Link>
             </li>
           </ul>
         </nav>
