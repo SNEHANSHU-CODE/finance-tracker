@@ -56,6 +56,12 @@ async function startServer() {
   // PDF Routes
   app.use('/api/pdf', pdfRoutes);
 
+  //Keep my server alive
+  app.get('/api/ping', (req, res) => {
+    res.send('pong');
+  });
+
+
   // Initialize Apollo Server
   const server = new ApolloServer({
     typeDefs,

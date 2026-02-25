@@ -200,7 +200,7 @@ export default function Login() {
                             {/* Google OAuth & Guest Options */}
                             <div className="d-grid gap-2 mb-3">
                                 <GoogleLoginButton className="btn-outline-secondary w-100" />
-                                <button
+                                {/* <button
                                     className="btn btn-outline-secondary w-100"
                                     type='button'
                                     onClick={() => {
@@ -210,7 +210,7 @@ export default function Login() {
                                     disabled={loading}
                                 >
                                     Continue as Guest
-                                </button>
+                                </button> */}
                             </div>
 
                             {/* OAuth Errors - Google Sign In */}

@@ -11,7 +11,7 @@ import LandingPage from '../pages/LandingPage';
 import DashboardHome from '../pages/DashboardHome';
 import LoadingSpinner from '../components/LodingSpinner';
 import ResetPassword from '../components/ResetPassword';
-import AuthorsNote from '../components/AuthorsNote';
+import DevelopersNote from '../components/DevelopersNote';
 import PrivacyPolicy from '../components/PrivacyPolicy';
 import TermsOfService from '../components/TermOfService';
 
@@ -54,7 +54,7 @@ export default function AppRouter() {
             <Route path="/resetpassword" element={<PublicRoute><ResetPassword /></PublicRoute>} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/service" element={<TermsOfService />} />
-            <Route path="/authorsnote" element={<AuthorsNote />} />
+            <Route path="/developersnote" element={<DevelopersNote />} />
 
             {/* Dashboard routes */}
             

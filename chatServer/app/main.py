@@ -123,6 +123,11 @@ def health_check():
         "port": settings.PORT
     }
 
+#Keep my server alive
+@app.get("/api/ping")
+def ping():
+    return "pong"
+
 
 # This is only used when running directly: python app/main.py
 # You're using run.py instead, which is fine

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import './styles/AuthorsNote.css';
+import './styles/DevelopersNote.css';
 import {
   FaUser,
   FaCalendarAlt,
@@ -26,13 +26,14 @@ import {
   FaDatabase
 } from 'react-icons/fa';
 
-const AuthorsNote = () => {
+const DevelopersNote = () => {
 
   const [isExpanded, setIsExpanded] = useState(false);
 
   const techStack = [
     'React.js', 'Redux Toolkit', 'Bootstrap 5', 'React Router',
-    'React Icons', 'CSS3 Animations', 'Responsive Design', 'Node.js', 'Express.js', 'Redis', 'MongoDB'
+    'React Icons', 'CSS3 Animations', 'Responsive Design', 'Node.js', 'Express.js', 'Redis', 'MongoDB',
+    'fastAPI', 'Langchain', 'LLM API Integration'
   ];
 
   const features = [
@@ -119,7 +120,7 @@ return (
       <div className="row mb-5">
         <div className="col-12">
           <div className="card border-0 shadow-lg overflow-hidden">
-            <div className="card-header border-0 text-white p-5"
+            <div className="card-header border-0 text-white p-3 p-md-5"
               style={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 position: 'relative'
@@ -127,20 +128,19 @@ return (
               <div className="row align-items-center">
                 <div className="col-md-8">
                   <div className="d-flex align-items-center">
-                    <div className="bg-white bg-opacity-20 rounded-circle p-3 me-4">
-                      <FaUser size={40} />
-                    </div>
                     <div>
-                      <h1 className="mb-2 fw-bold display-5">Author's Note</h1>
+                      <h1 className="mb-2 fw-bold display-5 fs-2 fs-md-1">Developer's Note</h1>
                       <p className="mb-0 fs-5 opacity-90">A comprehensive overview from the developer</p>
                     </div>
                   </div>
                 </div>
-                <div className="col-md-4 text-md-end">
+                <div className="col-md-4 text-md-end text-center mt-3 mt-md-0">
                   <div className="bg-white bg-opacity-10 rounded-3 p-3 d-inline-block">
                     <div className="d-flex align-items-center text-white">
                       <FaCalendarAlt className="me-2" />
-                      <span className="fw-semibold">June 2025</span>
+                      <span className="fw-semibold">
+                        {new Date().toLocaleString('default', { month: 'long' })} {new Date().getFullYear()}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -202,7 +202,7 @@ return (
       <div className="row mb-5">
         <div className="col-12">
           <div className="card border-0 shadow-sm">
-            <div className="card-body p-5">
+            <div className="card-body p-3 p-md-5">
               <div className="d-flex align-items-center mb-4">
                 <FaLightbulb className="text-warning me-3" size={32} />
                 <h3 className="mb-0 fw-bold text-dark">Developer's Vision</h3>
@@ -261,7 +261,7 @@ return (
         <div className="row mb-5" style={{ animation: 'fadeIn 0.6s ease-in-out' }}>
           <div className="col-12">
             <div className="card border-0 shadow-sm">
-              <div className="card-body p-5">
+              <div className="card-body p-3 p-md-5">
                 <h4 className="fw-bold mb-4 text-dark">Development Philosophy & Process</h4>
 
                 <div className="row mb-4">
@@ -338,7 +338,7 @@ return (
       <div className="row mb-5">
         <div className="col-12">
           <div className="card border-0 shadow-sm">
-            <div className="card-body p-5">
+            <div className="card-body p-3 p-md-5">
               <div className="d-flex align-items-center mb-4">
                 <FaCode className="text-info me-3" size={32} />
                 <h3 className="mb-0 fw-bold text-dark">Technology Stack</h3>
@@ -376,7 +376,7 @@ return (
       <div className="row mb-5">
         <div className="col-12">
           <div className="card border-0 shadow-sm">
-            <div className="card-body p-5">
+            <div className="card-body p-3 p-md-5">
               <h3 className="fw-bold mb-4 text-dark">Design Principles Applied</h3>
               <div className="row g-4">
                 {designPrinciples.map((principle, index) => (
@@ -402,7 +402,7 @@ return (
       <div className="row mb-5">
         <div className="col-12">
           <div className="card border-0 shadow-sm">
-            <div className="card-body p-5">
+            <div className="card-body p-3 p-md-5">
               <div className="d-flex align-items-center justify-content-between mb-4">
                 <h3 className="mb-0 fw-bold text-dark">Future Enhancements</h3>
                 <span className="badge bg-primary fs-6 px-3 py-2">Roadmap 2025-2026</span>
@@ -441,7 +441,7 @@ return (
         <div className="col-12">
           <div className="card border-0 shadow-lg overflow-hidden">
             <div className="card-body p-0">
-              <div className="text-center p-5 text-white position-relative"
+              <div className="text-center p-3 p-md-5 text-white position-relative"
                 style={{
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   backgroundImage: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.1"%3E%3Ccircle cx="30" cy="30" r="4"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")'
@@ -465,7 +465,7 @@ return (
                 </div>
 
                 {/* Social Links */}
-                <div className="d-flex justify-content-center gap-3 mb-4">
+                <div className="d-flex flex-wrap justify-content-center gap-3 mb-4">
                   <Link to="https://www.linkedin.com/in/snehanshu-sekhar-jena-5365841a1/"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -496,4 +496,4 @@ return (
 );
 };
 
-export default AuthorsNote;
+export default DevelopersNote;

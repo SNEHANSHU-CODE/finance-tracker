@@ -54,7 +54,7 @@ export default function Footer() {
             <ul className="list-unstyled">
               <li><Link to="/service" className="text-light text-decoration-none">Term of Service</Link></li>
               <li><Link to="/privacy" className="text-light text-decoration-none">Privacy Policy</Link></li>
-              <li><Link to="/authorsnote" className="text-light text-decoration-none">Author's Note</Link></li>
+              <li><Link to="/developersnote" className="text-light text-decoration-none">Developer's Note</Link></li>
             </ul>
           </div>
 
