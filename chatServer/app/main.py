@@ -124,9 +124,9 @@ def health_check():
     }
 
 #Keep my server alive
-@app.get("/api/ping")
+@app.get("/api/ping", methods=["GET", "HEAD"])
 def ping():
-    return "pong"
+    return {"message": "pong"}
 
 
 # This is only used when running directly: python app/main.py
