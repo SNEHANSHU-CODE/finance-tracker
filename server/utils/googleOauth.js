@@ -3,9 +3,8 @@ const { google } = require('googleapis');
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CALENDAR_CLIENT_ID,
   process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
-  'http://localhost:5000/api/google/callback'
+  process.env.GOOGLE_CALENDAR_REDIRECT_URI
 );
-
 
 const getAuthUrl = (state) => {
   const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];

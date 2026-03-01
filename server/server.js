@@ -1,5 +1,7 @@
-const express = require('express');
 const dotenv = require('dotenv');
+dotenv.config();
+
+const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
@@ -18,17 +20,15 @@ const reminderRouter = require('./routes/reminderRoutes');
 const settingsRouter = require('./routes/settingsRoutes');
 const googleRouter = require('./routes/googleRoutes');
 
-// Load .env
-dotenv.config();
-
 // Connect to MongoDB
 connectDB();
 
 const app = express();
 
-// Middleware
-// Trust reverse proxy headers (so req.ip / x-forwarded-for works correctly in prod)
-// app.set('trust proxy', true);
+// Required on Render: proxy terminates HTTPS, so Express must trust
+// X-Forwarded-Proto to correctly set secure cookies and get real client IP
+app.set('trust proxy', 1);
+
 const corsOptions = {
   origin: [
     process.env.CLIENT_URL,
@@ -40,7 +40,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
+app.options('/{*path}', cors(corsOptions))
 app.use(express.json());
 app.use(cookieParser());
 // Performance monitoring middleware - logs slow queries
@@ -88,7 +88,7 @@ async function initializeRedis() {
     // Start token cleanup job
     try {
       initializeTokenCleanupJob();
-      console.log('✅ Token cleanup job initialized');
+      console.log('Token cleanup job initialized');
     } catch (error) {
       console.warn('⚠️ Token cleanup job initialization failed:', error.message);
     }

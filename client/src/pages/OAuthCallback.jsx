@@ -13,7 +13,7 @@ export default function OAuthCallback() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const [searchParams] = useSearchParams();
-    const [status, setStatus] = useState('processing'); // processing, success, error
+    const [status, setStatus] = useState('processing');
 
     useEffect(() => {
         const handleOAuthCallback = async () => {
@@ -23,42 +23,43 @@ export default function OAuthCallback() {
                 if (error) {
                     console.error('OAuth error:', error);
                     setStatus('error');
-                    
-                    // Redirect to login with error message after 2 seconds
-                    setTimeout(() => {
-                        navigate(`/login?error=${error}`);
-                    }, 2000);
+                    setTimeout(() => navigate(`/login?error=${error}`), 2000);
                     return;
                 }
 
-                // The backend has already set the refreshToken cookie
-                // Now we need to verify the auth and get user profile
                 setStatus('processing');
 
-                // Verify the token and get user profile
-                const profileData = await authService.getProfile();
+                // STEP 1: Exchange the refreshToken cookie for an access token.
+                // Right after OAuth, there is no access token in memory — only the
+                // httpOnly refreshToken cookie that Google's callback set.
+                // /auth/refresh reads that cookie and returns a fresh access token.
+                const refreshData = await authService.refreshToken();
+                const accessToken = refreshData?.accessToken;
 
-                // Update Redux state with user data
+                if (!accessToken) {
+                    throw new Error('No access token returned from refresh');
+                }
+
+                // STEP 2: Now fetch the user profile using the access token.
+                // authService.getProfile() will pick up the token via the
+                // request interceptor once we temporarily set it below.
+                // Easiest approach: pass it directly via a one-off call.
+                const profileData = await authService.getProfile(accessToken);
+
+                // STEP 3: Populate Redux state — this marks the user as authenticated.
                 dispatch(setCredentials({
                     user: profileData.user,
-                    accessToken: profileData.accessToken || null
+                    accessToken,
                 }));
 
                 setStatus('success');
 
-                // Redirect to dashboard after brief delay
-                setTimeout(() => {
-                    navigate('/dashboard', { replace: true });
-                }, 1000);
+                setTimeout(() => navigate('/dashboard', { replace: true }), 1000);
 
             } catch (error) {
                 console.error('OAuth callback error:', error);
                 setStatus('error');
-                
-                // Redirect to login after 2 seconds
-                setTimeout(() => {
-                    navigate('/login?error=oauth_verification_failed');
-                }, 2000);
+                setTimeout(() => navigate('/login?error=oauth_verification_failed'), 2000);
             }
         };
 

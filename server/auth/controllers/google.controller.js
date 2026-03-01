@@ -36,7 +36,7 @@ class GoogleOAuthController {
    */
   static async handleCallback(req, res) {
     const requestId = crypto.randomUUID();
-    const frontendUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.CLIENT_URL;
 
     try {
       const { code, state, error: oauthError } = req.query;
