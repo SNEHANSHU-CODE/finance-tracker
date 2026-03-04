@@ -28,7 +28,6 @@ const settingsService = {
 
       // Validate preference values
       const allowedCurrencies = ['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD'];
-      const allowedLanguages = ['en', 'hi', 'es', 'fr', 'de', 'it'];
       const allowedThemes = ['light', 'dark', 'auto'];
 
       const updateData = {};
@@ -38,13 +37,6 @@ const settingsService = {
           throw new Error(`Invalid currency. Allowed values: ${allowedCurrencies.join(', ')}`);
         }
         updateData['preferences.currency'] = preferencesData.currency;
-      }
-
-      if (preferencesData.language !== undefined) {
-        if (!allowedLanguages.includes(preferencesData.language)) {
-          throw new Error(`Invalid language. Allowed values: ${allowedLanguages.join(', ')}`);
-        }
-        updateData['preferences.language'] = preferencesData.language;
       }
 
       if (preferencesData.theme !== undefined) {
@@ -77,7 +69,6 @@ const settingsService = {
 
       const defaultPreferences = {
         currency: 'INR',
-        language: 'en',
         theme: 'light'
       };
 
@@ -195,6 +186,24 @@ const settingsService = {
       };
     } catch (error) {
       throw new Error(`Failed to terminate sessions: ${error.message}`);
+    }
+  },
+
+  // Toggle MFA enabled/disabled
+  toggleMFA: async (userId, enabled) => {
+    try {
+      const user = await User.findById(userId);
+      if (!user) throw new Error('User not found');
+
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $set: { 'preferences.mfaEnabled': enabled } },
+        { new: true }
+      ).select('preferences');
+
+      return updatedUser.preferences;
+    } catch (error) {
+      throw new Error(`Failed to toggle MFA: ${error.message}`);
     }
   },
 

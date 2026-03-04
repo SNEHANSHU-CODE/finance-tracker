@@ -35,9 +35,6 @@ transactionRouter.delete('/:id', transactionController.deleteTransaction);
 // Bulk operations
 transactionRouter.post('/bulk-delete', validateBulkDelete, transactionController.bulkDeleteTransactions);
 
-// Migrate guest data
-transactionRouter.post('/migrate-guest-data', transactionController.migrateGuestData);
-
 // Recurring transactions
 transactionRouter.post('/:id/recurring', validateRecurringSetup, transactionController.setRecurring);
 

@@ -9,6 +9,7 @@ const SLIDE_IMAGES = {
   analytics:    'https://res.cloudinary.com/dumsrpiqd/image/upload/v1772384718/5.Analytics_Page_jjhtnb.png',
   goals:        'https://res.cloudinary.com/dumsrpiqd/image/upload/v1772384697/6.Goals_Page_rvxcve.png',
   reminders:    'https://res.cloudinary.com/dumsrpiqd/image/upload/v1772384697/7.Reminder_Page_f5zbdu.png',
+  vault:        'https://res.cloudinary.com/dumsrpiqd/image/upload/v1772559784/Vault_f8xldz.png',
 };
 // ============================================================
 
@@ -58,6 +59,15 @@ const SLIDES = [
     accent: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
     badge: 'Reminders',
   },
+  {
+    id: 6,
+    imageKey: 'vault',
+    label: 'Vault',
+    title: 'Your Personal Document Vault',
+    description: 'Securely store and preview important financial documents — bank statements, tax files, and more — right inside your dashboard.',
+    accent: 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)',
+    badge: 'Vault',
+  },
 ];
 
 // Preload all images into browser cache immediately on mount
@@ -72,21 +82,17 @@ const usePreloadImages = () => {
   }, []);
 };
 
-// FIX 2: Fixed height container — ALL images render at the same height (450px).
-// Images are stacked with absolute positioning; only the active one is visible.
-// This prevents layout shift when switching between screenshots of different sizes.
 const SlideImageStack = ({ activeIndex, animating }) => (
   <div
     style={{
       position: 'relative',
       width: '100%',
-      height: '450px',        // Fixed height — every slide is exactly this tall
+      height: '450px',
       borderRadius: '10px',
       overflow: 'hidden',
-      background: '#0a0c12',  // Fallback while image loads
+      background: '#0a0c12',
     }}
   >
-    {/* Bottom gradient overlay — rendered once, sits above all images */}
     <div
       style={{
         position: 'absolute',
@@ -111,10 +117,9 @@ const SlideImageStack = ({ activeIndex, animating }) => (
             top: 0, left: 0,
             width: '100%',
             height: '100%',
-            objectFit: 'cover',       // Fills the fixed box — no layout shift
+            objectFit: 'cover',
             objectPosition: 'top left',
             display: 'block',
-            // FIX 1 (partial): opacity transition handles visibility
             opacity: isActive && !animating ? 1 : 0,
             transition: 'opacity 0.3s ease',
             pointerEvents: isActive ? 'auto' : 'none',
@@ -134,8 +139,6 @@ const DashboardPreview = () => {
 
   usePreloadImages();
 
-  // FIX 1: Unified goTo — no more manual clearInterval scattered around.
-  // Just call goTo(i) from anywhere. The useEffect below owns the interval lifecycle.
   const goTo = useCallback(
     (index) => {
       if (animating) return;
@@ -151,15 +154,12 @@ const DashboardPreview = () => {
   const next = useCallback(() => goTo(activeIndex + 1), [activeIndex, goTo]);
   const prev = useCallback(() => goTo(activeIndex - 1), [activeIndex, goTo]);
 
-  // Single source of truth for autoplay.
-  // Restarts cleanly whenever isPaused changes or next() changes identity.
   useEffect(() => {
     if (isPaused) return;
     intervalRef.current = setInterval(next, INTERVAL_MS);
     return () => clearInterval(intervalRef.current);
   }, [isPaused, next]);
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKey = (e) => {
       if (e.key === 'ArrowRight') next();
@@ -170,7 +170,6 @@ const DashboardPreview = () => {
     return () => window.removeEventListener('keydown', handleKey);
   }, [next, prev]);
 
-  // Touch swipe
   const touchStart = useRef(null);
   const handleTouchStart = (e) => { touchStart.current = e.touches[0].clientX; };
   const handleTouchEnd = (e) => {
@@ -190,7 +189,6 @@ const DashboardPreview = () => {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* Ambient background glow shifts with active slide */}
       <div
         aria-hidden="true"
         style={{
@@ -204,7 +202,6 @@ const DashboardPreview = () => {
 
       <div className="container position-relative">
 
-        {/* Section header */}
         <div className="text-center mb-5">
           <span
             style={{
@@ -233,7 +230,6 @@ const DashboardPreview = () => {
           </p>
         </div>
 
-        {/* Tab navigation — no clearInterval needed, goTo handles it */}
         <div className="d-flex justify-content-center flex-wrap gap-2 mb-4" role="tablist" aria-label="Dashboard screens">
           {SLIDES.map((s, i) => (
             <button
@@ -259,7 +255,6 @@ const DashboardPreview = () => {
           ))}
         </div>
 
-        {/* Main card */}
         <div
           role="tabpanel"
           onTouchStart={handleTouchStart}
@@ -273,7 +268,6 @@ const DashboardPreview = () => {
         >
           <div className="row g-0">
 
-            {/* Left: copy */}
             <div
               className="col-lg-5 d-flex flex-column justify-content-center"
               style={{
@@ -344,7 +338,6 @@ const DashboardPreview = () => {
               </a>
             </div>
 
-            {/* Right: fixed-height image stack */}
             <div
               className="col-lg-7"
               style={{
@@ -359,10 +352,8 @@ const DashboardPreview = () => {
           </div>
         </div>
 
-        {/* Bottom controls */}
         <div className="d-flex align-items-center justify-content-between mt-4" style={{ padding: '0 4px' }}>
 
-          {/* Dot indicators */}
           <div className="d-flex align-items-center gap-3" role="group" aria-label="Slide indicators">
             {SLIDES.map((s, i) => (
               <button
@@ -383,7 +374,6 @@ const DashboardPreview = () => {
             ))}
           </div>
 
-          {/* Counter + nav */}
           <div className="d-flex align-items-center gap-3">
             <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', fontVariantNumeric: 'tabular-nums' }}>
               {String(activeIndex + 1).padStart(2, '0')} / {String(SLIDES.length).padStart(2, '0')}
@@ -411,7 +401,6 @@ const DashboardPreview = () => {
               </svg>
             </button>
 
-            {/* Pause / Resume */}
             <button
               aria-label={isPaused ? 'Resume autoplay' : 'Pause autoplay'}
               onClick={() => setIsPaused((p) => !p)}

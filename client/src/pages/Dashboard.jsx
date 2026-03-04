@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { useSettings } from "../context/SettingsContext";
+import { useSettings } from "../hooks/useSettings";
 
 import { 
   FaDollarSign, 
@@ -29,7 +29,7 @@ import { recentTransactions, fetchDashboardStats, fetchCategoryAnalysis } from "
 
 export default function Dashboard() {
   const dispatch = useDispatch();
-  const { formatCurrency: formatCurrencyFromSettings, formatDate: formatDateFromSettings, t } = useSettings();
+  const { formatCurrency: formatCurrencyFromSettings, formatDate: formatDateFromSettings } = useSettings();
   
   // State management
   const [recentTransaction, setRecentTransaction] = useState([]);
@@ -196,7 +196,7 @@ useEffect(() => {
   };
 
   const formatDate = (dateString) => {
-    // Use settings-based formatter which respects user's language setting
+    // Format using user's currency preference
     return formatDateFromSettings(dateString) || 'No date';
   };
 
@@ -225,9 +225,9 @@ useEffect(() => {
       <div className="container-fluid p-0">
         <div className="text-center p-5">
           <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">{t('loading')}</span>
+            <span className="visually-hidden">Loading</span>
           </div>
-          <p className="mt-3">{t('loading')}</p>
+          <p className="mt-3">Loading dashboard</p>
         </div>
       </div>
     );
@@ -241,13 +241,13 @@ useEffect(() => {
           <div className="d-flex align-items-center">
             <FaExclamationTriangle className="me-2" />
             <div>
-              <h4 className="alert-heading mb-1">{t('error_loading_dashboard')}</h4>
+              <h4 className="alert-heading mb-1">Error loading dashboard</h4>
               <p className="mb-2">{error}</p>
               <button 
                 className="btn btn-outline-danger btn-sm" 
                 onClick={() => window.location.reload()}
               >
-                {t('retry')}
+                Retry
               </button>
             </div>
           </div>
@@ -265,8 +265,8 @@ useEffect(() => {
         <div className="col-12">
           <div className="d-flex justify-content-between align-items-center flex-wrap">
             <div>
-              <h4 className="mb-1">{t('dashboard_overview')}</h4>
-              <p className="text-muted mb-0">{t('dashboard_welcome')}</p>
+              <h4 className="mb-1">Dashboard Overview</h4>
+              <p className="text-muted mb-0">Welcome back! Here's your financial summary</p>
             </div>
           </div>
         </div>
@@ -283,10 +283,10 @@ useEffect(() => {
                 </div>
               </div>
               <h4 className="fw-bold text-primary">{formatCurrency(financialSummary.totalBalance)}</h4>
-              <p className="text-muted mb-0">{t('net_balance')}</p>
+              <p className="text-muted mb-0">Net Balance</p>
               <small className="text-success">
                 {(dashboardData.monthly?.summary?.netSavings || 0) > 0 ? '+' : ''}
-                {t('saved_amount', { amount: formatCurrency(dashboardData.monthly?.summary?.netSavings || 0) })}
+You've saved {formatCurrency(dashboardData.monthly?.summary?.netSavings || 0)} this month
               </small>
             </div>
           </div>
@@ -301,10 +301,10 @@ useEffect(() => {
                 </div>
               </div>
               <h4 className="fw-bold text-success">{formatCurrency(financialSummary.monthlyIncome)}</h4>
-              <p className="text-muted mb-0">{t('monthly_income')}</p>
+              <p className="text-muted mb-0">Monthly Income</p>
               <small className="text-success">
                 <FaArrowUp size={12} className="me-1" />
-                {t('transactions_count', { count: dashboardData.monthly?.summary?.transactionCount || 0 })}
+                {dashboardData.monthly?.summary?.transactionCount || 0} transactions
               </small>
             </div>
           </div>
@@ -319,10 +319,10 @@ useEffect(() => {
                 </div>
               </div>
               <h4 className="fw-bold text-danger">{formatCurrency(financialSummary.monthlyExpenses)}</h4>
-              <p className="text-muted mb-0">{t('monthly_expenses')}</p>
+              <p className="text-muted mb-0">Monthly Expenses</p>
               <small className="text-muted">
                 <FaArrowDown size={12} className="me-1" />
-                {t('across_categories', { count: categoryData?.categories?.length || 0 })}
+                Across {categoryData?.categories?.length || 0} categories
               </small>
             </div>
           </div>
@@ -337,10 +337,10 @@ useEffect(() => {
                 </div>
               </div>
               <h4 className="fw-bold text-info">{financialSummary.savingsRate}%</h4>
-              <p className="text-muted mb-0">{t('savings_rate')}</p>
+              <p className="text-muted mb-0">Savings Rate</p>
               <small className="text-info">
                 <FaChartLine size={12} className="me-1" />
-                {t('saved_amount', { amount: formatCurrency(dashboardData.monthly?.summary?.netSavings || 0) })}
+                {formatCurrency(dashboardData.monthly?.summary?.netSavings || 0)} saved this month
               </small>
             </div>
           </div>
@@ -353,10 +353,10 @@ useEffect(() => {
           <div className="card border-0 shadow-sm">
             <div className="card-header bg-transparent border-0 pt-3">
               <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">{t('recent_transactions')}</h5>
+                <h5 className="mb-0">Recent Transactions</h5>
                 <Link to="/dashboard/transactions" className="btn btn-outline-primary btn-sm">
                   <FaEye size={12} className="me-1" />
-                  {t('view_all')}
+                  View All
                 </Link>
               </div>
             </div>
@@ -408,7 +408,7 @@ useEffect(() => {
                       <tr>
                         <td colSpan="5" className="text-center text-muted py-4">
                           <FaExclamationTriangle className="me-2" />
-                          {t('no_recent_transactions')}
+                          No recent transactions yet
                         </td>
                       </tr>
                     )}
@@ -428,7 +428,7 @@ useEffect(() => {
             <div className="card border-0 shadow-sm">
               <div className="card-body text-center text-muted py-4">
                 <FaChartLine size={48} className="mb-3 opacity-50" />
-                <p className="mb-0">{t('no_category_data')}</p>
+                <p className="mb-0">No category data</p>
               </div>
             </div>
           )}
@@ -442,9 +442,9 @@ useEffect(() => {
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <h6 className="text-muted mb-1">{t('savings_rate')}</h6>
+                  <h6 className="text-muted mb-1">Savings Rate</h6>
                   <h4 className="fw-bold text-success mb-0">{financialSummary.savingsRate}%</h4>
-                  <small className="text-muted">{t('of_monthly_income') || ''}</small>
+                  <small className="text-muted">Of your monthly income</small>
                 </div>
                 <div className="p-3 bg-success bg-opacity-10 rounded-circle">
                   <FaPiggyBank className="text-success" size={24} />
@@ -459,11 +459,11 @@ useEffect(() => {
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <h6 className="text-muted mb-1">{t('available_to_spend')}</h6>
+                  <h6 className="text-muted mb-1">Available to Spend</h6>
                   <h4 className="fw-bold text-primary mb-0">
                     {formatCurrency(financialSummary.monthlyIncome - financialSummary.monthlyExpenses)}
                   </h4>
-                  <small className="text-muted">{t('remaining_this_month')}</small>
+                  <small className="text-muted">Remaining this month</small>
                 </div>
                 <div className="p-3 bg-primary bg-opacity-10 rounded-circle">
                   <FaCreditCard className="text-primary" size={24} />

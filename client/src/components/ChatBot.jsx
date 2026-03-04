@@ -30,7 +30,6 @@ import {
 } from '../app/chatSlice';
 import chatService from '../services/chatService';
 import './styles/ChatBot.css';
-import { usePreferences } from '../hooks/usePreferences';
 
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -55,12 +54,11 @@ const ChatBot = () => {
   } = useSelector(state => state.chat || {});
 
   const { user = null, accessToken = null, isAuthenticated = false } = useSelector(state => state.auth || {});
-  const { t } = usePreferences();
   const displayName = (
     user?.username ||
     user?.name ||
     (user?.email ? user.email.split('@')[0] : null) ||
-    t('guest')
+    'Guest'
   );
 
   const scrollToBottom = () => {
@@ -206,7 +204,7 @@ const ChatBot = () => {
   };
 
   const handleClearChat = () => {
-    if (window.confirm(t('confirm_clear_chat') || 'Clear the chat history?')) {
+    if (window.confirm('Clear the chat history?')) {
       dispatch(clearChat());
       setShowSuggestions(true);
       suggestionsRequestedRef.current = false;
@@ -261,13 +259,13 @@ const ChatBot = () => {
                 <span className={`status-dot ${connected ? 'connected' : 'disconnected'}`} />
               </div>
               <div className="chat-title">
-                <h4>{t('assistant_title') || 'AI Assistant'}</h4>
+                <h4>AI Assistant</h4>
                 <span className="chat-status">
                   {!connected
-                    ? <span className="status-connecting">{t('status_connecting') || 'Connecting...'}</span>
+                    ? <span className="status-connecting">Connecting...</span>
                     : user?.isGuest
-                      ? t('status_guest_limited') || 'Guest Mode - Limited Access'
-                      : t('status_welcome_user', { name: displayName }) || `Welcome, ${displayName}!`
+                      ? 'Guest Mode - Limited Access'
+                      : `Welcome, ${displayName}!`
                   }
                 </span>
               </div>
@@ -276,7 +274,7 @@ const ChatBot = () => {
               <button
                 className="control-btn delete"
                 onClick={handleClearChat}
-                title={t('clear_chat') || 'Delete Chat'}
+                title="Delete Chat"
                 disabled={messages.length === 0}
               >
                 <FaTrash />
@@ -284,14 +282,14 @@ const ChatBot = () => {
               <button
                 className="control-btn fullscreen"
                 onClick={toggleFullscreen}
-                title={isFullscreen ? (t('exit_fullscreen') || 'Minimize') : (t('fullscreen_btn') || 'Fullscreen')}
+                title={isFullscreen ? 'Minimize' : 'Fullscreen'}
               >
                 {isFullscreen ? <FaCompress /> : <FaExpand />}
               </button>
               <button
                 className="control-btn close"
                 onClick={toggleChat}
-                title={t('close_chat') || 'Close'}
+                title="Close"
               >
                 <FaTimes />
               </button>
@@ -305,33 +303,33 @@ const ChatBot = () => {
                 <div className="welcome-icon-wrapper">
                   <FaRobot className="welcome-icon" />
                 </div>
-                <h3>{t('welcome_heading') || 'Welcome to AI Assistant!'}</h3>
-                <p>{t('welcome_intro') || "I'm here to help you with:"}</p>
+                <h3>Welcome to AI Assistant!</h3>
+                <p>I'm here to help you with:</p>
                 <div className="welcome-features">
                   <div className="feature-item">
                     <span className="feature-icon">💰</span>
-                    <span>{t('wb_budgeting') || 'Budget Planning'}</span>
+                    <span>Budget Planning</span>
                   </div>
                   <div className="feature-item">
                     <span className="feature-icon">📈</span>
-                    <span>{t('wb_investing') || 'Investment Advice'}</span>
+                    <span>Investment Advice</span>
                   </div>
                   <div className="feature-item">
                     <span className="feature-icon">🎯</span>
-                    <span>{t('wb_goals') || 'Financial Goals'}</span>
+                    <span>Financial Goals</span>
                   </div>
                   <div className="feature-item">
                     <span className="feature-icon">💡</span>
-                    <span>{t('wb_tips') || 'Money Tips'}</span>
+                    <span>Money Tips</span>
                   </div>
                   {!user?.isGuest && (
                     <div className="feature-item">
                       <span className="feature-icon">👤</span>
-                      <span>{t('wb_personal') || 'Personal Insights'}</span>
+                      <span>Personal Insights</span>
                     </div>
                   )}
                 </div>
-                <p className="welcome-prompt">{t('welcome_question') || 'How can I assist you today?'}</p>
+                <p className="welcome-prompt">How can I assist you today?</p>
               </div>
             )}
 
@@ -405,7 +403,7 @@ const ChatBot = () => {
 
             {showSuggestions && suggestions.length > 0 && messages.length === 0 && (
               <div className="suggestions-container">
-                <h5>{t('try_asking_about') || 'Try asking about:'}</h5>
+                <h5>Try asking about:</h5>
                 <div className="suggestions-grid">
                   {suggestions.slice(0, 4).map((suggestion, index) => (
                     <button
@@ -433,10 +431,10 @@ const ChatBot = () => {
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder={
                     !connected
-                      ? (t('connecting_placeholder') || 'Connecting...')
+                      ? 'Connecting...'
                       : user?.isGuest
-                        ? (t('guest_placeholder') || 'Ask a question...')
-                        : (t('user_placeholder') || 'Type your message...')
+                        ? 'Ask a question...'
+                        : 'Type your message...'
                   }
                   disabled={loading || !connected}
                   maxLength={500}
@@ -446,7 +444,7 @@ const ChatBot = () => {
                   type="submit"
                   disabled={!message.trim() || loading || !connected}
                   className="send-button"
-                  title={t('send_message') || 'Send'}
+                  title="Send"
                 >
                   {loading ? <FaSpinner className="spinner" /> : <FaPaperPlane />}
                 </button>
@@ -454,10 +452,10 @@ const ChatBot = () => {
               <div className="input-footer">
                 <span className="character-count">{message.length}/500</span>
                 {!connected && (
-                  <span className="connection-status">⚠️ {t('disconnected') || 'Disconnected'}</span>
+                  <span className="connection-status">⚠️ Disconnected</span>
                 )}
                 {user?.isGuest && connected && (
-                  <span className="guest-notice">{t('limited_access_login') || 'Sign in for full access'}</span>
+                  <span className="guest-notice">Sign in for full access</span>
                 )}
               </div>
             </form>

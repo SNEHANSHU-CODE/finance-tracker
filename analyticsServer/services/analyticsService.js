@@ -545,29 +545,62 @@ class AnalyticsService {
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
-      const budgets = await Budget.find({ userId }).lean();
+      // Budget schema: one doc per user per month/year, with categories[]{name, limit}.
+      // Find the budget doc whose month/year falls within the requested date range.
+      const startMonth = start.getMonth() + 1;
+      const startYear  = start.getFullYear();
+      const endMonth   = end.getMonth() + 1;
+      const endYear    = end.getFullYear();
+
+      // Collect all month/year combinations in the requested range
+      const monthYearConditions = [];
+      let y = startYear, m = startMonth;
+      while (y < endYear || (y === endYear && m <= endMonth)) {
+        monthYearConditions.push({ month: m, year: y });
+        m++;
+        if (m > 12) { m = 1; y++; }
+      }
+
+      const budgetDocs = await Budget.find({
+        userId,
+        $or: monthYearConditions
+      }).lean();
+
+      if (!budgetDocs.length) {
+        const empty = { message: 'No budget set for this period', categories: [], overallPerformance: 'N/A', recommendations: [] };
+        this.setCache(cacheKey, empty);
+        return empty;
+      }
+
+      // Merge categories across months — sum limits for multi-month ranges,
+      // so a user who set Food=5000/month gets Food=10000 for a 2-month range.
+      const categoryLimitMap = {};
+      for (const doc of budgetDocs) {
+        for (const cat of (doc.categories || [])) {
+          categoryLimitMap[cat.name] = (categoryLimitMap[cat.name] || 0) + (cat.limit ?? 0);
+        }
+      }
+
       const transactions = await Transaction.find({
         userId,
         date: { $gte: start, $lte: end },
-        $or: [
-          { type: 'expense' },
-          { type: 'Expense' }
-        ]
-      });
+        $or: [{ type: 'expense' }, { type: 'Expense' }]
+      }).lean();
 
-      const categories = budgets.map(budget => {
+      const categories = Object.entries(categoryLimitMap).map(([catName, budgeted]) => {
+        // Math.abs because expenses are stored as negative numbers in the DB
         const spent = transactions
-          .filter(t => t.category === budget.category)
-          .reduce((sum, t) => sum + t.amount, 0);
+          .filter(t => t.category === catName)
+          .reduce((sum, t) => sum + Math.abs(t.amount ?? 0), 0);
 
-        const remaining = budget.amount - spent;
-        const percentageUsed = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
+        const remaining      = budgeted - spent;
+        const percentageUsed = budgeted > 0 ? (spent / budgeted) * 100 : 0;
 
         return {
-          category: budget.category,
-          budgeted: parseFloat(budget.amount.toFixed(2)),
-          spent: parseFloat(spent.toFixed(2)),
-          remaining: parseFloat(remaining.toFixed(2)),
+          category:       catName,
+          budgeted:       parseFloat(budgeted.toFixed(2)),
+          spent:          parseFloat(spent.toFixed(2)),
+          remaining:      parseFloat(remaining.toFixed(2)),
           percentageUsed: parseFloat(percentageUsed.toFixed(2)),
           status: percentageUsed > 100 ? 'Over Budget' : percentageUsed > 80 ? 'Warning' : 'Within Budget'
         };

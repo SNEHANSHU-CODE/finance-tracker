@@ -212,13 +212,14 @@ const resolvers = {
         };
 
         const dateRange = { startDate, endDate };
-        const userName = context.user.name || context.user.email;
+        // FIX: was passing a plain string — pdfReportService expects { name, email }
+        const userInfo = { name: context.user.name || context.user.email, email: context.user.email };
         const fileName = `Financial_Report_${context.user.id}_${Date.now()}.pdf`;
 
         const result = await PdfReportService.generateFinancialReport(
           analyticsData,
           dateRange,
-          userName,
+          userInfo,
           fileName
         ).catch(error => {
           throw new GraphQLError('PDF generation failed', {

@@ -1,7 +1,6 @@
 const { google } = require('googleapis');
 const User = require('../../models/userModel');
 const oauthStateManager = require('../../utils/oauthState');
-const GuestService = require('../../services/guestService');
 const logger = console;
 
 // OAuth error codes for better debugging
@@ -35,16 +34,10 @@ class GoogleOAuthService {
    * @returns {Object} - OAuth URL and state
    * @throws {Error} - If state generation fails
    */
-  generateAuthUrl(guestId = null) {
+  generateAuthUrl() {
     try {
-      // Validate guestId if provided
-      if (guestId && typeof guestId !== 'string') {
-        throw new Error('Invalid guestId format');
-      }
-
       // Generate cryptographically secure state
       const state = oauthStateManager.generateState({
-        guestId,
         provider: 'google',
         timestamp: Date.now()
       });

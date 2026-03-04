@@ -1,5 +1,4 @@
 // Selectors
-export const selectGuestId = (state) => state.auth.user?.isGuest ? state.auth.user.userId || 'guest' : null;
 export const selectAuth = (state) => ({ loading: state.auth.loading, formError: state.auth.formError, oauthError: state.auth.oauthError });
 // Import Google OAuth thunks
 import { initiateGoogleOAuth, handleOAuthCallback } from '../utils/auth/googleAuth';
@@ -25,8 +24,10 @@ export const loginUser = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await authService.login(credentials);
-      // Create session on successful login
-      sessionManager.createSession(response.user, response.accessToken);
+      // Only create session if MFA is not required (user & token present)
+      if (!response.mfaRequired) {
+        sessionManager.createSession(response.user, response.accessToken);
+      }
       return response;
     } catch (error) {
       return rejectWithValue(error.message);
@@ -49,13 +50,10 @@ export const logoutUser = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {
     try {
-      // Destroy session first
       sessionManager.destroySession();
-      // Then logout from server
       await authService.logout();
       return {};
     } catch (error) {
-      // Still destroy session even if logout fails
       sessionManager.destroySession();
       return rejectWithValue(error.message);
     }
@@ -117,57 +115,6 @@ export const verifyAuthToken = createAsyncThunk(
   }
 );
 
-// Migrate guest data after login/register
-export const migrateGuestData = createAsyncThunk(
-  'auth/migrateGuestData',
-  async (_, { rejectWithValue, getState }) => {
-    try {
-      const { guestStorage } = await import('../utils/guestStorage');
-      
-      if (guestStorage.isDataMigrated()) {
-        return { message: 'Data already migrated' };
-      }
-
-      const guestData = guestStorage.getAllGuestData();
-      
-      if (guestData.transactions.length === 0 && guestData.goals.length === 0) {
-        return { message: 'No guest data to migrate' };
-      }
-
-      // Import services dynamically to avoid circular imports
-      const { default: transactionService } = await import('../services/transactionService');
-      const { default: goalService } = await import('../services/goalService');
-
-      const results = { transactions: null, goals: null };
-
-      // Migrate transactions
-      if (guestData.transactions.length > 0) {
-        results.transactions = await transactionService.migrateGuestData({
-          transactions: guestData.transactions
-        });
-      }
-
-      // Migrate goals
-      if (guestData.goals.length > 0) {
-        results.goals = await goalService.migrateGuestData({
-          goals: guestData.goals
-        });
-      }
-
-      // Mark as migrated
-      guestStorage.setDataMigrated(true);
-      
-      return {
-        message: 'Guest data migrated successfully',
-        results
-      };
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
-// New preferences async thunks
 export const fetchUserPreferences = createAsyncThunk(
   'auth/fetchPreferences',
   async (_, { rejectWithValue }) => {
@@ -201,7 +148,6 @@ export const resetUserPreferences = createAsyncThunk(
   }
 );
 
-// Session async thunks
 export const fetchActiveSessions = createAsyncThunk(
   'auth/fetchActiveSessions',
   async (_, { rejectWithValue }) => {
@@ -217,14 +163,12 @@ export const terminateSessionAction = createAsyncThunk(
   'auth/terminateSession',
   async (sessionId, { rejectWithValue, getState, dispatch }) => {
     try {
-      // Determine if the session being terminated is the current one from state
       const state = getState();
       const session = state.auth.sessions.find(s => s._id === sessionId);
       const wasCurrent = !!session?.isCurrent;
 
       const response = await settingsService.terminateSession(sessionId);
 
-      // If current session is terminated, force logout on client immediately
       if (wasCurrent || response?.data?.currentSessionTerminated || response?.currentSessionTerminated) {
         await dispatch(logoutUser());
       }
@@ -247,36 +191,61 @@ export const terminateAllSessionsAction = createAsyncThunk(
   }
 );
 
-// Auth slice with preferences support
+export const verifyMFAOtp = createAsyncThunk(
+  'auth/verifyMFA',
+  async ({ userId, otp }, { rejectWithValue }) => {
+    try {
+      const response = await authService.verifyMFAOtp({ userId, otp });
+      if (response.user && response.accessToken) {
+        sessionManager.createSession(
+          { ...response.user, id: response.user._id },
+          response.accessToken
+        );
+      }
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const toggleMFA = createAsyncThunk(
+  'auth/toggleMFA',
+  async (enabled, { rejectWithValue }) => {
+    try {
+      return await settingsService.toggleMFA(enabled);
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+const DEFAULT_PREFERENCES = {
+  currency: 'INR',
+  theme: 'light',
+};
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
     user: null,
     accessToken: null,
     isAuthenticated: false,
-    isGuest: false,
     loading: false,
-    formError: null, // For email/password login/signup errors
-    oauthError: null, // For Google OAuth errors
+    formError: null,
+    oauthError: null,
     profileLoading: false,
     isInitialized: false,
-    // Google OAuth additions
-    guestId: localStorage.getItem('guestId') || null,
     sessionId: null,
-    authMethod: 'email', // 'email' or 'google'
-    googleRefreshToken: null,
-    // Preferences state
-    preferences: {
-      currency: 'INR',
-      language: 'en',
-      theme: 'light'
-    },
+    authMethod: 'email',
+    preferences: { ...DEFAULT_PREFERENCES },
     preferencesLoading: false,
     preferencesError: null,
-    // Sessions state
     sessions: [],
     sessionsLoading: false,
     sessionsError: null,
+    mfaPending: false,
+    mfaUserId: null,
   },
   reducers: {
     clearError: (state) => {
@@ -290,6 +259,11 @@ const authSlice = createSlice({
     clearOAuthError: (state) => {
       state.oauthError = null;
     },
+    clearMFAPending: (state) => {
+      state.mfaPending = false;
+      state.mfaUserId = null;
+      state.formError = null;
+    },
     setCredentials: (state, action) => {
       state.user = {
         ...action.payload.user,
@@ -297,31 +271,19 @@ const authSlice = createSlice({
       };
       state.accessToken = action.payload.accessToken;
       state.isAuthenticated = true;
-      state.isGuest = false;
       state.isInitialized = true;
-      
-      // Set preferences from user data if available
       if (action.payload.user.preferences) {
-        state.preferences = {
-          ...state.preferences,
-          ...action.payload.user.preferences
-        };
+        state.preferences = { ...DEFAULT_PREFERENCES, ...action.payload.user.preferences };
       }
     },
     clearCredentials: (state) => {
       state.user = null;
       state.accessToken = null;
       state.isAuthenticated = false;
-      state.isGuest = false;
       state.formError = null;
       state.oauthError = null;
       state.preferencesError = null;
-      // Reset preferences to default
-      state.preferences = {
-        currency: 'INR',
-        language: 'en',
-        theme: 'light'
-      };
+      state.preferences = { ...DEFAULT_PREFERENCES };
     },
     setLoading: (state, action) => {
       state.loading = action.payload;
@@ -336,24 +298,12 @@ const authSlice = createSlice({
     },
     updatePreferences: (state, action) => {
       state.preferences = { ...state.preferences, ...action.payload };
-      // Also update user preferences if user exists
       if (state.user) {
         state.user.preferences = { ...state.user.preferences, ...action.payload };
       }
     },
     clearPreferencesError: (state) => {
       state.preferencesError = null;
-    },
-    setGuestMode: (state) => {
-      state.isGuest = true;
-      state.isAuthenticated = true;
-      state.isInitialized = true;
-      state.user = { username: 'Guest', isGuest: true };
-    },
-    clearGuestMode: (state) => {
-      state.isGuest = false;
-      state.isAuthenticated = false;
-      state.user = null;
     },
   },
   extraReducers: (builder) => {
@@ -363,10 +313,9 @@ const authSlice = createSlice({
         state.loading = true;
         state.oauthError = null;
       })
-      .addCase(initiateGoogleOAuth.fulfilled, (state, action) => {
+      .addCase(initiateGoogleOAuth.fulfilled, (state) => {
         state.loading = false;
         state.oauthError = null;
-        // State preserved until callback
       })
       .addCase(initiateGoogleOAuth.rejected, (state, action) => {
         state.loading = false;
@@ -384,12 +333,10 @@ const authSlice = createSlice({
         state.accessToken = action.payload.accessToken;
         state.sessionId = action.payload.sessionId;
         state.authMethod = action.payload.authMethod;
-        // Guest ID persists in localStorage separately
       })
       .addCase(handleOAuthCallback.rejected, (state, action) => {
         state.loading = false;
         state.oauthError = action.payload;
-        // Guest mode remains intact on failure
       })
       // Register
       .addCase(registerUser.pending, (state) => {
@@ -399,21 +346,12 @@ const authSlice = createSlice({
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
         state.formError = null;
-        state.user = {
-          ...action.payload.user,
-          userId: action.payload.user._id,
-        };
+        state.user = { ...action.payload.user, userId: action.payload.user._id };
         state.accessToken = action.payload.accessToken;
         state.isAuthenticated = true;
-        state.isGuest = false;
         state.isInitialized = true;
-        
-        // Set preferences from user data
         if (action.payload.user.preferences) {
-          state.preferences = {
-            ...state.preferences,
-            ...action.payload.user.preferences
-          };
+          state.preferences = { ...DEFAULT_PREFERENCES, ...action.payload.user.preferences };
         }
       })
       .addCase(registerUser.rejected, (state, action) => {
@@ -429,21 +367,19 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
         state.formError = null;
-        state.user = {
-          ...action.payload.user,
-          userId: action.payload.user._id,
-        };
-        state.accessToken = action.payload.accessToken;
-        state.isAuthenticated = true;
-        state.isGuest = false;
-        state.isInitialized = true;
-        
-        // Set preferences from user data
-        if (action.payload.user.preferences) {
-          state.preferences = {
-            ...state.preferences,
-            ...action.payload.user.preferences
-          };
+        if (action.payload.mfaRequired) {
+          state.mfaPending = true;
+          state.mfaUserId = action.payload.userId;
+        } else {
+          state.mfaPending = false;
+          state.mfaUserId = null;
+          state.user = { ...action.payload.user, userId: action.payload.user._id };
+          state.accessToken = action.payload.accessToken;
+          state.isAuthenticated = true;
+          state.isInitialized = true;
+          if (action.payload.user.preferences) {
+            state.preferences = { ...DEFAULT_PREFERENCES, ...action.payload.user.preferences };
+          }
         }
       })
       .addCase(loginUser.rejected, (state, action) => {
@@ -452,26 +388,15 @@ const authSlice = createSlice({
         state.isInitialized = true;
       })
       // Refresh
-      .addCase(refreshToken.pending, (state) => {
-        // Don't set loading for refresh to avoid UI flicker
-      })
       .addCase(refreshToken.fulfilled, (state, action) => {
-        state.user = {
-          ...action.payload.user,
-          userId: action.payload.user._id,
-        };
+        state.user = { ...action.payload.user, userId: action.payload.user._id };
         state.accessToken = action.payload.accessToken;
         state.isAuthenticated = true;
         state.isInitialized = true;
         state.formError = null;
         state.oauthError = null;
-        
-        // Set preferences from user data
         if (action.payload.user.preferences) {
-          state.preferences = {
-            ...state.preferences,
-            ...action.payload.user.preferences
-          };
+          state.preferences = { ...DEFAULT_PREFERENCES, ...action.payload.user.preferences };
         }
       })
       .addCase(refreshToken.rejected, (state) => {
@@ -479,12 +404,7 @@ const authSlice = createSlice({
         state.accessToken = null;
         state.isAuthenticated = false;
         state.isInitialized = true;
-        // Reset preferences to default
-        state.preferences = {
-          currency: 'INR',
-          language: 'en',
-          theme: 'light'
-        };
+        state.preferences = { ...DEFAULT_PREFERENCES };
       })
       // Logout
       .addCase(logoutUser.pending, (state) => {
@@ -498,41 +418,23 @@ const authSlice = createSlice({
         state.formError = null;
         state.oauthError = null;
         state.preferencesError = null;
-        // Reset preferences to default
-        state.preferences = {
-          currency: 'INR',
-          language: 'en',
-          theme: 'light'
-        };
+        state.preferences = { ...DEFAULT_PREFERENCES };
       })
       .addCase(logoutUser.rejected, (state) => {
-        // Even if logout fails on server, clear client state
         state.user = null;
         state.accessToken = null;
         state.isAuthenticated = false;
         state.loading = false;
-        state.preferences = {
-          currency: 'INR',
-          language: 'en',
-          theme: 'light'
-        };
+        state.preferences = { ...DEFAULT_PREFERENCES };
       })
       // Verify token
       .addCase(verifyAuthToken.fulfilled, (state, action) => {
-        state.user = {
-          ...action.payload.user,
-          userId: action.payload.user._id,
-        };
+        state.user = { ...action.payload.user, userId: action.payload.user._id };
         state.accessToken = action.payload.accessToken;
         state.isAuthenticated = true;
         state.isInitialized = true;
-        
-        // Set preferences from user data
         if (action.payload.user.preferences) {
-          state.preferences = {
-            ...state.preferences,
-            ...action.payload.user.preferences
-          };
+          state.preferences = { ...DEFAULT_PREFERENCES, ...action.payload.user.preferences };
         }
       })
       .addCase(verifyAuthToken.rejected, (state) => {
@@ -540,26 +442,17 @@ const authSlice = createSlice({
         state.accessToken = null;
         state.isAuthenticated = false;
         state.isInitialized = true;
-        state.preferences = {
-          currency: 'INR',
-          language: 'en',
-          theme: 'light'
-        };
+        state.preferences = { ...DEFAULT_PREFERENCES };
       })
-      // Profile actions
+      // Profile
       .addCase(fetchUserProfile.pending, (state) => {
         state.profileLoading = true;
       })
       .addCase(fetchUserProfile.fulfilled, (state, action) => {
         state.profileLoading = false;
         state.user = { ...state.user, ...action.payload.user };
-        
-        // Update preferences if included in profile
         if (action.payload.user.preferences) {
-          state.preferences = {
-            ...state.preferences,
-            ...action.payload.user.preferences
-          };
+          state.preferences = { ...DEFAULT_PREFERENCES, ...action.payload.user.preferences };
         }
       })
       .addCase(fetchUserProfile.rejected, (state, action) => {
@@ -572,37 +465,24 @@ const authSlice = createSlice({
       .addCase(updateUserProfile.fulfilled, (state, action) => {
         state.profileLoading = false;
         state.user = { ...state.user, ...action.payload.user };
-        
-        // Update preferences if included in profile update
         if (action.payload.user.preferences) {
-          state.preferences = {
-            ...state.preferences,
-            ...action.payload.user.preferences
-          };
+          state.preferences = { ...DEFAULT_PREFERENCES, ...action.payload.user.preferences };
         }
       })
       .addCase(updateUserProfile.rejected, (state, action) => {
         state.profileLoading = false;
         state.formError = action.payload;
       })
-      // Preferences actions
+      // Preferences
       .addCase(fetchUserPreferences.pending, (state) => {
         state.preferencesLoading = true;
         state.preferencesError = null;
       })
       .addCase(fetchUserPreferences.fulfilled, (state, action) => {
         state.preferencesLoading = false;
-        state.preferences = {
-          ...state.preferences,
-          ...action.payload.preferences
-        };
-        
-        // Also update user preferences
+        state.preferences = { ...state.preferences, ...action.payload.preferences };
         if (state.user) {
-          state.user.preferences = {
-            ...state.user.preferences,
-            ...action.payload.preferences
-          };
+          state.user.preferences = { ...state.user.preferences, ...action.payload.preferences };
         }
       })
       .addCase(fetchUserPreferences.rejected, (state, action) => {
@@ -615,17 +495,9 @@ const authSlice = createSlice({
       })
       .addCase(updateUserPreferences.fulfilled, (state, action) => {
         state.preferencesLoading = false;
-        state.preferences = {
-          ...state.preferences,
-          ...action.payload.preferences
-        };
-        
-        // Also update user preferences
+        state.preferences = { ...state.preferences, ...action.payload.preferences };
         if (state.user) {
-          state.user.preferences = {
-            ...state.user.preferences,
-            ...action.payload.preferences
-          };
+          state.user.preferences = { ...state.user.preferences, ...action.payload.preferences };
         }
       })
       .addCase(updateUserPreferences.rejected, (state, action) => {
@@ -638,28 +510,16 @@ const authSlice = createSlice({
       })
       .addCase(resetUserPreferences.fulfilled, (state, action) => {
         state.preferencesLoading = false;
-        state.preferences = {
-          currency: 'INR',
-          language: 'en',
-          theme: 'light',
-          ...action.payload.preferences
-        };
-        
-        // Also update user preferences
+        state.preferences = { ...DEFAULT_PREFERENCES, ...action.payload.preferences };
         if (state.user) {
-          state.user.preferences = {
-            currency: 'INR',
-            language: 'en',
-            theme: 'light',
-            ...action.payload.preferences
-          };
+          state.user.preferences = { ...DEFAULT_PREFERENCES, ...action.payload.preferences };
         }
       })
       .addCase(resetUserPreferences.rejected, (state, action) => {
         state.preferencesLoading = false;
         state.preferencesError = action.payload;
       })
-      // Update Password - Clear auth state on success
+      // Update Password
       .addCase(updateUserPassword.pending, (state) => {
         state.loading = true;
         state.formError = null;
@@ -671,17 +531,13 @@ const authSlice = createSlice({
         state.loading = false;
         state.formError = null;
         state.oauthError = null;
-        state.preferences = {
-          currency: 'INR',
-          language: 'en',
-          theme: 'light'
-        };
+        state.preferences = { ...DEFAULT_PREFERENCES };
       })
       .addCase(updateUserPassword.rejected, (state, action) => {
         state.loading = false;
         state.formError = action.payload;
       })
-      // Delete Account - Clear all state
+      // Delete Account
       .addCase(deleteUserAccount.pending, (state) => {
         state.loading = true;
         state.formError = null;
@@ -696,28 +552,13 @@ const authSlice = createSlice({
         state.profileLoading = false;
         state.preferencesLoading = false;
         state.preferencesError = null;
-        state.preferences = {
-          currency: 'INR',
-          language: 'en',
-          theme: 'light'
-        };
+        state.preferences = { ...DEFAULT_PREFERENCES };
       })
       .addCase(deleteUserAccount.rejected, (state, action) => {
         state.loading = false;
         state.formError = action.payload;
       })
-      // Migrate guest data
-      .addCase(migrateGuestData.pending, (state) => {
-        state.loading = true;
-      })
-      .addCase(migrateGuestData.fulfilled, (state, action) => {
-        state.loading = false;
-      })
-      .addCase(migrateGuestData.rejected, (state, action) => {
-        state.loading = false;
-        state.formError = action.payload;
-      })
-      // Fetch active sessions
+      // Sessions
       .addCase(fetchActiveSessions.pending, (state) => {
         state.sessionsLoading = true;
         state.sessionsError = null;
@@ -730,7 +571,6 @@ const authSlice = createSlice({
         state.sessionsLoading = false;
         state.sessionsError = action.payload;
       })
-      // Terminate session
       .addCase(terminateSessionAction.pending, (state) => {
         state.sessionsLoading = true;
         state.sessionsError = null;
@@ -739,13 +579,11 @@ const authSlice = createSlice({
         state.sessionsLoading = false;
         const removedId = action.payload?.sessionId || action.payload;
         state.sessions = state.sessions.filter(s => s._id !== removedId);
-        // If current session was terminated, the logout thunk will clear auth state
       })
       .addCase(terminateSessionAction.rejected, (state, action) => {
         state.sessionsLoading = false;
         state.sessionsError = action.payload;
       })
-      // Terminate all sessions
       .addCase(terminateAllSessionsAction.pending, (state) => {
         state.sessionsLoading = true;
         state.sessionsError = null;
@@ -757,6 +595,38 @@ const authSlice = createSlice({
       .addCase(terminateAllSessionsAction.rejected, (state, action) => {
         state.sessionsLoading = false;
         state.sessionsError = action.payload;
+      })
+      // Verify MFA OTP
+      .addCase(verifyMFAOtp.pending, (state) => {
+        state.loading = true;
+        state.formError = null;
+      })
+      .addCase(verifyMFAOtp.fulfilled, (state, action) => {
+        state.loading = false;
+        state.mfaPending = false;
+        state.mfaUserId = null;
+        state.formError = null;
+        state.user = { ...action.payload.user, userId: action.payload.user._id };
+        state.accessToken = action.payload.accessToken;
+        state.isAuthenticated = true;
+        state.isInitialized = true;
+        if (action.payload.user.preferences) {
+          state.preferences = { ...DEFAULT_PREFERENCES, ...action.payload.user.preferences };
+        }
+      })
+      .addCase(verifyMFAOtp.rejected, (state, action) => {
+        state.loading = false;
+        state.formError = action.payload;
+      })
+      // Toggle MFA
+      .addCase(toggleMFA.fulfilled, (state, action) => {
+        state.preferences = { ...state.preferences, ...action.payload.preferences };
+        if (state.user) {
+          state.user.preferences = { ...state.user.preferences, ...action.payload.preferences };
+        }
+      })
+      .addCase(toggleMFA.rejected, (state, action) => {
+        state.preferencesError = action.payload;
       });
   },
 });
@@ -765,6 +635,7 @@ export const {
   clearError,
   clearFormError,
   clearOAuthError,
+  clearMFAPending,
   setCredentials,
   clearCredentials,
   setLoading,
@@ -772,10 +643,7 @@ export const {
   updateUser,
   updatePreferences,
   clearPreferencesError,
-  setGuestMode,
-  clearGuestMode,
 } = authSlice.actions;
 
-// Re-export Google OAuth thunks for use in components
 export { initiateGoogleOAuth, handleOAuthCallback };
 export default authSlice.reducer;

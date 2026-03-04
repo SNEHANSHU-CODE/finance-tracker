@@ -13,11 +13,6 @@ const validatePreferences = [
     .isIn(['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD'])
     .withMessage('Invalid currency. Allowed values: INR, USD, EUR, GBP, CAD, AUD'),
   
-  body('language')
-    .optional()
-    .isIn(['en', 'hi', 'es', 'fr', 'de', 'it'])
-    .withMessage('Invalid language. Allowed values: en, hi, es, fr, de, it'),
-  
   body('theme')
     .optional()
     .isIn(['light', 'dark', 'auto'])
@@ -53,18 +48,24 @@ settingsRouter.get('/sessions',
   settingsController.getActiveSessions
 );
 
+settingsRouter.delete('/sessions/all', 
+  settingsController.terminateAllSessions
+);
+
 settingsRouter.delete('/sessions/:sessionId', 
   validateSessionId,
   settingsController.terminateSession
 );
 
-settingsRouter.delete('/sessions/all', 
-  settingsController.terminateAllSessions
-);
-
 // Data export route
 settingsRouter.get('/export', 
   settingsController.exportUserData
+);
+
+// MFA toggle route
+settingsRouter.patch('/mfa',
+  body('enabled').isBoolean().withMessage('enabled must be a boolean'),
+  settingsController.toggleMFA
 );
 
 module.exports = settingsRouter;

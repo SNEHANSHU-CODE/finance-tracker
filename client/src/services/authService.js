@@ -199,16 +199,29 @@ export const authService = {
     },
 
     // Google OAuth - Start authentication flow
-    startGoogleOAuth: async (guestId = null) => {
+    startGoogleOAuth: async () => {
         try {
-            const params = guestId ? `?guestId=${guestId}` : '';
-            const response = await authApiClient.get(`/auth/google/start${params}`);
-            return response.data; // Returns { success: true, authUrl: "..." }
+            const response = await authApiClient.get('/auth/google/start');
+            return response.data;
         } catch (error) {
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
                 'Failed to start Google OAuth'
+            );
+        }
+    },
+
+    // Verify MFA OTP after login
+    verifyMFAOtp: async ({ userId, otp }) => {
+        try {
+            const response = await authApiClient.post('/auth/mfa/verify', { userId, otp });
+            return response.data.data;
+        } catch (error) {
+            throw new Error(
+                error.response?.data?.message ||
+                error.message ||
+                'MFA verification failed'
             );
         }
     },

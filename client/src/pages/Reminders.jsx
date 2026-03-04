@@ -11,7 +11,6 @@ import { usePreferences } from '../hooks/usePreferences';
 export default function Reminders() {
   const dispatch = useDispatch();
   const { loading, events, error } = useSelector(state => state.reminder);
-  const { t, formatDate: formatDatePref, formatTime: formatTimePref } = usePreferences();
 
   const [selectedDate, setSelectedDate] = useState(null);
   const [reminderText, setReminderText] = useState('');
@@ -32,19 +31,19 @@ export default function Reminders() {
     const errorParam = params.get('error');
     
     if (googleConnected === 'true') {
-      alert(t('google_connected_success'));
+      alert('Google Calendar connected successfully!');
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (googleConnected === 'false') {
       const errorMessage = errorParam 
-        ? `${t('google_connected_failed')}: ${errorParam}`
-        : t('google_connected_failed');
+        ? `Failed to connect Google Calendar: ${errorParam}`
+        : 'Failed to connect Google Calendar';
       alert(errorMessage);
       console.error('Google connection failed:', errorParam);
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [dispatch, t]);
+  }, [dispatch]);
 
   const handleDateClick = (info) => {
     const clickedDate = new Date(info.dateStr);
@@ -52,7 +51,7 @@ export default function Reminders() {
     today.setHours(0, 0, 0, 0);
 
     if (clickedDate < today) {
-      alert(t('cannot_set_past_dates'));
+      alert('You cannot set reminders for past dates');
       return;
     }
 
@@ -178,8 +177,8 @@ export default function Reminders() {
     <div className="container-fluid p-0">
       <div className="border-bottom px-3 py-3 d-flex justify-content-between align-items-center">
         <div>
-          <h4 className="mb-1">{t('reminders')}</h4>
-          <p className="text-muted mb-0">{t('reminders_subtitle')}</p>
+          <h4 className="mb-1">Reminders</h4>
+          <p className="text-muted mb-0">Set and manage your reminders</p>
         </div>
         <div>
           <button
@@ -188,7 +187,7 @@ export default function Reminders() {
             disabled={loading}
           >
             {loading && <FaSpinner className="fa-spin me-2" />}
-            {t('connect_google_calendar')}
+            Connect Google Calendar
           </button>
         </div>
       </div>
@@ -204,7 +203,7 @@ export default function Reminders() {
         {loading && (
           <div className="text-center py-5">
             <FaSpinner className="fa-spin" size={48} />
-            <p className="mt-3 text-muted">{t('loading_reminders')}</p>
+            <p className="mt-3 text-muted">Loading reminders</p>
           </div>
         )}
 
@@ -232,26 +231,26 @@ export default function Reminders() {
               <div className="modal-header border-0">
                 <h5 className="modal-title">
                   <FaPlus className="me-2" />
-                  {editingReminder ? t('edit_reminder') : t('add_reminder')}
+                  {editingReminder ? 'Edit Reminder' : 'Add Reminder'}
                 </h5>
                 <button className="btn-close" onClick={closeAllModals} />
               </div>
               <div className="modal-body">
-                <p className="text-muted">{t('for_label')} {formatDatePref(selectedDate)}</p>
+                <p className="text-muted">For {new Date(selectedDate).toLocaleDateString()}</p>
                 <div className="mb-3">
-                  <label className="form-label">{t('reminder_title')}</label>
+                  <label className="form-label">Reminder Title</label>
                   <input
                     type="text"
                     className="form-control"
                     value={reminderText}
                     onChange={(e) => setReminderText(e.target.value)}
-                    placeholder={t('reminder_title_placeholder')}
+                    placeholder="What do you want to remind yourself about?"
                     autoFocus
                   />
                 </div>
                 <div className="d-flex gap-2">
                   <div className="flex-grow-1">
-                    <label className="form-label">{t('time')}</label>
+                    <label className="form-label">Time</label>
                     <input
                       type="time"
                       className="form-control"
@@ -260,7 +259,7 @@ export default function Reminders() {
                     />
                   </div>
                   <div>
-                    <label className="form-label">{t('am_pm')}</label>
+                    <label className="form-label">AM/PM</label>
                     <select
                       className="form-select"
                       value={ampm}
@@ -274,11 +273,11 @@ export default function Reminders() {
               </div>
               <div className="modal-footer border-0">
                 <button className="btn btn-secondary" onClick={closeAllModals}>
-                  {t('cancel')}
+                  Cancel
                 </button>
                 <button className="btn btn-primary" onClick={handleSave} disabled={loading}>
                   {loading && <FaSpinner className="fa-spin me-2" />}
-                  {editingReminder ? t('update_reminder') : t('save_reminder')}
+                  {editingReminder ? 'Update Reminder' : 'Save Reminder'}
                 </button>
               </div>
             </div>
@@ -295,32 +294,32 @@ export default function Reminders() {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content rounded-3 shadow">
               <div className="modal-header border-0">
-                <h5 className="modal-title">{t('reminder_details')}</h5>
+                <h5 className="modal-title">Reminder Details</h5>
                 <button className="btn-close" onClick={closeAllModals} />
               </div>
               <div className="modal-body">
                 <div>
                   <h6 className="mb-3">{selectedEvent.title}</h6>
                   <p className="text-muted mb-2">
-                    <strong>{t('date_label')}</strong> {formatDatePref(selectedEvent.date)}
+                    <strong>Date:</strong> {new Date(selectedEvent.date).toLocaleDateString()}
                   </p>
                   <p className="text-muted mb-0">
-                    <strong>{t('time_label')}</strong> {formatTimePref(selectedEvent.date)}
+                    <strong>Time:</strong> {new Date(selectedEvent.date).toLocaleTimeString()}
                   </p>
                 </div>
               </div>
               <div className="modal-footer border-0 d-flex justify-content-between">
                 <button className="btn btn-outline-danger" onClick={handleDeleteReminder}>
                   <FaTrash className="me-2" />
-                  {t('delete')}
+                  Delete
                 </button>
                 <div>
                   <button className="btn btn-secondary me-2" onClick={closeAllModals}>
-                    {t('close')}
+                    Close
                   </button>
                   <button className="btn btn-primary" onClick={handleEditReminder}>
                     <FaEdit className="me-2" />
-                    {t('edit')}
+                    Edit
                   </button>
                 </div>
               </div>
@@ -340,27 +339,27 @@ export default function Reminders() {
               <div className="modal-header border-0 bg-danger text-white">
                 <h5 className="modal-title">
                   <FaTrash className="me-2" />
-                  {t('confirm_delete')}
+                  Confirm Delete
                 </h5>
                 <button className="btn-close btn-close-white" onClick={() => setConfirmDelete(null)} />
               </div>
               <div className="modal-body text-center">
-                <p className="mb-3">{t('delete_reminder_confirm')}</p>
+                <p className="mb-3">Are you sure you want to delete this reminder?</p>
                 <div className="alert alert-light border">
                   <strong>{confirmDelete.title}</strong><br />
                   <small className="text-muted">
-                    {formatDatePref(confirmDelete.date)} {formatTimePref(confirmDelete.date)}
+                    {new Date(confirmDelete.date).toLocaleDateString()} {new Date(confirmDelete.date).toLocaleTimeString()}
                   </small>
                 </div>
-                <p className="text-muted small">{t('cannot_undo')}</p>
+                <p className="text-muted small">This action cannot be undone</p>
               </div>
               <div className="modal-footer border-0">
                 <button className="btn btn-secondary" onClick={() => setConfirmDelete(null)}>
-                  {t('cancel')}
+                  Cancel
                 </button>
                 <button className="btn btn-danger" onClick={confirmDeleteReminder} disabled={loading}>
                   {loading && <FaSpinner className="fa-spin me-2" />}
-                  {t('delete_reminder')}
+                  Delete Reminder
                 </button>
               </div>
             </div>

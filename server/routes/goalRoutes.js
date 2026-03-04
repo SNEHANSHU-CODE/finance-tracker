@@ -126,7 +126,4 @@ goalRouter.post('/bulk-delete',
   goalController.bulkDeleteGoals
 );
 
-// Migrate guest data
-goalRouter.post('/migrate-guest-data', goalController.migrateGuestData);
-
 module.exports = goalRouter;

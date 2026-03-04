@@ -13,6 +13,7 @@ authRouter.post('/register/send-otp', AuthController.sendRegistrationOTP);
 authRouter.post('/register/verify-otp', AuthController.verifyRegistrationOTP);
 authRouter.post('/register', AuthController.register);
 authRouter.post('/login', AuthController.login);
+authRouter.post('/mfa/verify', AuthController.verifyMFA);
 authRouter.post('/refresh', AuthController.refreshToken);
 
 // Protected routes

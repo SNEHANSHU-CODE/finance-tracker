@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     minlength: [6, 'Password must be at least 6 characters'],
     // Only required if not using Google auth
-    required: function() {
+    required: function () {
       return !this.googleId;
     },
     select: false
@@ -46,15 +46,15 @@ const userSchema = new mongoose.Schema({
       expires: 604800 // 7 days
     }
   }],
-    lastLoginAt: {
-      type: Date,
-      default: null
-    },
-    lastLoginProvider: {
-      type: String,
-      enum: ['email', 'google'],
-      default: 'email'
-    },
+  lastLoginAt: {
+    type: Date,
+    default: null
+  },
+  lastLoginProvider: {
+    type: String,
+    enum: ['email', 'google'],
+    default: 'email'
+  },
   role: {
     type: String,
     enum: ['user', 'admin'],
@@ -76,11 +76,11 @@ const userSchema = new mongoose.Schema({
     default: null,
     select: false
   },
-    authProvider: {
-      type: String,
-      enum: ['email', 'google'],
-      default: 'email'
-    },
+  authProvider: {
+    type: String,
+    enum: ['email', 'google'],
+    default: 'email'
+  },
   authMethods: {
     type: [String],
     enum: ['email', 'google'],
@@ -92,23 +92,20 @@ const userSchema = new mongoose.Schema({
       enum: ['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD'],
       default: 'INR'
     },
-    language: {
-      type: String,
-      enum: ['en', 'hi', 'es', 'fr', 'de', 'it'],
-      default: 'en'
-    },
     theme: {
       type: String,
       enum: ['light', 'dark', 'auto'],
       default: 'light'
+    },
+    mfaEnabled: {
+      type: Boolean,
+      default: false
     }
   }
-}, {
-  timestamps: true
 });
 
 // Hash password before saving (only if password is set)
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password') || !this.password) return next();
   try {
     const salt = await bcrypt.genSalt(12);
@@ -120,7 +117,7 @@ userSchema.pre('save', async function(next) {
 });
 
 // Compare password method (robust for Google users)
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.password) return false;
   try {
     return await bcrypt.compare(candidatePassword, this.password);
@@ -130,19 +127,19 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 };
 
 // Update user preferences method
-userSchema.methods.updatePreferences = async function(newPreferences) {
+userSchema.methods.updatePreferences = async function (newPreferences) {
   try {
     // Only update provided preference fields
     if (newPreferences.currency !== undefined) {
       this.preferences.currency = newPreferences.currency;
     }
-    if (newPreferences.language !== undefined) {
-      this.preferences.language = newPreferences.language;
-    }
     if (newPreferences.theme !== undefined) {
       this.preferences.theme = newPreferences.theme;
     }
-    
+    if (newPreferences.mfaEnabled !== undefined) {
+      this.preferences.mfaEnabled = newPreferences.mfaEnabled;
+    }
+
     return await this.save();
   } catch (error) {
     throw error;

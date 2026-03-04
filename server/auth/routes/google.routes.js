@@ -9,8 +9,7 @@ const googleRouter = express.Router();
 /**
  * GET /auth/google/start
  * Initiates Google OAuth flow
- * @query {string} guestId - Optional guest user ID for data migration
- * @returns {Object} - authUrl and state for OAuth validation
+ * @returns {Object} - authUrl for OAuth
  */
 googleRouter.get('/start', GoogleOAuthController.startOAuth);
 

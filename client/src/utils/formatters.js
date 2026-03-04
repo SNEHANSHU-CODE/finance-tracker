@@ -35,7 +35,7 @@ export const currencyLocales = {
  * @param {boolean} showSymbol - Show currency symbol (default: true)
  * @returns {string} Formatted currency string
  */
-export const formatCurrency = (amount, currency = 'INR', showSymbol = true, language = 'en') => {
+export const formatCurrency = (amount, currency = 'INR', showSymbol = true) => {
   if (amount === null || amount === undefined) return '₹0';
   
   const locale = currencyLocales[currency] || 'en-IN';
@@ -63,7 +63,7 @@ export const formatCurrency = (amount, currency = 'INR', showSymbol = true, lang
  * @param {string} currency - Currency code (INR, USD, etc.)
  * @returns {string} Formatted number string
  */
-export const formatNumber = (amount, currency = 'INR', language = 'en') => {
+export const formatNumber = (amount, currency = 'INR') => {
   if (amount === null || amount === undefined) return '0';
   
   const locale = currencyLocales[currency] || 'en-IN';
@@ -81,28 +81,17 @@ export const formatNumber = (amount, currency = 'INR', language = 'en') => {
 };
 
 /**
- * Format date based on locale
+ * Format date
  * @param {string|Date} date - Date to format
- * @param {string} language - Language code (en, hi, etc.)
  * @returns {string} Formatted date string
  */
-export const formatDate = (date, language = 'en') => {
+export const formatDate = (date) => {
   if (!date) return '';
   
   const d = new Date(date);
-  const locales = {
-    en: 'en-US',
-    hi: 'en-IN',
-    es: 'es-ES',
-    fr: 'fr-FR',
-    de: 'de-DE',
-    it: 'it-IT'
-  };
-  
-  const locale = locales[language] || 'en-US';
   
   try {
-    return new Intl.DateTimeFormat(locale, {
+    return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -115,28 +104,17 @@ export const formatDate = (date, language = 'en') => {
 };
 
 /**
- * Format time based on locale
+ * Format time
  * @param {string|Date} date - Date to format
- * @param {string} language - Language code
  * @returns {string} Formatted time string
  */
-export const formatTime = (date, language = 'en') => {
+export const formatTime = (date) => {
   if (!date) return '';
   
   const d = new Date(date);
-  const locales = {
-    en: 'en-US',
-    hi: 'en-IN',
-    es: 'es-ES',
-    fr: 'fr-FR',
-    de: 'de-DE',
-    it: 'it-IT'
-  };
-  
-  const locale = locales[language] || 'en-US';
   
   try {
-    return new Intl.DateTimeFormat(locale, {
+    return new Intl.DateTimeFormat('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'

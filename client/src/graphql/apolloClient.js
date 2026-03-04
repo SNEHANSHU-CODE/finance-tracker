@@ -3,7 +3,7 @@ import { setContext } from '@apollo/client/link/context';
 import { store } from '../app/store'; // Redux store
 
 // Analytics Server GraphQL endpoint
-const ANALYTICS_SERVER_URL = (import.meta.env.VITE_ANALYTICS_URL + '/graphql') || 'http://localhost:5001/graphql';
+const ANALYTICS_SERVER_URL = `${import.meta.env.VITE_ANALYTICS_URL}/graphql` || 'http://localhost:5001/graphql';
 
 const httpLink = new HttpLink({
   uri: ANALYTICS_SERVER_URL,

@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutUser, clearCredentials } from '../app/authSlice';
-import { t } from 'i18next';
 
 export default function Navbar() {
   const [isNavOpen, setIsNavOpen] = useState(false);
@@ -12,13 +11,12 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   // Get auth state from Redux store
-  const { isAuthenticated, user, loading, isGuest } = useSelector((state) => state.auth);
+  const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
 
   const toggleNavbar = () => setIsNavOpen(prev => !prev);
 
   const closeNavbar = () => {
     setIsNavOpen(false);
-    // Also ensure Bootstrap collapse is closed
     if (navbarCollapseRef.current) {
       navbarCollapseRef.current.classList.remove('show');
     }
@@ -41,33 +39,23 @@ export default function Navbar() {
     };
   }, [isNavOpen]);
 
-  // Handle logout 
+  // Handle logout
   const handleLogout = async () => {
-    if (isLoggingOut) return; // Prevent multiple logout attempts
+    if (isLoggingOut) return;
 
     setIsLoggingOut(true);
     closeNavbar();
 
-    if (isGuest) {
-      // For guest mode, just clear the guest state
+    try {
+      await dispatch(logoutUser()).unwrap();
+      console.log('Logout successful');
+    } catch (error) {
+      console.error('Logout API call failed:', error);
       dispatch(clearCredentials());
+    } finally {
+      setIsLoggingOut(false);
       navigate('/', { replace: true });
-    } else {
-      try {
-        // Attempt to logout via API
-        await dispatch(logoutUser()).unwrap();
-        console.log('Logout successful');
-      } catch (error) {
-        console.error('Logout API call failed:', error);
-        // Even if API logout fails, clear local state
-        dispatch(clearCredentials());
-      } finally {
-        setIsLoggingOut(false);
-        // Always navigate to home after logout attempt
-        navigate('/', { replace: true });
-      }
     }
-    setIsLoggingOut(false);
   };
 
   return (
@@ -81,7 +69,7 @@ export default function Navbar() {
         >
           <img
             src="/favicon.png"
-            alt={t('app_name')}
+            alt="Finance Tracker"
             className="navbar-brand-img me-2"
             style={{
               width: '40px',
@@ -90,7 +78,7 @@ export default function Navbar() {
               objectPosition: 'center'
             }}
           />
-          {t('app_name')}
+          Finance Tracker
         </Link>
 
         <button
@@ -111,7 +99,6 @@ export default function Navbar() {
         >
           <ul className="navbar-nav gap-3 align-items-lg-center">
             {isAuthenticated ? (
-              // Authenticated user menu
               <>
                 <li className="nav-item">
                   <Link
@@ -119,13 +106,13 @@ export default function Navbar() {
                     to="/dashboard"
                     onClick={closeNavbar}
                   >
-                    {t('dashboard')}
+                    Dashboard
                   </Link>
                 </li>
                 {user && (
                   <li className="nav-item">
                     <span className="nav-link text-muted">
-                      {t('welcome_user', { name: user.username || user.email || 'User' })} {isGuest && <span className="badge bg-info ms-1">{t('guest')}</span>}
+                      Welcome back, {user.username || user.email || 'User'}!
                     </span>
                   </li>
                 )}
@@ -138,16 +125,15 @@ export default function Navbar() {
                     {(loading || isLoggingOut) ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                        {t('logging_out')}
+                        Logging out
                       </>
                     ) : (
-                      isGuest ? t('exit_guest_mode') : t('logout')
+                      'Logout'
                     )}
                   </button>
                 </li>
               </>
             ) : (
-              // Guest user menu (not authenticated)
               <>
                 <li className="nav-item">
                   <Link
@@ -155,7 +141,7 @@ export default function Navbar() {
                     to="/login"
                     onClick={closeNavbar}
                   >
-                    {t('login')}
+                    Login
                   </Link>
                 </li>
                 <li className="nav-item">
@@ -164,7 +150,7 @@ export default function Navbar() {
                     to="/signup"
                     onClick={closeNavbar}
                   >
-                    {t('signup')}
+                    Sign Up
                   </Link>
                 </li>
               </>

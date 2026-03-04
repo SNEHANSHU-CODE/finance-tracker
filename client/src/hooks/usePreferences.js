@@ -1,42 +1,35 @@
-import { useSettings } from '../context/SettingsContext';
+import { useSettings } from './useSettings';
 
 /**
- * Custom hook to access and use user preferences
- * 
- * This is a wrapper around useSettings for backward compatibility.
- * New code should use useSettings directly.
- * 
- * @returns {object} Preferences object with utility methods
+ * Custom hook to access and use user preferences.
+ *
+ * Backward-compatibility wrapper around useSettings.
+ * New code should import useSettings directly from './useSettings'.
  */
 export const usePreferences = () => {
   const settings = useSettings();
-  
+
   return {
-    // Preferences object for backward compatibility
+    // Preferences
     preferences: settings.preferences,
     currency: settings.currency,
-    language: settings.language,
     theme: settings.theme,
-    
+
     // Formatting methods
     formatCurrency: settings.formatCurrency,
     formatNumber: settings.formatNumber,
     formatDate: settings.formatDate,
     formatTime: settings.formatTime,
-    
-    // Translation helper
-    t: settings.t,
-    
-    // Preference setters
+    formatDateTime: settings.formatDateTime,
+
+    // Setters
     setCurrency: settings.setCurrency,
-    setLanguage: settings.setLanguage,
     setTheme: settings.setTheme,
     updatePreference: settings.updatePreference,
-    
-    // Additional utilities from SettingsContext
+
+    // Utilities
     isDark: settings.isDark,
     resolvedTheme: settings.resolvedTheme,
-    formatDateTime: settings.formatDateTime,
     getCurrencySymbol: settings.getCurrencySymbol,
   };
 };

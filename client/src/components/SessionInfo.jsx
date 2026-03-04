@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import sessionManager from '../utils/sessionManager';
-import { formatTime } from '../utils/formatters';
 
 export default function SessionInfo() {
   const user = useSelector((state) => state.auth?.user);

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux';
 
 import PWAManager from './pwa/PWAManager';
-import { SettingsProvider } from './context/SettingsContext';
+import SettingsProvider from './context/SettingsContext';
 import { fetchUserPreferences } from './app/authSlice';
 import sessionManager from './utils/sessionManager';
 

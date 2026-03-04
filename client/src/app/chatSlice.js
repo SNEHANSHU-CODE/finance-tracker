@@ -17,7 +17,6 @@ export const connectSocket = createAsyncThunk(
       return {
         connected: true,
         userId: userId || null,
-        isGuest: !userId || !token,
       };
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to connect');
@@ -80,9 +79,6 @@ export const sendMessage = createAsyncThunk(
         }
       }
 
-      // Send message — resolves immediately with { sent: true }
-      // Bot response arrives independently via the 'bot_response' socket event
-      // and is handled in ChatBot.jsx via dispatch(addBotMessage(data))
       const result = await chatService.sendMessage(messageText, conversationHistory);
       return result;
 
@@ -178,9 +174,6 @@ const chatSlice = createSlice({
       }
     },
 
-    // Bot messages arrive ONLY from socket events (bot_response).
-    // chatService.sendMessage() resolves immediately; the actual response
-    // comes asynchronously via ChatBot.jsx → dispatch(addBotMessage(data)).
     addBotMessage: (state, action) => {
       const botMessage = {
         id: action.payload.messageId || `bot-${Date.now()}`,
@@ -194,7 +187,6 @@ const chatSlice = createSlice({
         rating: null,
       };
 
-      // Deduplication guard
       const exists = state.messages.some(m => m.id === botMessage.id);
       if (!exists) {
         state.messages.push(botMessage);
@@ -204,7 +196,6 @@ const chatSlice = createSlice({
         console.warn('[chatSlice] Duplicate bot message, skipping:', botMessage.id);
       }
 
-      // Always clear typing/loading when a bot message arrives
       state.isTyping = false;
       state.loading = false;
     },
@@ -264,7 +255,6 @@ const chatSlice = createSlice({
 
   extraReducers: (builder) => {
     builder
-      // Connect socket
       .addCase(connectSocket.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -280,39 +270,28 @@ const chatSlice = createSlice({
         state.error = action.payload || 'Failed to connect';
       })
 
-      // Disconnect socket
       .addCase(disconnectSocket.fulfilled, (state) => {
         state.connected = false;
         state.isTyping = false;
         state.loading = false;
       })
 
-      // Send message
-      // fulfilled: message was emitted to server; loading stays true until
-      //            bot_response arrives via socket and addBotMessage clears it.
       .addCase(sendMessage.pending, (state) => {
         state.loading = true;
         state.isTyping = true;
         state.error = null;
       })
-      .addCase(sendMessage.fulfilled, (state) => {
-        // Message was sent successfully to the socket.
-        // Do NOT clear loading/typing here — addBotMessage will do that
-        // when the actual response arrives.
-        // Do NOT add any bot message here — it arrives via socket.
+      .addCase(sendMessage.fulfilled, () => {
+        // loading/typing cleared by addBotMessage when response arrives
       })
       .addCase(sendMessage.rejected, (state, action) => {
-        // Only fires when the emit itself failed (not connected, invalid msg, etc.)
-        // Do NOT add a bot error message here — show it in the error banner instead.
         state.loading = false;
         state.isTyping = false;
         state.error = action.payload || 'Failed to send message';
       })
 
-      // Get suggestions — fail silently
       .addCase(getSmartSuggestions.rejected, () => {})
 
-      // Rate response
       .addCase(rateChatResponse.fulfilled, (state, action) => {
         const { messageId, rating } = action.payload;
         const message = state.messages.find(m => m.id === messageId);
@@ -322,7 +301,6 @@ const chatSlice = createSlice({
         }
       })
 
-      // Clear chat
       .addCase(clearChatHistory.fulfilled, (state) => {
         state.messages = [];
         state.error = null;

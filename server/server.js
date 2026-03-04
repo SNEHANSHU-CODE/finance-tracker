@@ -19,6 +19,8 @@ const analyticsRouter = require('./routes/analyticsRoutes');
 const reminderRouter = require('./routes/reminderRoutes');
 const settingsRouter = require('./routes/settingsRoutes');
 const googleRouter = require('./routes/googleRoutes');
+const vaultRouter = require('./routes/vaultRoutes');
+const budgetRouter = require('./routes/budgetRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -41,7 +43,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options('/{*path}', cors(corsOptions))
-app.use(express.json());
+app.use(express.json({ limit: '25mb' })); // with 25mb limit for file uploads in vault
 app.use(cookieParser());
 // Performance monitoring middleware - logs slow queries
 app.use(queryLogger);
@@ -61,7 +63,9 @@ app.use('/api/goals', goalRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/reminders', reminderRouter);
 app.use('/api/settings', settingsRouter);
-app.use('/api/google', googleRouter); 
+app.use('/api/google', googleRouter);
+app.use('/api/vault', vaultRouter);
+app.use('/api/budget', budgetRouter); 
 
 
 //Keep my server alive

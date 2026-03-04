@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useAllAnalyticsData } from '../hooks/useAnalyticsGraphQL';
-import { useSettings } from '../context/SettingsContext';
+import { useSettings } from '../hooks/useSettings';
 import {
   validateDashboard,
   validateSpendingTrends,
@@ -40,7 +40,8 @@ import {
   FaDownload,
   FaCreditCard,
   FaPiggyBank,
-  FaSync
+  FaSync,
+  FaBalanceScale
 } from 'react-icons/fa';
 
 const AnalyticsDashboard = () => {
@@ -49,7 +50,7 @@ const AnalyticsDashboard = () => {
   const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
 
   const accessToken = useSelector((state) => state.auth?.accessToken);
-  const { t, formatCurrency: formatCurrencyFromSettings, formatDate: formatDateFromSettings, isDark } = useSettings();
+  const { formatCurrency: formatCurrencyFromSettings, formatDate: formatDateFromSettings, isDark } = useSettings();
 
   useEffect(() => {
     const getDateRange = (period) => {
@@ -105,6 +106,7 @@ const AnalyticsDashboard = () => {
       spendingTrends: validateSpendingTrends(analyticsData.spendingTrends),
       categoryAnalysis: validateCategoryAnalysis(analyticsData.categoryAnalysis),
       goalsProgress: validateGoalsProgress(analyticsData.goalsProgress),
+      budgetPerformance: analyticsData.budgetPerformance || null,
       isEmpty: isAnalyticsEmpty(analyticsData),
     };
   }, [analyticsData]);
@@ -113,6 +115,7 @@ const AnalyticsDashboard = () => {
   const spendingTrends = validatedData.spendingTrends;
   const categoryData = validatedData.categoryAnalysis;
   const goalsData = validatedData.goalsProgress;
+  const budgetData = validatedData.budgetPerformance;
   const hasNoData = validatedData.isEmpty;
 
   const safeTrends = useMemo(() => {
@@ -163,7 +166,7 @@ const AnalyticsDashboard = () => {
   const handleExportPDF = async () => {
     try {
       if (!accessToken) {
-        alert(t('login'));
+        alert('Please login');
         return;
       }
 
@@ -255,18 +258,18 @@ const AnalyticsDashboard = () => {
   const EmptyState = ({ message }) => (
     <div className="text-center py-5">
       <FaChartLine className="text-muted mb-3" size={48} />
-      <h5 className="text-muted">{message || t('no_data_available')}</h5>
-      <p className="text-muted">{t('add_transactions_to_see_analytics')}</p>
+      <h5 className="text-muted">{message || 'No data available'}</h5>
+      <p className="text-muted">Add transactions to see analytics</p>
     </div>
   );
 
   const renderOverview = () => {
     if (hasNoData && !isLoading) {
-      return <EmptyState message={t('no_analytics_data')} />;
+      return <EmptyState message={'No analytics data'} />;
     }
 
     if (!safeTrends.length && !isLoading) {
-      return <EmptyState message={t('no_trend_data')} />;
+      return <EmptyState message={'No trend data'} />;
     }
 
     const changeValues = getChangeValuesFromTrends();
@@ -276,28 +279,28 @@ const AnalyticsDashboard = () => {
         <div className="col-12 mb-4">
           <div className="row">
             <StatCard
-              title={t('monthly_income')}
+              title={'Monthly Income'}
               value={dashboardData?.monthly?.summary?.totalIncome || 0}
               change={changeValues.incomeChange}
               icon={<FaWallet />}
               color="success"
             />
             <StatCard
-              title={t('monthly_expenses')}
+              title={'Monthly Expenses'}
               value={dashboardData?.monthly?.summary?.totalExpenses || 0}
               change={changeValues.expenseChange}
               icon={<FaCreditCard />}
               color="danger"
             />
             <StatCard
-              title={t('net_savings_series')}
+              title={'Net Savings'}
               value={dashboardData?.monthly?.summary?.netSavings || 0}
               change={changeValues.savingsChange}
               icon={<FaPiggyBank />}
               color="info"
             />
             <StatCard
-              title={t('savings_rate')}
+              title={'Savings Rate'}
               value={`${(dashboardData?.monthly?.summary?.savingsRate || 0).toFixed(1)}%`}
               change={changeValues.savingsRateChange}
               icon={<FaChartLine />}
@@ -309,7 +312,7 @@ const AnalyticsDashboard = () => {
         <div className="col-xl-8 col-lg-7 mb-4">
           <div className="card shadow-sm border-0 h-100">
             <div className="card-header bg-white border-0 py-3">
-              <h6 className="m-0 fw-bold text-primary">{t('financial_trends')}</h6>
+              <h6 className="m-0 fw-bold text-primary">Financial Trends</h6>
             </div>
             <div className="card-body">
               <ResponsiveContainer width="100%" height={300}>
@@ -337,7 +340,7 @@ const AnalyticsDashboard = () => {
                     strokeWidth={2}
                     dot={{ fill: '#28a745', r: 3 }}
                     activeDot={{ r: 5 }}
-                    name={t('income_series')}
+                    name={'Income'}
                   />
                   <Line
                     type="monotone"
@@ -346,7 +349,7 @@ const AnalyticsDashboard = () => {
                     strokeWidth={2}
                     dot={{ fill: '#dc3545', r: 3 }}
                     activeDot={{ r: 5 }}
-                    name={t('expenses_series')}
+                    name={'Expenses'}
                   />
                   <Line
                     type="monotone"
@@ -355,7 +358,7 @@ const AnalyticsDashboard = () => {
                     strokeWidth={2}
                     dot={{ fill: '#17a2b8', r: 3 }}
                     activeDot={{ r: 5 }}
-                    name={t('net_savings_series')}
+                    name={'Net Savings'}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -366,7 +369,7 @@ const AnalyticsDashboard = () => {
         <div className="col-xl-4 col-lg-5 mb-4">
           <div className="card shadow-sm border-0 h-100">
             <div className="card-header bg-white border-0 py-3">
-              <h6 className="m-0 fw-bold text-primary">{t('spending_by_category')}</h6>
+              <h6 className="m-0 fw-bold text-primary">Spending by Category</h6>
             </div>
             <div className="card-body">
               <ResponsiveContainer width="100%" height={300}>
@@ -402,17 +405,17 @@ const AnalyticsDashboard = () => {
         <div className="col-xl-8 col-lg-7 mb-4">
           <div className="card shadow-sm border-0">
             <div className="card-header bg-white border-0 py-3">
-              <h6 className="m-0 fw-bold text-primary">{t('recent_transactions_title')}</h6>
+              <h6 className="m-0 fw-bold text-primary">Recent Transactions</h6>
             </div>
             <div className="card-body p-0">
               <div className="table-responsive">
                 <table className="table table-hover mb-0">
                   <thead className="table-light">
                     <tr>
-                      <th className="border-0">{t('description')}</th>
-                      <th className="border-0">{t('category')}</th>
-                      <th className="border-0">{t('date')}</th>
-                      <th className="border-0 text-end">{t('amount')}</th>
+                      <th className="border-0">Description</th>
+                      <th className="border-0">Category</th>
+                      <th className="border-0">Date</th>
+                      <th className="border-0 text-end">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -444,11 +447,11 @@ const AnalyticsDashboard = () => {
         <div className="col-xl-4 col-lg-5 mb-4">
           <div className="card shadow-sm border-0">
             <div className="card-header bg-white border-0 py-3">
-              <h6 className="m-0 fw-bold text-primary">{t('goals_progress')}</h6>
+              <h6 className="m-0 fw-bold text-primary">Goals Progress</h6>
             </div>
             <div className="card-body">
               {goalsData.goals.length === 0 ? (
-                <EmptyState message={t('no_goals')} />
+                <EmptyState message={'No goals'} />
               ) : (
                 goalsData.goals.map((goal, index) => (
                   <div key={index} className="mb-3">
@@ -482,7 +485,7 @@ const AnalyticsDashboard = () => {
 
   const renderSpending = () => {
     if (hasNoData && !isLoading) {
-    return <EmptyState message={t('no_analytics_data')} />;
+    return <EmptyState message={'No analytics data'} />;
   }
 
   const completeCategories = safeCategories.length > 0 
@@ -494,11 +497,11 @@ const AnalyticsDashboard = () => {
         <div className="col-12 mb-4">
           <div className="card shadow-sm border-0">
             <div className="card-header bg-white border-0 py-3">
-              <h6 className="m-0 fw-bold text-primary">{t('spending_by_category')}</h6>
+              <h6 className="m-0 fw-bold text-primary">Spending by Category</h6>
             </div>
             <div className="card-body">
   {completeCategories.length === 0 || completeCategories.every(c => c.amount === 0) ? (
-    <EmptyState message={t('no_category_data')} />
+    <EmptyState message={'No category data'} />
   ) : (
     <ResponsiveContainer width="100%" height={400}>
       <BarChart data={completeCategories}>
@@ -539,7 +542,7 @@ const AnalyticsDashboard = () => {
         <div className="col-12 mb-4">
           <div className="card shadow-sm border-0">
             <div className="card-header bg-white border-0 py-3">
-              <h6 className="m-0 fw-bold text-primary">{t('monthly_spending_trends')}</h6>
+              <h6 className="m-0 fw-bold text-primary">Monthly Spending Trends</h6>
             </div>
             <div className="card-body">
               <ResponsiveContainer width="100%" height={300}>
@@ -566,7 +569,7 @@ const AnalyticsDashboard = () => {
                     fill="#dc3545"
                     fillOpacity={0.3}
                     strokeWidth={2}
-                    name={t('expenses_series')}
+                    name={'Expenses'}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -582,7 +585,7 @@ const AnalyticsDashboard = () => {
       <div className="col-12 mb-4">
         <div className="card shadow-sm border-0">
           <div className="card-header bg-white border-0 py-3">
-            <h6 className="m-0 fw-bold text-primary">{t('income_trends')}</h6>
+            <h6 className="m-0 fw-bold text-primary">Income Trends</h6>
           </div>
           <div className="card-body">
             <ResponsiveContainer width="100%" height={300}>
@@ -609,7 +612,7 @@ const AnalyticsDashboard = () => {
                   fill="#28a745"
                   fillOpacity={0.3}
                   strokeWidth={2}
-                  name={t('income_series')}
+                  name={'Income'}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -618,6 +621,133 @@ const AnalyticsDashboard = () => {
       </div>
     </div>
   );
+
+  const renderBudget = () => {
+    const categories = budgetData?.categories || [];
+    const message    = budgetData?.message || '';
+    const overall    = budgetData?.overallPerformance || '';
+    const recs       = budgetData?.recommendations || [];
+
+    if (!budgetData || categories.length === 0) {
+      return (
+        <div className="text-center py-5">
+          <FaBalanceScale className="text-muted mb-3" size={48} />
+          <h5 className="text-muted">No Budget Data</h5>
+          <p className="text-muted">Set up a budget for the selected period to see performance here.</p>
+        </div>
+      );
+    }
+
+    const STATUS_COLOR = { 'Within Budget': 'success', 'Warning': 'warning', 'Over Budget': 'danger' };
+    const overallColor = overall === 'Excellent' ? 'success' : overall === 'Good' ? 'info' : overall === 'Warning' ? 'warning' : 'danger';
+
+    return (
+      <div className="row">
+        {/* Summary header */}
+        <div className="col-12 mb-3">
+          <div className={`alert alert-${overallColor} d-flex justify-content-between align-items-center mb-0`}>
+            <span><strong>Overall Performance:</strong> {overall}</span>
+            {message && <span className="text-muted small">{message}</span>}
+          </div>
+        </div>
+
+        {/* Category performance cards */}
+        <div className="col-12 mb-4">
+          <div className="card shadow-sm border-0">
+            <div className="card-header bg-white border-0 py-3">
+              <h6 className="m-0 fw-bold text-primary"><FaBalanceScale className="me-2" />Budget vs Actual by Category</h6>
+            </div>
+            <div className="card-body p-0">
+              <div className="table-responsive">
+                <table className="table table-hover mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Category</th>
+                      <th className="text-end">Budgeted</th>
+                      <th className="text-end">Spent</th>
+                      <th className="text-end">Remaining</th>
+                      <th className="text-end">Used</th>
+                      <th className="text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categories.map((cat, i) => {
+                      const pct       = cat.percentageUsed ?? 0;
+                      const barColor  = pct >= 100 ? 'bg-danger' : pct >= 80 ? 'bg-warning' : 'bg-success';
+                      const badgeColor = STATUS_COLOR[cat.status] || 'secondary';
+                      return (
+                        <tr key={i}>
+                          <td className="fw-semibold">{cat.category}</td>
+                          <td className="text-end">{formatCurrency(cat.budgeted ?? 0)}</td>
+                          <td className={`text-end fw-bold ${pct > 100 ? 'text-danger' : ''}`}>{formatCurrency(cat.spent ?? 0)}</td>
+                          <td className={`text-end ${(cat.remaining ?? 0) < 0 ? 'text-danger' : 'text-success'}`}>{formatCurrency(cat.remaining ?? 0)}</td>
+                          <td className="text-end" style={{ minWidth: 120 }}>
+                            <div className="d-flex align-items-center gap-2 justify-content-end">
+                              <div className="progress flex-grow-1" style={{ height: 6, minWidth: 60 }}>
+                                <div className={`progress-bar ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                              </div>
+                              <span style={{ fontSize: 12 }}>{(pct).toFixed(0)}%</span>
+                            </div>
+                          </td>
+                          <td className="text-center">
+                            <span className={`badge bg-${badgeColor}`}>{cat.status}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bar chart: budgeted vs spent */}
+        <div className="col-xl-8 mb-4">
+          <div className="card shadow-sm border-0">
+            <div className="card-header bg-white border-0 py-3">
+              <h6 className="m-0 fw-bold text-primary">Budgeted vs Spent</h6>
+            </div>
+            <div className="card-body">
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={categories} margin={{ top: 4, right: 10, left: 0, bottom: 40 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                  <XAxis dataKey="category" tick={{ fontSize: 11, fill: chartColors.text }} angle={-35} textAnchor="end" height={60} />
+                  <YAxis tick={{ fontSize: 11, fill: chartColors.text }} tickFormatter={v => formatCurrency(v)} />
+                  <Tooltip formatter={v => formatCurrency(v)} contentStyle={{ backgroundColor: chartColors.tooltip, border: `1px solid ${chartColors.tooltipBorder}`, color: chartColors.text }} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="budgeted" name="Budgeted" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="spent" name="Spent" radius={[4, 4, 0, 0]}>
+                    {categories.map((entry, i) => (
+                      <Cell key={i} fill={(entry.spent ?? 0) > (entry.budgeted ?? 0) ? '#ef4444' : '#22c55e'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Recommendations */}
+        {recs.length > 0 && (
+          <div className="col-xl-4 mb-4">
+            <div className="card shadow-sm border-0 h-100">
+              <div className="card-header bg-white border-0 py-3">
+                <h6 className="m-0 fw-bold text-primary">Alerts & Recommendations</h6>
+              </div>
+              <div className="card-body">
+                <ol className="ps-3 mb-0">
+                  {recs.map((rec, i) => (
+                    <li key={i} className="mb-2 small text-muted">{rec}</li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderGoals = () => {
     const totalGoals = goalsData.summary.totalGoals || 0;
@@ -633,7 +763,7 @@ const AnalyticsDashboard = () => {
               <div className="card bg-primary text-white mb-3">
                 <div className="card-body text-center">
                   <h3 className="card-title">{totalGoals}</h3>
-                  <p className="card-text">{t('total_goals')}</p>
+                  <p className="card-text">Total Goals</p>
                 </div>
               </div>
             </div>
@@ -641,7 +771,7 @@ const AnalyticsDashboard = () => {
               <div className="card bg-success text-white mb-3">
                 <div className="card-body text-center">
                   <h3 className="card-title">{onTrackGoals}</h3>
-                  <p className="card-text">{t('on_track')}</p>
+                  <p className="card-text">On Track</p>
                 </div>
               </div>
             </div>
@@ -649,7 +779,7 @@ const AnalyticsDashboard = () => {
               <div className="card bg-warning text-white mb-3">
                 <div className="card-body text-center">
                   <h3 className="card-title">{overdueGoals}</h3>
-                  <p className="card-text">{t('overdue')}</p>
+                  <p className="card-text">Overdue</p>
                 </div>
               </div>
             </div>
@@ -659,7 +789,7 @@ const AnalyticsDashboard = () => {
                   <h3 className="card-title">
                     {Number(goalsData?.summary?.averageProgress ?? 0).toFixed(1)}%
                   </h3>
-                  <p className="card-text">{t('avg_progress')}</p>
+                  <p className="card-text">Average Progress</p>
                 </div>
               </div>
             </div>
@@ -669,11 +799,11 @@ const AnalyticsDashboard = () => {
         <div className="col-12">
           <div className="card shadow-sm border-0">
             <div className="card-header bg-white border-0 py-3">
-              <h6 className="m-0 fw-bold text-primary">{t('goal_details')}</h6>
+              <h6 className="m-0 fw-bold text-primary">Goal Details</h6>
             </div>
             <div className="card-body">
               {goalsData.goals.length === 0 ? (
-                <EmptyState message={t('no_goals')} />
+                <EmptyState message={'No goals'} />
               ) : (
                 <div className="row">
                   {goalsData.goals.map((goal, index) => (
@@ -692,15 +822,15 @@ const AnalyticsDashboard = () => {
                             ></div>
                           </div>
                           <div className="d-flex justify-content-between mb-2">
-                            <span className="text-muted">{t('progress_label')}</span>
+                            <span className="text-muted">Progress</span>
                             <span className="fw-bold">{goal.progress.toFixed(1)}%</span>
                           </div>
                           <div className="d-flex justify-content-between mb-2">
-                            <span className="text-muted">{t('saved_label')}</span>
+                            <span className="text-muted">Saved</span>
                             <span className="fw-bold text-success">{formatCurrency(goal.savedAmount)}</span>
                           </div>
                           <div className="d-flex justify-content-between">
-                            <span className="text-muted">{t('target_label')}</span>
+                            <span className="text-muted">Target</span>
                             <span className="fw-bold">{formatCurrency(goal.targetAmount)}</span>
                           </div>
                         </div>
@@ -724,6 +854,8 @@ const AnalyticsDashboard = () => {
         return renderSpending();
       case 'income':
         return renderIncome();
+      case 'budget':
+        return renderBudget();
       case 'goals':
         return renderGoals();
       default:
@@ -737,8 +869,8 @@ const AnalyticsDashboard = () => {
         <div className="col-12">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
             <div>
-              <h1 className="h3 mb-0 text-gray-800">{t('analytics_dashboard')}</h1>
-              <p className="text-muted mb-0">{t('analytics_subtitle')}</p>
+              <h1 className="h3 mb-0 text-gray-800">Analytics Dashboard</h1>
+              <p className="text-muted mb-0">Track your financial performance and trends</p>
             </div>
             <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto" style={{ maxWidth: '400px' }}>
               <div className="dropdown">
@@ -751,9 +883,9 @@ const AnalyticsDashboard = () => {
                 >
                   <FaCalendarAlt className="me-2" />
                   <span className="d-none d-sm-inline">
-                    {selectedPeriod === '30days' ? t('last_30_days') :
-                      selectedPeriod === '90days' ? t('last_90_days') :
-                        selectedPeriod === '1year' ? t('last_year') : t('last_30_days')}
+                    {selectedPeriod === '30days' ? 'Last 30 Days' :
+                      selectedPeriod === '90days' ? 'Last 90 Days' :
+                        selectedPeriod === '1year' ? 'Last Year' : 'Last 30 Days'}
                   </span>
                   <span className="d-inline d-sm-none">
                     {selectedPeriod === '30days' ? '30D' :
@@ -762,9 +894,9 @@ const AnalyticsDashboard = () => {
                   </span>
                 </button>
                 <ul className="dropdown-menu" aria-labelledby="periodDropdown">
-                  <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('30days')}>{t('last_30_days')}</Link></li>
-                  <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('90days')}>{t('last_90_days')}</Link></li>
-                  <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('1year')}>{t('last_year')}</Link></li>
+                  <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('30days')}>Last 30 Days</Link></li>
+                  <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('90days')}>Last 90 Days</Link></li>
+                  <li><Link className="dropdown-item" to="#" onClick={() => setSelectedPeriod('1year')}>Last Year</Link></li>
                 </ul>
               </div>
               <button 
@@ -772,11 +904,11 @@ const AnalyticsDashboard = () => {
                 onClick={handleExportPDF}
               >
                 <FaDownload className="me-2" />
-                <span className="d-none d-sm-inline">{t('export')}</span>
+                <span className="d-none d-sm-inline">Export</span>
               </button>
               <button className="btn btn-primary w-100 w-sm-auto" onClick={handleRefresh}>
                 <FaSync className={`me-2 ${isLoading ? 'fa-spin' : ''}`} />
-                <span className="d-none d-sm-inline">{t('refresh')}</span>
+                <span className="d-none d-sm-inline">Refresh</span>
               </button>
             </div>
           </div>
@@ -792,7 +924,7 @@ const AnalyticsDashboard = () => {
                 onClick={() => setActiveTab('overview')}
               >
                 <FaChartLine className="me-2" />
-                {t('overview')}
+                Overview
               </button>
             </li>
             <li className="nav-item">
@@ -801,7 +933,7 @@ const AnalyticsDashboard = () => {
                 onClick={() => setActiveTab('spending')}
               >
                 <FaCreditCard className="me-2" />
-                {t('spending')}
+                Spending
               </button>
             </li>
             <li className="nav-item">
@@ -810,7 +942,16 @@ const AnalyticsDashboard = () => {
                 onClick={() => setActiveTab('income')}
               >
                 <FaWallet className="me-2" />
-                {t('income_tab')}
+                Income
+              </button>
+            </li>
+            <li className="nav-item">
+              <button
+                className={`nav-link ${activeTab === 'budget' ? 'active' : ''}`}
+                onClick={() => setActiveTab('budget')}
+              >
+                <FaBalanceScale className="me-2" />
+                Budget
               </button>
             </li>
             <li className="nav-item">
@@ -819,7 +960,7 @@ const AnalyticsDashboard = () => {
                 onClick={() => setActiveTab('goals')}
               >
                 <FaPiggyBank className="me-2" />
-                {t('goals')}
+                Goals
               </button>
             </li>
           </ul>

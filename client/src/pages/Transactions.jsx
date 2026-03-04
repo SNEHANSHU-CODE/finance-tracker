@@ -32,7 +32,7 @@ export default function Transactions() {
   const navigate = useNavigate();
   const userId = useSelector(state => state.auth.user?.userId);
   const searchTimeoutRef = useRef(null);
-  const { t, formatCurrency, formatDate } = usePreferences();
+  const { formatCurrency, formatDate } = usePreferences();
 
   // Redux state
   const {
@@ -248,13 +248,12 @@ export default function Transactions() {
     }));
   };
 
-  // Translate category and type for display only (data remains in English)
+  // Display category name (capitalize first letter)
   const tCategory = (name) => {
-    const key = `cat_${String(name || '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_|_$/g, '')}`;
-    return t(key, { defaultValue: name });
+    if (!name) return 'Uncategorized';
+    return String(name)
+      .charAt(0)
+      .toUpperCase() + String(name).slice(1);
   };
 
   // Client-side sort handler
@@ -338,8 +337,8 @@ export default function Transactions() {
         <div className="col-12">
           <div className="d-flex justify-content-between align-items-center">
             <div>
-              <h4 className="mb-1">{t('transactions')}</h4>
-              <p className="text-muted mb-0">{t('manage_income_expenses')}</p>
+              <h4 className="mb-1">Transactions</h4>
+              <p className="text-muted mb-0">Manage your income and expenses</p>
             </div>
             <button
               className="btn btn-primary d-flex align-items-center gap-2"
@@ -347,7 +346,7 @@ export default function Transactions() {
               disabled={loading}
             >
               <FaPlus size={14} />
-              {t('add_transaction')}
+              Add Transaction
             </button>
           </div>
         </div>
@@ -367,7 +366,7 @@ export default function Transactions() {
                     <input
                       type="text"
                       className="form-control border-start-0"
-                      placeholder={t('search_transactions')}
+                      placeholder="Search transactions"
                       value={filters.searchTerm || ''}
                       onChange={handleSearch}
                     />
@@ -379,9 +378,9 @@ export default function Transactions() {
                     value={filters.type === 'Income' ? 'income' : filters.type === 'Expense' ? 'expense' : 'all'}
                     onChange={(e) => handleFilterChange({ type: e.target.value })}
                   >
-                    <option value="all">{t('all_types')}</option>
-                    <option value="income">{t('income')}</option>
-                    <option value="expense">{t('expense')}</option>
+                    <option value="all">All Types</option>
+                    <option value="income">Income</option>
+                    <option value="expense">Expense</option>
                   </select>
                 </div>
                 <div className="col-lg-2 col-md-3 col-sm-6">
@@ -390,9 +389,9 @@ export default function Transactions() {
                     value={filters.category || ''}
                     onChange={(e) => handleFilterChange({ category: e.target.value })}
                   >
-                    <option value="">{t('all_categories')}</option>
+                    <option value="">All Categories</option>
                     {[...categories.income, ...categories.expense].map((cat, index) => (
-                      <option key={`${cat}-${index}`} value={cat}>{tCategory(cat)}</option>
+                      <option key={`${cat}-${index}`} value={cat}>{cat}</option>
                     ))}
                   </select>
                 </div>
@@ -400,7 +399,7 @@ export default function Transactions() {
                   <input
                     type="date"
                     className="form-control"
-                    placeholder={t('start_date')}
+                    placeholder="From date"
                     value={filters.startDate || ''}
                     onChange={(e) => handleFilterChange({ startDate: e.target.value })}
                   />
@@ -409,7 +408,7 @@ export default function Transactions() {
                   <input
                     type="date"
                     className="form-control"
-                    placeholder={t('end_date')}
+                    placeholder="To date"
                     value={filters.endDate || ''}
                     onChange={(e) => handleFilterChange({ endDate: e.target.value })}
                   />
@@ -420,7 +419,7 @@ export default function Transactions() {
                       className="btn btn-outline-secondary"
                       onClick={clearAllFilters}
                     >
-                      {t('clear_filters')}
+                      Clear Filters
                     </button>
                   </div>
                 </div>
@@ -441,25 +440,25 @@ export default function Transactions() {
                   {loading && <FaSpinner className="fa-spin ms-2" />}
                 </h6>
                 <div className="d-flex align-items-center gap-2">
-                  <small className="text-muted">{t('sort_by')}</small>
+                  <small className="text-muted">Sort by</small>
                   <div className="btn-group btn-group-sm">
                     <button
                       className={`btn ${localSortBy === 'date' ? 'btn-primary' : 'btn-outline-secondary'}`}
                       onClick={() => handleSort('date')}
                     >
-                      {t('date')} {getSortIcon('date')}
+                      Date {getSortIcon('date')}
                     </button>
                     <button
                       className={`btn ${localSortBy === 'amount' ? 'btn-primary' : 'btn-outline-secondary'}`}
                       onClick={() => handleSort('amount')}
                     >
-                      {t('amount')} {getSortIcon('amount')}
+                      Amount {getSortIcon('amount')}
                     </button>
                     <button
                       className={`btn ${localSortBy === 'description' ? 'btn-primary' : 'btn-outline-secondary'}`}
                       onClick={() => handleSort('description')}
                     >
-                      {t('title')} {getSortIcon('description')}
+                      Title {getSortIcon('description')}
                     </button>
                   </div>
                 </div>
@@ -470,11 +469,11 @@ export default function Transactions() {
                 <table className="table table-hover mb-0">
                   <thead className="table-light">
                     <tr>
-                      <th className="border-0 ps-4">{t('transaction_col')}</th>
-                      <th className="border-0">{t('category_col')}</th>
-                      <th className="border-0">{t('date')}</th>
-                      <th className="border-0 text-end">{t('amount')}</th>
-                      <th className="border-0 text-center">{t('actions')}</th>
+                      <th className="border-0 ps-4">Transaction</th>
+                      <th className="border-0">Category</th>
+                      <th className="border-0">Date</th>
+                      <th className="border-0 text-end">Amount</th>
+                      <th className="border-0 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -493,7 +492,7 @@ export default function Transactions() {
                             </div>
                             <div>
                               <div className="fw-medium">{transaction.description}</div>
-                              <small className="text-muted text-capitalize">{transaction.type === 'Income' ? t('income') : t('expense')}</small>
+                              <small className="text-muted text-capitalize">{transaction.type === 'Income' ? 'Income' : 'Expense'}</small>
                               {transaction.notes && (
                                 <div className="small text-muted">{transaction.notes}</div>
                               )}
@@ -501,7 +500,7 @@ export default function Transactions() {
                           </div>
                         </td>
                         <td className="border-0">
-                          <span className="badge bg-light text-dark">{tCategory(transaction.category)}</span>
+                          <span className="badge bg-light text-dark">{transaction.category}</span>
                         </td>
                         <td className="border-0 text-muted">{formatDate(transaction.date)}</td>
                         <td className={`border-0 text-end fw-medium ${transaction.amount > 0 ? 'text-success' : 'text-danger'
@@ -534,14 +533,14 @@ export default function Transactions() {
                   <div className="text-center py-5">
                     <div className="text-muted">
                       <FaSearch size={48} className="mb-3 opacity-50" />
-                      <p>{t('no_transactions')}</p>
+                      <p>No transactions found</p>
                     </div>
                   </div>
                 )}
                 {loading && transactions.length === 0 && (
                   <div className="text-center py-5">
                     <FaSpinner className="fa-spin" size={48} />
-                    <p className="mt-3 text-muted">{t('loading_transactions')}</p>
+                    <p className="mt-3 text-muted">Loading transactions</p>
                   </div>
                 )}
               </div>
@@ -564,7 +563,7 @@ export default function Transactions() {
                           onClick={() => handlePageChange(pagination.currentPage - 1)}
                           disabled={pagination.currentPage === 1 || loading}
                         >
-                          {t('previous')}
+                          Previous
                         </button>
                       </li>
                       {[...Array(pagination.totalPages)].map((_, index) => {
@@ -587,7 +586,7 @@ export default function Transactions() {
                           onClick={() => handlePageChange(pagination.currentPage + 1)}
                           disabled={pagination.currentPage === pagination.totalPages || loading}
                         >
-                          {t('next')}
+                          Next
                         </button>
                       </li>
                     </ul>
@@ -606,7 +605,7 @@ export default function Transactions() {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  {editingTransaction ? t('edit_transaction') : t('add_new_transaction')}
+                  {editingTransaction ? 'Edit Transaction' : 'Add New Transaction'}
                 </h5>
                 <button
                   type="button"
@@ -624,7 +623,7 @@ export default function Transactions() {
                   )}
                   <div className="row g-3">
                     <div className="col-12">
-                      <label className="form-label">{t('title_required')}</label>
+                      <label className="form-label">Title (Required)</label>
                       <input
                         type="text"
                         className="form-control"
@@ -635,7 +634,7 @@ export default function Transactions() {
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">{t('amount_required')}</label>
+                      <label className="form-label">Amount (Required)</label>
                       <input
                         type="number"
                         step="0.01"
@@ -647,19 +646,19 @@ export default function Transactions() {
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">{t('type_label')}</label>
+                      <label className="form-label">Type</label>
                       <select
                         className="form-select"
                         value={formData.type}
                         onChange={(e) => setFormData({ ...formData, type: e.target.value, category: "" })}
                         disabled={loading}
                       >
-                        <option value="income">{t('income')}</option>
-                        <option value="expense">{t('expense')}</option>
+                        <option value="income">Income</option>
+                        <option value="expense">Expense</option>
                       </select>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">{t('category_required')}</label>
+                      <label className="form-label">Category (Required)</label>
                       <select
                         className="form-select"
                         value={formData.category}
@@ -667,14 +666,14 @@ export default function Transactions() {
                         required
                         disabled={loading}
                       >
-                        <option value="">{t('select_category')}</option>
+                        <option value="">Select Category</option>
                         {categories[formData.type].map(cat => (
-                          <option key={cat} value={cat}>{tCategory(cat)}</option>
+                          <option key={cat} value={cat}>{cat}</option>
                         ))}
                       </select>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">{t('date_required')}</label>
+                      <label className="form-label">Date (Required)</label>
                       <input
                         type="date"
                         className="form-control"
@@ -685,7 +684,7 @@ export default function Transactions() {
                       />
                     </div>
                     <div className="col-12">
-                      <label className="form-label">{t('description_optional')}</label>
+                      <label className="form-label">Description (Optional)</label>
                       <textarea
                         className="form-control"
                         rows="3"
@@ -703,7 +702,7 @@ export default function Transactions() {
                     onClick={resetForm}
                     disabled={loading}
                   >
-                    {t('cancel')}
+                    Cancel
                   </button>
                   <button
                     type="submit"
@@ -711,7 +710,7 @@ export default function Transactions() {
                     disabled={loading}
                   >
                     {loading && <FaSpinner className="fa-spin me-2" />}
-                    {editingTransaction ? t('update') : t('add')} {t('transaction_col')}
+                    {editingTransaction ? 'Update' : 'Add'} Transaction
                   </button>
                 </div>
               </form>
@@ -727,7 +726,7 @@ export default function Transactions() {
               <div className="modal-header border-0 pb-0">
                 <h5 className="modal-title text-danger">
                   <FaTrash className="me-2" />
-                  {t('delete_transaction')}
+                  Delete Transaction
                 </h5>
                 <button
                   type="button"
@@ -742,8 +741,8 @@ export default function Transactions() {
                     <div className="bg-danger bg-opacity-10 rounded-circle d-inline-flex p-3 mb-3">
                       <FaTrash className="text-danger" size={24} />
                     </div>
-                    <h6 className="mb-2">{t('delete_confirm')}</h6>
-                    <p className="text-muted mb-0">{t('cannot_undo')}</p>
+                    <h6 className="mb-2">Are you sure?</h6>
+                    <p className="text-muted mb-0">This action cannot be undone</p>
                   </div>
 
                   {/* Transaction Details Preview */}
@@ -783,7 +782,7 @@ export default function Transactions() {
                   onClick={cancelDelete}
                   disabled={loading}
                 >
-                  {t('cancel')}
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -792,7 +791,7 @@ export default function Transactions() {
                   disabled={loading}
                 >
                   {loading && <FaSpinner className="fa-spin me-2" />}
-                  {t('delete_transaction')}
+                  Delete Transaction
                 </button>
               </div>
             </div>

@@ -22,7 +22,6 @@ export const sessionManager = {
       deviceInfo: {
         userAgent: navigator.userAgent,
         platform: navigator.platform,
-        language: navigator.language
       }
     };
     

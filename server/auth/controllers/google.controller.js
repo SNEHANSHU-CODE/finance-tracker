@@ -12,13 +12,7 @@ class GoogleOAuthController {
    */
   static async startOAuth(req, res) {
     try {
-      const { guestId } = req.query;
-
-      if (guestId && typeof guestId !== 'string') {
-        return ResponseUtils.error(res, 'Invalid guestId format', 400);
-      }
-
-      const { url } = googleOAuthService.generateAuthUrl(guestId);
+      const { url } = googleOAuthService.generateAuthUrl();
 
       return res.json({
         success: true,

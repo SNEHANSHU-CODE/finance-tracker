@@ -199,6 +199,16 @@ class AuthController {
         return ResponseUtils.unauthorized(res, 'Invalid credentials');
       }
 
+      // MFA check — if enabled, send OTP and return pending state
+      if (user.preferences?.mfaEnabled) {
+        const otpService = require('../services/otpService');
+        await otpService.sendMFAOtp(user._id.toString(), user.email);
+        return ResponseUtils.success(res, {
+          mfaRequired: true,
+          userId: user._id
+        }, 'MFA OTP sent to your email');
+      }
+
       // Generate token pair
       const { accessToken, refreshToken } = JWTUtils.generateTokenPair(user._id);
 
@@ -575,6 +585,56 @@ class AuthController {
     }
   }
 
+
+  // Verify MFA OTP and complete login
+  static async verifyMFA(req, res) {
+    try {
+      const { userId, otp } = req.body;
+
+      if (!userId || !otp) {
+        return ResponseUtils.error(res, 'userId and OTP are required', 400);
+      }
+
+      const user = await User.findById(userId);
+      if (!user) return ResponseUtils.notFound(res, 'User not found');
+      if (!user.isActive) return ResponseUtils.forbidden(res, 'Account is deactivated');
+
+      const otpService = require('../services/otpService');
+      await otpService.verifyMFAOtp(userId, otp);
+
+      // OTP verified — issue tokens
+      const { accessToken, refreshToken } = JWTUtils.generateTokenPair(user._id);
+      const recentTokens = user.refreshTokens.slice(-4);
+      recentTokens.push({
+        token: refreshToken,
+        device: req.get('user-agent'),
+        ip: getClientIp(req),
+        createdAt: new Date()
+      });
+
+      const updatedUser = await User.findByIdAndUpdate(
+        user._id,
+        { $set: { refreshTokens: recentTokens, lastLoginAt: new Date(), lastLoginProvider: 'email' } },
+        { new: true }
+      );
+
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'None',
+        maxAge: 7 * 24 * 60 * 60 * 1000
+      });
+
+      return ResponseUtils.success(res, {
+        user: updatedUser.toJSON(),
+        accessToken
+      }, 'MFA verified. Login successful.');
+
+    } catch (error) {
+      console.error('MFA verify error:', error);
+      return ResponseUtils.error(res, error.message || 'MFA verification failed');
+    }
+  }
 
   // Logout from all devices
   static async logoutAll(req, res) {

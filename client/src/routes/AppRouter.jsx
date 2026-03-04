@@ -24,6 +24,8 @@ import Goals from '../pages/Goals';
 import Settings from '../pages/Settings';
 import Profile from '../pages/Profile';
 import Reminders from '../pages/Reminders';
+import Vault from '../pages/Vault';
+import Budget from '../pages/Budget';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, guestAllowed = false }) => {
@@ -76,6 +78,8 @@ export default function AppRouter() {
                     </ProtectedRoute>
                 } />
                 <Route path="goals" element={<Goals />} />
+                <Route path="vault" element={<Vault />} />
+                <Route path="budget" element={<Budget />} />
                 <Route path="reminders" element={
                     <ProtectedRoute guestAllowed={false}>
                         <Reminders />

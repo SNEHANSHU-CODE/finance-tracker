@@ -403,8 +403,8 @@ class PdfReportService {
       txn.description || txn.category,
       txn.category,
       txn.date,
-      { text: `$${txn.amount.toFixed(2)}`, alignment: 'right' },
-      { text: txn.type.toUpperCase(), style: txn.type === 'income' ? 'positive' : 'negative' }
+      { text: `$${(txn.amount || 0).toFixed(2)}`, alignment: 'right' },
+      { text: (txn.type || 'unknown').toUpperCase(), style: (txn.type || '' ) === 'income' ? 'positive' : 'negative' }
     ]);
 
     return {
@@ -441,15 +441,15 @@ class PdfReportService {
 
     const trendsTable = trends.slice(0, 6).map(t => [
       t.monthYear,
-      { text: `$${t.totalIncome.toFixed(2)}`, alignment: 'right', style: 'positive' },
-      { text: `$${t.totalExpenses.toFixed(2)}`, alignment: 'right', style: 'negative' },
-      { text: `$${t.netSavings.toFixed(2)}`, alignment: 'right', style: 'positive' }
+      { text: `$${(t.totalIncome || 0).toFixed(2)}`, alignment: 'right', style: 'positive' },
+      { text: `$${(t.totalExpenses || 0).toFixed(2)}`, alignment: 'right', style: 'negative' },
+      { text: `$${(t.netSavings || 0).toFixed(2)}`, alignment: 'right', style: 'positive' }
     ]);
 
     const categoryTable = categories.slice(0, 8).map(c => [
       c.category,
-      { text: `$${c.amount.toFixed(2)}`, alignment: 'right' },
-      { text: `${c.percentage.toFixed(2)}%`, alignment: 'right' }
+      { text: `$${(c.amount || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${(c.percentage || 0).toFixed(2)}%`, alignment: 'right' }
     ]);
 
     return {
@@ -511,7 +511,7 @@ class PdfReportService {
 
     const incomeTable = trends.slice(0, 6).map(t => [
       t.monthYear,
-      { text: `$${t.totalIncome.toFixed(2)}`, alignment: 'right', style: 'positive' }
+      { text: `$${(t.totalIncome || 0).toFixed(2)}`, alignment: 'right', style: 'positive' }
     ]);
 
     return {
@@ -549,7 +549,7 @@ class PdfReportService {
                     widths: ['*', '*'],
                     body: [
                       [{ text: 'Metric', style: 'tableHeader' }, { text: 'Value', style: 'tableHeader' }],
-                      ['Average Monthly Income', { text: `$${avgIncome.toFixed(2)}`, style: 'positive' }],
+                      ['Average Monthly Income', { text: `$${(avgIncome || 0).toFixed(2)}`, style: 'positive' }],
                       ['Total Months', trends.length.toString()],
                       ['Highest Month', trends.length > 0 ? trends.reduce((max, t) => t.totalIncome > max.totalIncome ? t : max).monthYear : 'N/A']
                     ]
@@ -575,8 +575,8 @@ class PdfReportService {
 
     const savingsTable = trends.slice(0, 6).map(t => [
       t.monthYear,
-      { text: `$${t.savings.toFixed(2)}`, alignment: 'right', style: 'positive' },
-      { text: `${t.savingsRate.toFixed(2)}%`, alignment: 'right' }
+      { text: `$${(t.savings || 0).toFixed(2)}`, alignment: 'right', style: 'positive' },
+      { text: `${(t.savingsRate || 0).toFixed(2)}%`, alignment: 'right' }
     ]);
 
     return {
@@ -615,8 +615,8 @@ class PdfReportService {
                     widths: ['*', '*'],
                     body: [
                       [{ text: 'Metric', style: 'tableHeader' }, { text: 'Value', style: 'tableHeader' }],
-                      ['Total Savings', { text: `$${totalSavings.toFixed(2)}`, style: 'positive' }],
-                      ['Average Monthly', { text: `$${avgSavings.toFixed(2)}`, style: 'positive' }],
+                      ['Total Savings', { text: `$${(totalSavings || 0).toFixed(2)}`, style: 'positive' }],
+                      ['Average Monthly', { text: `$${(avgSavings || 0).toFixed(2)}`, style: 'positive' }],
                       ['Best Month', bestMonth.month || 'N/A'],
                       ['Best Month Amount', bestMonth.amount ? `$${bestMonth.amount.toFixed(2)}` : 'N/A']
                     ]
@@ -714,10 +714,10 @@ class PdfReportService {
 
     const budgetTable = categories.map(c => [
       c.category,
-      { text: `$${c.budgeted.toFixed(2)}`, alignment: 'right' },
-      { text: `$${c.spent.toFixed(2)}`, alignment: 'right' },
-      { text: `$${c.remaining.toFixed(2)}`, alignment: 'right' },
-      { text: `${c.percentageUsed.toFixed(2)}%`, alignment: 'right' },
+      { text: `$${(c.budgeted || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `$${(c.spent || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `$${(c.remaining || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${(c.percentageUsed || 0).toFixed(2)}%`, alignment: 'right' },
       { 
         text: c.status, 
         alignment: 'center',
@@ -791,8 +791,8 @@ class PdfReportService {
                 body: [
                   [{ text: 'Metric', style: 'tableHeader' }, { text: 'Value', style: 'tableHeader' }],
                   ['Total Transactions', totalTransactions.toString()],
-                  ['Daily Average', dailyAverage.toFixed(2)],
-                  ['Average Amount/Day', `$${averagePerDay.toFixed(2)}`],
+                  ['Daily Average', (dailyAverage || 0).toFixed(2)],
+                  ['Average Amount/Day', `$${(averagePerDay || 0).toFixed(2)}`],
                   ['Top Category', topCategory]
                 ]
               }
@@ -837,8 +837,8 @@ class PdfReportService {
 
     const breakdownTable = breakdown.slice(0, 8).map(b => [
       b.category,
-      { text: `$${b.amount.toFixed(2)}`, alignment: 'right' },
-      { text: `${b.percentage.toFixed(2)}%`, alignment: 'right' }
+      { text: `$${(b.amount || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${(b.percentage || 0).toFixed(2)}%`, alignment: 'right' }
     ]);
 
     return {

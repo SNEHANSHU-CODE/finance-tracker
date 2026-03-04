@@ -124,6 +124,61 @@ class OtpService {
     }
   }
 
+  getMFAKey(userId) {
+    return `mfa_otp:${userId}`;
+  }
+
+  async sendMFAOtp(userId, email) {
+    try {
+      const existingOTP = await redisService.get(this.getMFAKey(userId));
+      if (existingOTP) {
+        throw new Error('MFA OTP already sent. Please wait before requesting a new one.');
+      }
+      const otp = this.generateOTP();
+      const expiryInSeconds = config.otp.expiryMinutes * 60;
+      await redisService.set(this.getMFAKey(userId), otp.toString(), expiryInSeconds);
+      await emailService.sendOTPEmail(email, otp);
+      return {
+        success: true,
+        message: 'MFA OTP sent to your email',
+        expiresIn: config.otp.expiryMinutes,
+      };
+    } catch (error) {
+      console.error('Error sending MFA OTP:', error);
+      throw error;
+    }
+  }
+
+  async verifyMFAOtp(userId, inputOTP) {
+    try {
+      const storedOTP = await redisService.get(this.getMFAKey(userId));
+      if (!storedOTP) {
+        throw new Error('MFA OTP not found or has expired');
+      }
+      const attemptsKey = `mfa_attempts:${userId}`;
+      const attempts = await redisService.get(attemptsKey) || '0';
+      const currentAttempts = parseInt(attempts);
+      if (currentAttempts >= config.otp.maxAttempts) {
+        await redisService.del(this.getMFAKey(userId));
+        await redisService.del(attemptsKey);
+        throw new Error('Maximum MFA attempts exceeded. Please login again.');
+      }
+      if (storedOTP === inputOTP.toString()) {
+        await redisService.del(this.getMFAKey(userId));
+        await redisService.del(attemptsKey);
+        return { success: true, message: 'MFA verified successfully' };
+      } else {
+        await redisService.incr(attemptsKey);
+        await redisService.expire(attemptsKey, config.otp.expiryMinutes * 60);
+        const remaining = config.otp.maxAttempts - (currentAttempts + 1);
+        throw new Error(`Invalid OTP. ${remaining} attempts remaining.`);
+      }
+    } catch (error) {
+      console.error('Error verifying MFA OTP:', error);
+      throw error;
+    }
+  }
+
   async resetPassword(token, newPassword) {
     try {
       // Validate input

@@ -27,12 +27,11 @@ const settingsController = {
         });
       }
 
-      const userId = req.userId;
-      const { currency, language, theme } = req.body;
+      const userId = req.userId || req.user.userId;
+      const { currency, theme } = req.body;
       
       const updatedPreferences = await settingsService.updateUserPreferences(userId, {
         currency,
-        language,
         theme
       });
       
@@ -46,7 +45,7 @@ const settingsController = {
   // Reset preferences to default
   resetPreferences: async (req, res) => {
     try {
-      const userId = req.userId;
+      const userId = req.userId || req.user.userId;
       const defaultPreferences = await settingsService.resetUserPreferences(userId);
       
       return ResponseUtils.success(res, { preferences: defaultPreferences }, 'Preferences reset to default successfully');
@@ -59,7 +58,7 @@ const settingsController = {
   // Get active sessions
   getActiveSessions: async (req, res) => {
     try {
-      const userId = req.userId;
+      const userId = req.userId || req.user.userId;
       const currentToken = req.cookies?.refreshToken;
       const sessions = await settingsService.getActiveSessions(userId, currentToken);
       
@@ -73,7 +72,7 @@ const settingsController = {
   // Terminate specific session
   terminateSession: async (req, res) => {
     try {
-      const userId = req.userId;
+      const userId = req.userId || req.user.userId;
       const { sessionId } = req.params;
       const currentToken = req.cookies?.refreshToken;
 
@@ -84,8 +83,7 @@ const settingsController = {
         res.clearCookie('refreshToken', {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'None',
-          secure: true
+          sameSite: 'None'
         });
       }
 
@@ -99,7 +97,7 @@ const settingsController = {
   // Terminate all sessions except current
   terminateAllSessions: async (req, res) => {
     try {
-      const userId = req.userId;
+      const userId = req.userId || req.user.userId;
       // Use refresh token cookie as the current session identifier
       const currentToken = req.cookies?.refreshToken;
       
@@ -112,10 +110,32 @@ const settingsController = {
     }
   },
 
+  // Toggle MFA
+  toggleMFA: async (req, res) => {
+    try {
+      const userId = req.userId || req.user.userId;
+      const { enabled } = req.body;
+
+      if (typeof enabled !== 'boolean') {
+        return ResponseUtils.badRequest(res, 'enabled must be a boolean');
+      }
+
+      const preferences = await settingsService.toggleMFA(userId, enabled);
+      return ResponseUtils.success(
+        res,
+        { preferences },
+        `MFA ${enabled ? 'enabled' : 'disabled'} successfully`
+      );
+    } catch (error) {
+      console.error('Toggle MFA error:', error);
+      return ResponseUtils.serverError(res, error.message || 'Failed to toggle MFA');
+    }
+  },
+
   // Export user data
   exportUserData: async (req, res) => {
     try {
-      const userId = req.userId;
+      const userId = req.userId || req.user.userId;
       const userData = await settingsService.exportUserData(userId);
       
       // Set headers for file download

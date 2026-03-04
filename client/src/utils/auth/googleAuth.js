@@ -22,31 +22,23 @@ const OAUTH_ERROR_MESSAGES = {
 /**
  * Initiate Google OAuth Flow
  * Opens popup window and handles OAuth URL generation
- * @param {string} guestId - Optional guest user ID for data migration
- * @returns {Promise} - Resolves with popup window and state
+ * @returns {Promise} - Resolves with authUrl and state
  */
 export const initiateGoogleOAuth = createAsyncThunk(
   'auth/googleOAuthStart',
-  async (guestId, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     const timeoutId = setTimeout(() => {
       throw new Error('OAuth initialization timeout');
     }, 30000); // 30 second timeout
 
     try {
-      // Validate API endpoint (Vite uses import.meta.env)
       const apiUrl = import.meta.env.VITE_API_URL;
       if (!apiUrl) {
         throw new Error('API URL not configured');
       }
 
-      // Fetch OAuth URL from backend
-      const queryParams = new URLSearchParams();
-      if (guestId) {
-        queryParams.append('guestId', String(guestId));
-      }
-
       const response = await fetch(
-        `${apiUrl}/auth/google/start?${queryParams.toString()}`,
+        `${apiUrl}/auth/google/start`,
         {
           method: 'GET',
           credentials: 'include',
@@ -75,14 +67,12 @@ export const initiateGoogleOAuth = createAsyncThunk(
       sessionStorage.setItem('oauth_initTime', Date.now().toString());
 
       console.info('OAuth URL generated successfully');
-      // Return authUrl and state - popup will be opened in component
       return { authUrl, state };
     } catch (error) {
       clearTimeout(timeoutId);
       const errorMessage = error.message || 'Unknown error';
       console.error('OAuth initiation error:', errorMessage);
 
-      // Return user-friendly error message
       const friendlyMessage = Object.values(OAUTH_ERROR_MESSAGES).includes(errorMessage)
         ? errorMessage
         : OAUTH_ERROR_MESSAGES.server_error;
@@ -102,7 +92,6 @@ export const handleOAuthCallback = createAsyncThunk(
   'auth/googleOAuthCallback',
   async ({ accessToken, sessionId }, { rejectWithValue }) => {
     try {
-      // Validate input parameters
       if (!accessToken || typeof accessToken !== 'string') {
         throw new Error('Invalid access token');
       }
@@ -125,7 +114,6 @@ export const handleOAuthCallback = createAsyncThunk(
         throw new Error(OAUTH_ERROR_MESSAGES.timeout);
       }
 
-      // Fetch authenticated user data with timeout
       const apiUrl = import.meta.env.VITE_API_URL;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
@@ -156,7 +144,6 @@ export const handleOAuthCallback = createAsyncThunk(
 
       const user = await userResponse.json();
 
-      // Validate user object
       if (!user || !user._id) {
         throw new Error('Invalid user data from server');
       }
@@ -167,7 +154,6 @@ export const handleOAuthCallback = createAsyncThunk(
 
       console.info('OAuth callback successful:', { userId: user._id });
 
-      // Create session for OAuth login
       const userData = {
         ...user,
         userId: user._id,
@@ -190,7 +176,6 @@ export const handleOAuthCallback = createAsyncThunk(
       const errorMessage = error.message || 'Unknown error';
       console.error('OAuth callback error:', errorMessage);
 
-      // Return user-friendly error message
       const friendlyMessage = OAUTH_ERROR_MESSAGES[errorMessage] || OAUTH_ERROR_MESSAGES.server_error;
       return rejectWithValue(friendlyMessage);
     }
