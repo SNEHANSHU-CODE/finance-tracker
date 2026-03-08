@@ -44,6 +44,7 @@ export const sendMessage = createAsyncThunk(
       const messages = state.chat?.messages || [];
 
       const messageText = typeof messageData === 'string' ? messageData : messageData.message;
+      const vaultId = typeof messageData === 'string' ? null : (messageData.vault_id || null);
 
       if (!messageText || typeof messageText !== 'string' || !messageText.trim()) {
         throw new Error('Invalid message');
@@ -79,7 +80,7 @@ export const sendMessage = createAsyncThunk(
         }
       }
 
-      const result = await chatService.sendMessage(messageText, conversationHistory);
+      const result = await chatService.sendMessage(messageText, conversationHistory, vaultId);
       return result;
 
     } catch (error) {
@@ -126,9 +127,24 @@ export const clearChatHistory = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       if (chatService.isSocketConnected()) {
-        chatService.clearChat();
+        chatService.clearChat(); // tells server to clear DB messages array
       }
       return { cleared: true };
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const loadChatHistory = createAsyncThunk(
+  'chat/loadChatHistory',
+  async (_, { rejectWithValue }) => {
+    try {
+      if (!chatService.isSocketConnected()) {
+        throw new Error('Not connected to chat service');
+      }
+      chatService.getChatHistory();
+      return { requested: true };
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -250,6 +266,23 @@ const chatSlice = createSlice({
       state.messages = state.messages.filter(m => m.id !== action.payload);
     },
 
+    setMessages: (state, action) => {
+      // Load history from DB — convert DB format to UI message format
+      const dbMessages = Array.isArray(action.payload) ? action.payload : [];
+      state.messages = dbMessages.map((m, idx) => ({
+        id: `history-${idx}-${m.timestamp || Date.now()}`,
+        type: m.role === 'human' ? 'user' : 'bot',
+        message: m.content,
+        timestamp: m.timestamp || new Date().toISOString(),
+        provider: m.provider || null,
+        isRag: m.isRag || false,
+        documentName: m.documentName || null,
+        isError: false,
+        rated: false,
+        rating: null,
+      }));
+    },
+
     resetChat: () => initialState,
   },
 
@@ -307,6 +340,10 @@ const chatSlice = createSlice({
         state.isTyping = false;
         state.loading = false;
         state.sessionStats = { ...initialState.sessionStats };
+      })
+
+      .addCase(loadChatHistory.rejected, () => {
+        // Silent fail — history just won't load, not a critical error
       });
   },
 });
@@ -323,6 +360,7 @@ export const {
   updateMessageRating,
   removeMessage,
   resetChat,
+  setMessages,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

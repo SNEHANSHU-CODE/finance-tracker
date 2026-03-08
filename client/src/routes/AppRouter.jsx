@@ -28,9 +28,9 @@ import Vault from '../pages/Vault';
 import Budget from '../pages/Budget';
 
 // Protected Route Component
-const ProtectedRoute = ({ children, guestAllowed = false }) => {
-    const { isAuthenticated, isGuest } = useSelector((state) => state.auth);
-    return (isAuthenticated && (!guestAllowed || !isGuest)) || (isGuest && guestAllowed) ? children : <Navigate to="/login" replace />;
+const ProtectedRoute = ({ children }) => {
+    const { isAuthenticated } = useSelector((state) => state.auth);
+    return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
 // Public Route Component (redirect to dashboard if authenticated)
@@ -59,42 +59,23 @@ export default function AppRouter() {
             <Route path="/developersnote" element={<DevelopersNote />} />
 
             {/* Dashboard routes */}
-            
             <Route 
                 path="/dashboard" 
                 element={
-                    <ProtectedRoute guestAllowed={true}>
+                    <ProtectedRoute>
                         <DashboardHome />
                     </ProtectedRoute>
                 } 
             >
                 <Route index element={<Dashboard />} />
-
-                {/* Nested routes */}
                 <Route path="transactions" element={<Transactions />} />
-                <Route path="analytics" element={
-                    <ProtectedRoute guestAllowed={false}>
-                        <Analytics />
-                    </ProtectedRoute>
-                } />
+                <Route path="analytics" element={<Analytics />} />
                 <Route path="goals" element={<Goals />} />
                 <Route path="vault" element={<Vault />} />
                 <Route path="budget" element={<Budget />} />
-                <Route path="reminders" element={
-                    <ProtectedRoute guestAllowed={false}>
-                        <Reminders />
-                    </ProtectedRoute>
-                } />
-                <Route path="settings" element={
-                    <ProtectedRoute guestAllowed={false}>
-                        <Settings />
-                    </ProtectedRoute>
-                } />
-                <Route path="profile" element={
-                    <ProtectedRoute guestAllowed={false}>
-                        <Profile />
-                    </ProtectedRoute>
-                } />
+                <Route path="reminders" element={<Reminders />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="profile" element={<Profile />} />
                 {/* Redirect unknown dashboard routes to main dashboard */}
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>

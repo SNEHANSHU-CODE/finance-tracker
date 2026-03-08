@@ -1,49 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-// Create axios instance for goals API
-const goalApiClient = axios.create({
-    baseURL: `${API_BASE_URL}/goals`, // Note: includes /goals in baseURL
-    timeout: 10000,
-    withCredentials: true,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
-
-// Token getter function - will be set by store
-let getToken = () => null;
-
-export const setTokenGetter = (tokenGetter) => {
-  getToken = tokenGetter;
-};
-
-// Request interceptor to add auth token
-goalApiClient.interceptors.request.use(
-  (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor for error handling
-goalApiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid - could dispatch logout action here
-      console.error('Authentication failed');
-    }
-    return Promise.reject(error);
-  }
-);
+import apiClient from '../utils/axiosConfigs';
 
 class GoalService {
   // Get all goals with optional filters
@@ -56,92 +11,91 @@ class GoalService {
       }
     });
 
-    const response = await goalApiClient.get(`/?${params.toString()}`);
-    console.log('Fetched goals response:', response);
+    const response = await apiClient.get(`/goals/?${params.toString()}`);
     return response;
   }
 
   // Get goal by ID
   async getGoalById(goalId) {
-    const response = await goalApiClient.get(`/${goalId}`);
+    const response = await apiClient.get(`/goals/${goalId}`);
     return response;
   }
 
   // Create new goal
   async createGoal(goalData) {
-    const response = await goalApiClient.post('/', goalData);
+    const response = await apiClient.post('/goals/', goalData);
     return response;
   }
 
   // Update goal
   async updateGoal(goalId, goalData) {
-    const response = await goalApiClient.put(`/${goalId}`, goalData);
+    const response = await apiClient.put(`/goals/${goalId}`, goalData);
     return response;
   }
 
   // Delete goal
   async deleteGoal(goalId) {
-    const response = await goalApiClient.delete(`/${goalId}`);
+    const response = await apiClient.delete(`/goals/${goalId}`);
     return response;
   }
 
   // Add contribution to goal
   async addContribution(goalId, amount) {
-    const response = await goalApiClient.post(`/${goalId}/contribute`, { amount });
+    const response = await apiClient.post(`/goals/${goalId}/contribute`, { amount });
     return response;
   }
 
   // Mark goal as complete
   async markGoalComplete(goalId) {
-    const response = await goalApiClient.post(`/${goalId}/complete`);
+    const response = await apiClient.post(`/goals/${goalId}/complete`);
     return response;
   }
 
   // Pause goal
   async pauseGoal(goalId) {
-    const response = await goalApiClient.post(`/${goalId}/pause`);
+    const response = await apiClient.post(`/goals/${goalId}/pause`);
     return response;
   }
 
   // Resume goal
   async resumeGoal(goalId) {
-    const response = await goalApiClient.post(`/${goalId}/resume`);
+    const response = await apiClient.post(`/goals/${goalId}/resume`);
     return response;
   }
 
   // Get goals by category
   async getGoalsByCategory(category) {
-    const response = await goalApiClient.get(`/category/${category}`);
+    const response = await apiClient.get(`/goals/category/${category}`);
     return response;
   }
 
   // Get goals by priority
   async getGoalsByPriority(priority) {
-    const response = await goalApiClient.get(`/priority/${priority}`);
+    const response = await apiClient.get(`/goals/priority/${priority}`);
     return response;
   }
 
   // Get overdue goals
   async getOverdueGoals() {
-    const response = await goalApiClient.get('/overdue');
+    const response = await apiClient.get('/goals/overdue');
     return response;
   }
 
   // Get dashboard stats
   async getDashboardStats() {
-    const response = await goalApiClient.get('/dashboard');
+    const response = await apiClient.get('/goals/dashboard');
     return response;
   }
 
   // Get goals summary
   async getGoalsSummary() {
-    const response = await goalApiClient.get('/summary');
+    const response = await apiClient.get('/goals/summary');
     return response;
   }
 
   // Bulk delete goals
   async bulkDeleteGoals(goalIds) {
-    const response = await goalApiClient.post('/bulk-delete', { goalIds });
+    const response = await apiClient.post('/goals/bulk-delete', { goalIds });
     return response;
   }
 

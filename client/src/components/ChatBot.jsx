@@ -18,6 +18,9 @@ import {
   getSmartSuggestions,
   clearError,
   clearChat,
+  clearChatHistory,
+  setMessages,
+  loadChatHistory,
   rateChatResponse,
   connectSocket,
   disconnectSocket,
@@ -29,6 +32,7 @@ import {
   setConnected
 } from '../app/chatSlice';
 import chatService from '../services/chatService';
+import VaultRAGToggle from './VaultRAGToggle';
 import './styles/ChatBot.css';
 
 const ChatBot = () => {
@@ -36,6 +40,7 @@ const ChatBot = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [message, setMessage] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [activeVault, setActiveVault] = useState(null); // RAG mode
 
   const dispatch = useDispatch();
   const messagesEndRef = useRef(null);
@@ -87,6 +92,17 @@ const ChatBot = () => {
     const handleAuthenticated = (data) => {
       console.log('🔐 Authenticated:', data);
       dispatch(setConnected(true));
+      // Request chat history from DB right after auth
+      if (data.isAuthenticated) {
+        dispatch(loadChatHistory());
+      }
+    };
+
+    const handleChatHistory = (data) => {
+      console.log('📜 Chat history loaded:', data?.messages?.length, 'messages');
+      if (Array.isArray(data?.messages) && data.messages.length > 0) {
+        dispatch(setMessages(data.messages));
+      }
     };
 
     const handleBotResponse = (data) => {
@@ -110,6 +126,7 @@ const ChatBot = () => {
     chatService.on('connect', handleConnect);
     chatService.on('disconnect', handleDisconnect);
     chatService.on('authenticated', handleAuthenticated);
+    chatService.on('chat_history', handleChatHistory);
     chatService.on('bot_response', handleBotResponse);
     chatService.on('bot_typing', handleBotTyping);
     chatService.on('suggestions_update', handleSuggestionsUpdate);
@@ -122,6 +139,7 @@ const ChatBot = () => {
       chatService.off('connect', handleConnect);
       chatService.off('disconnect', handleDisconnect);
       chatService.off('authenticated', handleAuthenticated);
+      chatService.off('chat_history', handleChatHistory);
       chatService.off('bot_response', handleBotResponse);
       chatService.off('bot_typing', handleBotTyping);
       chatService.off('suggestions_update', handleSuggestionsUpdate);
@@ -188,7 +206,7 @@ const ChatBot = () => {
       // sendMessage thunk emits to socket and resolves immediately.
       // The bot reply arrives later via the bot_response socket event
       // and is added to the store by handleBotResponse above.
-      await dispatch(sendMessage(messageText)).unwrap();
+      await dispatch(sendMessage({ message: messageText, vault_id: activeVault?.vaultId || null })).unwrap();
     } catch (err) {
       // Only genuine send failures (not connected, etc.) land here.
       // The error is already set in Redux state by the rejected case.
@@ -205,7 +223,7 @@ const ChatBot = () => {
 
   const handleClearChat = () => {
     if (window.confirm('Clear the chat history?')) {
-      dispatch(clearChat());
+      dispatch(clearChatHistory()); // clears DB + Redux state
       setShowSuggestions(true);
       suggestionsRequestedRef.current = false;
       dispatch(getSmartSuggestions());
@@ -295,6 +313,14 @@ const ChatBot = () => {
               </button>
             </div>
           </div>
+
+          {/* RAG Docs Toggle — only shown to authenticated users */}
+          {isAuthenticated && (
+            <VaultRAGToggle
+              userId={user?.id || user?.userId || user?._id}
+              onVaultSelect={setActiveVault}
+            />
+          )}
 
           {/* Body */}
           <div className="chat-body">
@@ -429,12 +455,25 @@ const ChatBot = () => {
                   type="text"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Stop space/any key from bubbling to page scroll or parent handlers
+                    e.stopPropagation();
+                    // Submit on Enter (not Shift+Enter)
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (message.trim() && !loading && connected) {
+                        handleSendMessage(e);
+                      }
+                    }
+                  }}
                   placeholder={
                     !connected
                       ? 'Connecting...'
-                      : user?.isGuest
-                        ? 'Ask a question...'
-                        : 'Type your message...'
+                      : activeVault
+                        ? `Ask about ${activeVault.source}...`
+                        : user?.isGuest
+                          ? 'Ask a question...'
+                          : 'Type your message...'
                   }
                   disabled={loading || !connected}
                   maxLength={500}

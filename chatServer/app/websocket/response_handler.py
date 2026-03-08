@@ -95,6 +95,76 @@ class MessageResponseHandler:
             WebSocketLogger.log_fallback_triggered(str(e), username)
             return get_fallback_message("authenticated", "default")
     
+
+    @staticmethod
+    async def handle_rag_message(
+        user_id: str,
+        username: str,
+        message: str,
+        vault_id: str,
+    ) -> dict:
+        """
+        Handle RAG-mode message — user is asking about a specific PDF vault.
+        Delegates to orchestrator.process_rag_query().
+
+        Args:
+            user_id:  Authenticated user ID
+            username: For logging
+            message:  User question about the PDF
+            vault_id: Vault document ID selected in VaultRAGToggle
+
+        Returns:
+            Response dict with 'text', 'provider', 'metadata'
+        """
+        try:
+            from app.ai.orchestrator import get_orchestrator
+            from app.core.database import Database
+
+            WebSocketLogger.log_user_query(username, message, is_authenticated=True)
+            logger.info(f"📄 RAG mode — user={user_id} vault={vault_id}")
+
+            db = Database.get_db()
+            orchestrator = await get_orchestrator(db)
+
+            result = await orchestrator.process_rag_query(
+                query=message,
+                user_id=user_id,
+                vault_id=vault_id,
+            )
+
+            if result.get("status") == "error":
+                error_msg = result.get("error", "RAG query failed")
+                logger.error(f"RAG error for {username}: {error_msg}")
+                from app.ai.llm.fallback import get_fallback_message
+                return get_fallback_message("authenticated", "default")
+
+            response_text = result.get("response", "No response generated")
+            provider = result.get("provider", "gemini")
+
+            WebSocketLogger.log_response_generated(
+                provider=provider,
+                response_text=response_text,
+                is_authenticated=True,
+                username=username,
+            )
+
+            return {
+                "text": response_text,
+                "provider": provider,
+                "metadata": {
+                    "user_id": user_id,
+                    "response_type": "rag",
+                    "vault_id": vault_id,
+                    "document_name": result.get("document_name", ""),
+                    "is_rag": True,
+                },
+            }
+
+        except Exception as e:
+            logger.error(f"Error in RAG message handler: {e}", exc_info=True)
+            from app.ai.llm.fallback import get_fallback_message
+            return get_fallback_message("authenticated", "default")
+
     @staticmethod
     async def handle_guest_message(message: str) -> dict:
         """

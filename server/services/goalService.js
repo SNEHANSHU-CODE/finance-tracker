@@ -1,6 +1,6 @@
-// services/goalService.js
 const Goal = require('../models/goalModel');
 const mongoose = require('mongoose');
+const notificationService = require('./notificationService');
 
 class GoalService {
   // Create a new goal
@@ -96,7 +96,22 @@ class GoalService {
         return null;
       }
 
+      const prevPercentage = Math.round((goal.savedAmount / goal.targetAmount) * 100);
       await goal.updateSavedAmount(amount);
+      const newPercentage = Math.round((goal.savedAmount / goal.targetAmount) * 100);
+
+      // Fire milestone notification at 25, 50, 75, 100%
+      const milestones = [25, 50, 75, 100];
+      const crossedMilestone = milestones.find(
+        m => prevPercentage < m && newPercentage >= m
+      );
+
+      if (crossedMilestone) {
+        notificationService.createGoalMilestone(userId, goal).catch(err =>
+          console.error('[goalService] notification error:', err.message)
+        );
+      }
+
       return goal;
     } catch (error) {
       throw new Error(`Failed to add contribution: ${error.message}`);
@@ -114,6 +129,13 @@ class GoalService {
         },
         { new: true }
       );
+
+      if (goal) {
+        notificationService.createGoalMilestone(userId, goal).catch(err =>
+          console.error('[goalService] notification error:', err.message)
+        );
+      }
+
       return goal;
     } catch (error) {
       throw new Error(`Failed to mark goal complete: ${error.message}`);

@@ -1,48 +1,10 @@
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-// Create a separate axios instance for password reset service
-const resetPasswordApiClient = axios.create({
-    baseURL: API_BASE_URL,
-    timeout: 10000,
-    withCredentials: true,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
-
-// Store reference to get current token (if needed for authenticated requests)
-let getCurrentToken = null;
-
-// Method to set token getter (called from store setup)
-export const setTokenGetter = (tokenGetter) => {
-    getCurrentToken = tokenGetter;
-};
-
-// Request interceptor to add auth token (for authenticated password reset requests)
-resetPasswordApiClient.interceptors.request.use(
-    (config) => {
-        // For most password reset operations, we don't need the auth token
-        // The reset token will be sent as HTTP-only cookie automatically
-        
-        // Only add auth token if specifically needed for certain endpoints
-        if (getCurrentToken && config.headers['X-Auth-Required']) {
-            const token = getCurrentToken();
-            if (token) {
-                config.headers.Authorization = `Bearer ${token}`;
-            }
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
+import apiClient from '../utils/axiosConfigs';
 
 export const resetPasswordService = {
     // Send password reset email
     sendPasswordReset: async (emailData) => {
         try {
-            const response = await resetPasswordApiClient.post('/reset/sendotp', emailData);
+            const response = await apiClient.post('/reset/sendotp', emailData);
             return response.data.data; // Return the data part of response
         } catch (error) {
             throw new Error(
@@ -56,7 +18,7 @@ export const resetPasswordService = {
     // Verify password reset code/token
     verifyPasswordReset: async (verificationData) => {
         try {
-            const response = await resetPasswordApiClient.post('/reset/verifyotp', verificationData);
+            const response = await apiClient.post('/reset/verifyotp', verificationData);
             return response.data.data; // Return the data part of response
         } catch (error) {
             throw new Error(
@@ -70,7 +32,7 @@ export const resetPasswordService = {
     // Set new password
     setNewPassword: async (passwordData) => {
         try {
-            const response = await resetPasswordApiClient.post('/reset/setnewpassword', passwordData);
+            const response = await apiClient.post('/reset/setnewpassword', passwordData);
             return response.data.data;
         } catch (error) {
             throw new Error(

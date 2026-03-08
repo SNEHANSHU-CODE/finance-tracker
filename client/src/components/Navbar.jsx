@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutUser, clearCredentials } from '../app/authSlice';
+import NotificationBell from './NotificationBell';
 
 export default function Navbar() {
   const [isNavOpen, setIsNavOpen] = useState(false);
@@ -116,6 +117,9 @@ export default function Navbar() {
                     </span>
                   </li>
                 )}
+                <li className="nav-item d-flex align-items-center">
+                  <NotificationBell />
+                </li>
                 <li className="nav-item">
                   <button
                     className="btn btn-outline-danger btn-sm"

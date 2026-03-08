@@ -32,11 +32,9 @@ export const searchTransactions = createAsyncThunk(
 
 export const recentTransactions = createAsyncThunk(
   'transaction/recent',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const userId = getState().auth.user?.userId;
-      if (!userId) return rejectWithValue({ message: 'Missing userId' });
-      const response = await transactionService.getRecentTransactions({ userId });
+      const response = await transactionService.getRecentTransactions();
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);
@@ -141,6 +139,54 @@ export const fetchSpendingTrends = createAsyncThunk(
   }
 );
 
+export const extractTransactionsFromPDF = createAsyncThunk(
+  'transaction/extractFromPDF',
+  // Accepts either a bare File (no password) or { file, password } for locked PDFs
+  async (payload, { rejectWithValue }) => {
+    try {
+      const file     = payload instanceof File ? payload : payload.file;
+      const password = payload instanceof File ? null    : (payload.password || null);
+      return await transactionService.uploadFileToExtract(file, 'pdf', password);
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.detail || error.message);
+    }
+  }
+);
+
+export const extractTransactionsFromCSV = createAsyncThunk(
+  'transaction/extractFromCSV',
+  async (file, { rejectWithValue }) => {
+    try {
+      return await transactionService.uploadFileToExtract(file, 'csv');
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.detail || error.message);
+    }
+  }
+);
+
+export const extractTransactionsFromExcel = createAsyncThunk(
+  'transaction/extractFromExcel',
+  async (file, { rejectWithValue }) => {
+    try {
+      return await transactionService.uploadFileToExtract(file, 'excel');
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.detail || error.message);
+    }
+  }
+);
+
+export const bulkInsertTransactions = createAsyncThunk(
+  'transaction/bulkInsert',
+  async (transactions, { rejectWithValue }) => {
+    try {
+      const response = await transactionService.bulkInsertTransactions(transactions);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
 const initialState = {
   transactions: [],
   pagination: {
@@ -163,7 +209,12 @@ const initialState = {
     endDate: '',
     sortBy: 'date',
     sortOrder: 'desc'
-  }
+  },
+  pdfImport: {
+    loading:   false,   // extracting from chatServer
+    inserting: false,   // saving to mainServer
+    error:     null,
+  },
 };
 
 const transactionSlice = createSlice({
@@ -309,6 +360,56 @@ const transactionSlice = createSlice({
       // Spending trends
       .addCase(fetchSpendingTrends.fulfilled, (state, action) => {
         state.spendingTrends = action.payload;
+      })
+
+      // ── PDF / CSV / Excel extract ────────────────────────────────────────
+      .addCase(extractTransactionsFromPDF.pending, (state) => {
+        state.pdfImport.loading = true;
+        state.pdfImport.error   = null;
+      })
+      .addCase(extractTransactionsFromPDF.fulfilled, (state) => {
+        state.pdfImport.loading = false;
+      })
+      .addCase(extractTransactionsFromPDF.rejected, (state, action) => {
+        state.pdfImport.loading = false;
+        state.pdfImport.error   = action.payload;
+      })
+
+      .addCase(extractTransactionsFromCSV.pending, (state) => {
+        state.pdfImport.loading = true;
+        state.pdfImport.error   = null;
+      })
+      .addCase(extractTransactionsFromCSV.fulfilled, (state) => {
+        state.pdfImport.loading = false;
+      })
+      .addCase(extractTransactionsFromCSV.rejected, (state, action) => {
+        state.pdfImport.loading = false;
+        state.pdfImport.error   = action.payload;
+      })
+
+      .addCase(extractTransactionsFromExcel.pending, (state) => {
+        state.pdfImport.loading = true;
+        state.pdfImport.error   = null;
+      })
+      .addCase(extractTransactionsFromExcel.fulfilled, (state) => {
+        state.pdfImport.loading = false;
+      })
+      .addCase(extractTransactionsFromExcel.rejected, (state, action) => {
+        state.pdfImport.loading = false;
+        state.pdfImport.error   = action.payload;
+      })
+
+      // ── Bulk insert ──────────────────────────────────────────────────────
+      .addCase(bulkInsertTransactions.pending, (state) => {
+        state.pdfImport.inserting = true;
+        state.pdfImport.error     = null;
+      })
+      .addCase(bulkInsertTransactions.fulfilled, (state) => {
+        state.pdfImport.inserting = false;
+      })
+      .addCase(bulkInsertTransactions.rejected, (state, action) => {
+        state.pdfImport.inserting = false;
+        state.pdfImport.error     = action.payload;
       });
   }
 });

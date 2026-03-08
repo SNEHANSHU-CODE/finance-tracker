@@ -15,12 +15,12 @@ const authRoutes = require('./routes/authRoutes');
 const resetPasswordRoutes = require('./routes/resetPasswordRoute');
 const transactionRoutes = require('./routes/transactionRoutes');
 const goalRouter = require('./routes/goalRoutes');
-const analyticsRouter = require('./routes/analyticsRoutes');
 const reminderRouter = require('./routes/reminderRoutes');
 const settingsRouter = require('./routes/settingsRoutes');
 const googleRouter = require('./routes/googleRoutes');
 const vaultRouter = require('./routes/vaultRoutes');
 const budgetRouter = require('./routes/budgetRoutes');
+const notificationRouter = require('./routes/notificationRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -60,12 +60,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/reset', resetPasswordRoutes);
 app.use('/api/transaction', transactionRoutes);
 app.use('/api/goals', goalRouter);
-app.use('/api/analytics', analyticsRouter);
 app.use('/api/reminders', reminderRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/google', googleRouter);
 app.use('/api/vault', vaultRouter);
-app.use('/api/budget', budgetRouter); 
+app.use('/api/budget', budgetRouter);
+app.use('/api/notifications', notificationRouter);
 
 
 //Keep my server alive

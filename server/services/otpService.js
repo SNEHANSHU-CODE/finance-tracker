@@ -47,8 +47,13 @@ class OtpService {
       // Reset attempts counter
       await redisService.del(this.getAttemptsKey(email));
 
-      // Send OTP via email
-      await emailService.sendOTPEmail(email, otp);
+      // Send OTP via email — rollback Redis key if sending fails
+      try {
+        await emailService.sendOTPEmail(email, otp);
+      } catch (emailError) {
+        await redisService.del(this.getOTPKey(email));
+        throw emailError;
+      }
 
       return {
         success: true,
@@ -137,7 +142,13 @@ class OtpService {
       const otp = this.generateOTP();
       const expiryInSeconds = config.otp.expiryMinutes * 60;
       await redisService.set(this.getMFAKey(userId), otp.toString(), expiryInSeconds);
-      await emailService.sendOTPEmail(email, otp);
+      try {
+        await emailService.sendOTPEmail(email, otp);
+      } catch (emailError) {
+        // Roll back — don't leave a dead OTP key blocking future attempts
+        await redisService.del(this.getMFAKey(userId));
+        throw emailError;
+      }
       return {
         success: true,
         message: 'MFA OTP sent to your email',

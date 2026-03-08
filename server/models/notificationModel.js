@@ -81,13 +81,6 @@ const notificationSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  expiresAt: {
-    type: Date,
-    default: function() {
-      // Notifications expire after 30 days
-      return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    }
-  },
   actionUrl: {
     type: String // URL to redirect when notification is clicked
   },
@@ -102,7 +95,6 @@ const notificationSchema = new mongoose.Schema({
 notificationSchema.index({ userId: 1, createdAt: -1 });
 notificationSchema.index({ userId: 1, isRead: 1 });
 notificationSchema.index({ userId: 1, type: 1 });
-notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 // Virtual for time elapsed since creation
 notificationSchema.virtual('timeAgo').get(function() {

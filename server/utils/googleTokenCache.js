@@ -1,6 +1,6 @@
 const { redisService } = require('../config/redis');
 
-const GOOGLE_TOKEN_TTL = 60 * 60 * 24 * 30; // 30 days
+const GOOGLE_TOKEN_TTL = 60 * 60; // 30 days
 
 const getGoogleTokens = async (userId) => {
   try {

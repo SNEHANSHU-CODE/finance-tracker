@@ -5,7 +5,16 @@ const vaultSchema = new mongoose.Schema(
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     name: { type: String, required: true, trim: true },
     originalName: { type: String, required: true },
-    mimeType: { type: String, required: true, default: 'application/pdf' },
+    mimeType: {
+      type: String,
+      required: true,
+      enum: [
+        'application/pdf',
+        'text/csv',
+        'application/vnd.ms-excel',                                          // .xls
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      ],
+    },
     size: { type: Number, required: true }, // bytes
     data: { type: String, required: true }, // base64 encoded
     tags: [{ type: String, trim: true }],

@@ -22,13 +22,13 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 class ChatMessage(BaseModel):
     """Chat message model"""
     content: str = Field(..., min_length=1, max_length=5000)
-    provider: Optional[str] = Field(None, description="LLM provider: 'grok' or 'gemini' (defaults to configured DEFAULT_LLM)")
+    provider: Optional[str] = Field(None, description="LLM provider: 'groq' or 'gemini' (defaults to configured DEFAULT_LLM)")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "content": "How much did I spend on food last month?",
-                "provider": "grok"
+                "provider": "groq"
             }
         }
 
@@ -80,7 +80,7 @@ async def chat_query(
     Process a chat query
     
     - **content**: User's message
-    - **provider**: LLM provider (gemini or grok)
+    - **provider**: LLM provider (groq or gemini)
     - **user_id** (optional, header): User ID for authenticated requests
     
     If user_id is provided:
@@ -95,10 +95,10 @@ async def chat_query(
         logger.info(f"Processing chat query - Authenticated: {bool(user_id)}")
         
         # Validate provider
-        if message.provider not in ["grok", "gemini"]:
+        if message.provider not in ["groq", "gemini"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Provider must be 'grok' or 'gemini'"
+                detail="Provider must be 'groq' or 'gemini'"
             )
         
         # Get orchestrator

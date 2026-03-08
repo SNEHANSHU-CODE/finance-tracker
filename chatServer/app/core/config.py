@@ -4,43 +4,56 @@ from typing import Optional, List
 
 class Settings(BaseSettings):
     """Application settings"""
-    
+
     # App Info
     APP_NAME: str = "Financial Chat Server"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     ENVIRONMENT: str = "development"
-    
+
     # Server
     HOST: str = "localhost"
     PORT: int = 5002
     RELOAD: bool = True
     WORKERS: int = 1
-    
+
     # Database
     MONGO_URI: str
-    MONGO_DB_NAME: str = 'finace-tracker'
-    
+    MONGO_DB_NAME: str = "finace-tracker"
+
     # AI/LLM Configuration
     GROK_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
-    DEFAULT_LLM: str = "grok"  # "grok" or "gemini" - reads from .env, defaults to grok
+    DEFAULT_LLM: str = "grok"
     LLM_TEMPERATURE: float = 0.7
     LLM_MAX_TOKENS: int = 1024
-    
-    # Security - MUST match Node.js JWT_SECRET for token verification to work!
-    # Node.js uses: process.env.JWT_SECRET || 'your-secret-key'
-    SECRET_KEY: str = "your-secret-key"  # MATCHES Node.js default
-    ALGORITHM: str = "HS256"  # MUST be HS256 to match jsonwebtoken default
+
+    # Security — MUST match Node.js JWT_SECRET
+    SECRET_KEY: str = "your-secret-key"
+    ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    
+
     # CORS
     CORS_ORIGINS: str = "*"
-    
+
+    # ── RAG Pipeline ──────────────────────────────────────────────────
+    VAULT_COLLECTION: str = "vaults"
+    EMBEDDINGS_COLLECTION: str = "embeddings"
+    VECTOR_INDEX_NAME: str = "vector_index"
+
+    EMBEDDING_MODEL: str = "models/gemini-embedding-001"
+    EMBEDDING_DIMENSIONS: int = 3072
+
+    CHUNK_SIZE: int = 500
+    CHUNK_OVERLAP: int = 50
+    CRON_INTERVAL_SECONDS: int = 30
+
+    NOTIFICATION_POLL_SECONDS: int = 30
+
     class Config:
         env_file = ".env"
         case_sensitive = True
-        extra = "ignore"  # Allow extra fields in .env without error
+        extra = "ignore"
 
 
 # Global settings instance

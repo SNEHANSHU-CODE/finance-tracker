@@ -28,6 +28,10 @@ from app.ai.prompts.productContext import (
 from app.services.transactionService import TransactionService
 from app.services.goalService import GoalService
 from app.services.reminderService import ReminderService
+from app.services.budgetService import BudgetService
+# RAG — separate pipeline, does not touch financial chat logic
+from app.ai.llm.ragQueryService import RAGQueryService
+from app.ai.prompts.ragTemplate import RAGPromptBuilder, RAG_CHAT_TEMPLATE
 
 
 logger = logging.getLogger(__name__)
@@ -98,6 +102,30 @@ def _fmt_reminders(reminders: List[Dict]) -> str:
     return "\n".join(lines)
 
 
+def _fmt_budgets(budget: Dict) -> str:
+    if not budget or not budget.get("hasBudget"):
+        return "No budget set for this month."
+    
+    lines = []
+    month = budget.get("month")
+    year = budget.get("year")
+    month_name = datetime(year, month, 1).strftime("%B %Y") if month and year else "Current"
+    
+    lines.append(f"📌 Budget: {month_name}")
+    lines.append(f"  Total Budget: ₹{budget.get('totalBudget', 0):,.2f}")
+    lines.append(f"  Total Spent: ₹{budget.get('totalSpent', 0):,.2f}")
+    lines.append(f"  Remaining: ₹{budget.get('remaining', 0):,.2f}")
+    lines.append(f"  Utilization: {budget.get('utilizationPercentage', 0):.1f}%")
+    
+    categories = budget.get("categories", [])
+    if categories:
+        lines.append("  Category Limits:")
+        for cat in categories[:10]:  # cap at 10 categories
+            lines.append(f"    • {cat.get('name', '?')}: ₹{cat.get('limit', 0):,.2f}")
+    
+    return "\n".join(lines)
+
+
 def _fmt_monthly_summary(summary: Dict) -> str:
     if not summary:
         return "No summary available."
@@ -129,9 +157,9 @@ class AIOrchestrator:
         self.tx_service = TransactionService(db)
         self.goal_service = GoalService(db)
         self.reminder_service = ReminderService(db)
+        self.budget_service = BudgetService(db)
 
         self.llm: Optional[BaseLLM] = None
-        self.user_sessions: Dict[str, ChatMemory] = {}
 
     async def initialize(self) -> None:
         """Initialize orchestrator and load models"""
@@ -145,9 +173,8 @@ class AIOrchestrator:
             raise
 
     def get_user_memory(self, user_id: str) -> ChatMemory:
-        if user_id not in self.user_sessions:
-            self.user_sessions[user_id] = ChatMemory(user_id, self.db)
-        return self.user_sessions[user_id]
+        """Return a fresh ChatMemory instance backed by DB — no RAM caching."""
+        return ChatMemory(user_id, self.db)
 
     # ------------------------------------------------------------------
     # Core data-fetching layer
@@ -220,6 +247,15 @@ class AIOrchestrator:
                 logger.error(f"❌ Error fetching reminders: {e}")
                 context["reminders"] = "Could not load reminders."
 
+        if intent.get("needs_budgets"):
+            try:
+                budget_summary = await self.budget_service.get_budget_summary(user_id)
+                context["budgets"] = _fmt_budgets(budget_summary)
+                logger.info(f"✅ Fetched budget summary for user {user_id}")
+            except Exception as e:
+                logger.error(f"❌ Error fetching budgets: {e}")
+                context["budgets"] = "Could not load budget."
+
         return context
 
     # ------------------------------------------------------------------
@@ -286,11 +322,17 @@ Response Structure:
                 f"🔔 UPCOMING REMINDERS (next 14 days):\n{context['reminders']}"
             )
 
+        if context.get("budgets"):
+            sections.append(
+                f"💰 BUDGET:\n{context['budgets']}"
+            )
+
         # If no specific data was fetched, add a note so the LLM knows it can still help
         if not any([
             context.get("transactions"),
             context.get("goals"),
             context.get("reminders"),
+            context.get("budgets"),
         ]):
             sections.append(
                 f"ℹ️ No specific financial data matched this query. "
@@ -381,7 +423,7 @@ Response Structure:
             response_text = (
                 response.content if hasattr(response, "content") else str(response)
             )
-            await memory.add_message(response_text, message_type="ai")
+            await memory.add_message(response_text, message_type="ai", metadata={"provider": provider})
 
             logger.info(f"✅ Response generated for authenticated user {user_id}")
 
@@ -404,32 +446,143 @@ Response Structure:
                 "is_authenticated": True,
             }
 
+    # Minimum cosine similarity score to consider a RAG result relevant.
+    # Below this threshold the query is treated as a general finance question
+    # and falls through to the normal authenticated chat pipeline.
+    RAG_RELEVANCE_THRESHOLD: float = 0.75
+
+    async def process_rag_query(
+        self,
+        query: str,
+        user_id: str,
+        vault_id: Optional[str] = None,
+        provider: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Smart hybrid RAG flow:
+        1. Embed query → vector search Atlas
+        2a. top_score >= RAG_RELEVANCE_THRESHOLD → answer from document (RAG)
+        2b. top_score <  RAG_RELEVANCE_THRESHOLD → fall back to normal finance AI
+
+        This lets users keep the PDF selected while still asking general
+        finance questions — no need to deselect the document.
+
+        Args:
+            query:    User's question
+            user_id:  For scoping vector search
+            vault_id: Optional — restrict search to one specific vault doc
+            provider: LLM provider override
+        """
+        try:
+            logger.info("📄 Processing RAG query for user %s (vault=%s)", user_id, vault_id)
+
+            # Step 1 + 2: Embed query → vector search → formatted context + score
+            rag_context, document_name, top_score = await RAGQueryService.get_context(
+                query=query,
+                user_id=user_id,
+                vault_id=vault_id,
+                top_k=5,
+            )
+
+            # ── Smart hybrid: fall back to normal finance AI if score too low ──
+            if not rag_context or top_score < self.RAG_RELEVANCE_THRESHOLD:
+                logger.info(
+                    "📊 RAG score %.3f below threshold %.2f — falling back to finance AI for query: %s",
+                    top_score, self.RAG_RELEVANCE_THRESHOLD, query,
+                )
+                return await self.process_authenticated_query(user_id, query, provider)
+
+            # Step 3: Get conversation memory (shared with normal chat)
+            memory = self.get_user_memory(user_id)
+            await memory.add_message(query, message_type="human")
+            history = await memory.get_conversation_history()
+
+            # Step 4: Build RAG prompt
+            prompt_vars = RAGPromptBuilder.build(
+                user_input=query,
+                rag_context=rag_context,
+                document_name=document_name,
+                chat_history=history,
+            )
+            formatted = RAG_CHAT_TEMPLATE.format_messages(**prompt_vars)
+
+            # Step 5: LLM call — reuses existing llm_provider (no new logic)
+            if provider is None:
+                provider = llm_settings.DEFAULT_LLM
+            llm = await llm_provider.get_llm(provider)
+
+            logger.info("🧠 Invoking LLM (%s) for RAG query...", provider)
+            try:
+                response = await llm.ainvoke(formatted)
+            except Exception as e:
+                logger.error("RAG LLM call failed with %s: %s — trying Gemini", provider, e)
+                fallback_llm = await llm_provider.get_gemini_llm()
+                response = await fallback_llm.ainvoke(formatted)
+                provider = "gemini"
+
+            response_text = (
+                response.content if hasattr(response, "content") else str(response)
+            )
+            await memory.add_message(response_text, message_type="ai", metadata={"provider": provider, "is_rag": True})
+
+            logger.info("✅ RAG response generated for user %s", user_id)
+
+            return {
+                "status": "success",
+                "user_id": user_id,
+                "is_authenticated": True,
+                "is_rag": True,
+                "document_name": document_name,
+                "provider": provider,
+                "query": query,
+                "response": response_text,
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        except Exception as e:
+            logger.error("❌ RAG query failed: %s", e)
+            return {
+                "status": "error",
+                "error": str(e),
+                "user_id": user_id,
+                "is_authenticated": True,
+                "is_rag": True,
+            }
+
+
     async def process_query(
         self,
         query: str,
         user_id: Optional[str] = None,
         provider: Optional[str] = None,
+        vault_id: Optional[str] = None,    # set this to trigger RAG mode
     ) -> Dict[str, Any]:
         """
-        Main entry point. Routes authenticated users to process_authenticated_query.
-        Guest queries are handled entirely in the websocket response handler.
+        Main entry point.
+        - vault_id set  → RAG flow (PDF question answering)
+        - user_id only  → normal authenticated financial chat
+        - neither       → guest (handled in websocket)
         """
         if provider is None:
             provider = llm_settings.DEFAULT_LLM
 
+        if user_id and vault_id:
+            # RAG mode — user asking about a specific PDF
+            return await self.process_rag_query(query, user_id, vault_id, provider)
+
         if user_id:
             return await self.process_authenticated_query(user_id, query, provider)
-        else:
-            return {
-                "status": "error",
-                "error": "Guest queries should be handled in websocket handler",
-                "is_authenticated": False,
-            }
 
-    async def get_chat_history(self, user_id: str) -> List[Dict[str, Any]]:
+        return {
+            "status": "error",
+            "error": "Guest queries should be handled in websocket handler",
+            "is_authenticated": False,
+        }
+
+    async def get_chat_history(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         try:
             memory = self.get_user_memory(user_id)
-            return await memory.get_persisted_history()
+            return await memory.get_recent_for_display(limit)
         except Exception as e:
             logger.error(f"Error retrieving chat history: {e}")
             return []

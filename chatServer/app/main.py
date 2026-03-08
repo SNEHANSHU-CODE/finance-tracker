@@ -8,9 +8,15 @@ from app.core.config import settings
 from app.core.database import Database
 from app.core.logging import setup_logging
 from app.core.chat_routes import router as chat_router
+from app.core.rag_routes import router as rag_router
+from app.core.transactionParser.router import router as import_router
 from app.websocket import init_socket_server
 from app.ai.orchestrator import get_orchestrator
 from app.services.userService import init_user_service
+from app.ai.llm.embeddingService import EmbeddingService
+from app.ai.llm.ragPipeline import rag_pipeline
+from app.services.notificationService import init_notification_service
+from app.websocket.notification_poller import init_notification_poller
 
 # Suppress Pydantic V1 warning for Python 3.14+
 warnings.filterwarnings('ignore', category=UserWarning, message='.*Pydantic V1 functionality.*')
@@ -38,6 +44,14 @@ async def lifespan(app: FastAPI):
     await Database.connect_db()
     logger.info("✅ Database connected")
     
+    # Initialize EmbeddingService (singleton for Google embeddings)
+    try:
+        EmbeddingService.init()
+        logger.info("✅ EmbeddingService initialized (Google text-embedding-004)")
+    except Exception as e:
+        logger.error(f"⚠️ EmbeddingService initialization failed: {e}")
+        logger.info("RAG pipeline may not work without embeddings")
+    
     # Initialize UserService
     try:
         db = Database.get_db()
@@ -45,6 +59,23 @@ async def lifespan(app: FastAPI):
         logger.info("✅ UserService initialized")
     except Exception as e:
         logger.error(f"⚠️ UserService initialization failed: {e}")
+
+    # Initialize NotificationService
+    try:
+        db = Database.get_db()
+        init_notification_service(db)
+        logger.info("✅ NotificationService initialized")
+    except Exception as e:
+        logger.error(f"⚠️ NotificationService initialization failed: {e}")
+
+    # Initialize NotificationPoller (needs live sio + sessions reference)
+    try:
+        sio = socket_server.get_sio()
+        sessions = socket_server.handlers.sessions  # live reference — always current
+        init_notification_poller(sio, sessions)
+        logger.info("✅ NotificationPoller initialized")
+    except Exception as e:
+        logger.error(f"⚠️ NotificationPoller initialization failed: {e}")
     
     # Initialize AI Orchestrator
     try:
@@ -55,10 +86,60 @@ async def lifespan(app: FastAPI):
         logger.error(f"⚠️ AI Orchestrator initialization failed: {e}")
         logger.info("Chat functionality may be limited")
     
+    # Initialize RAG Pipeline cron scheduler
+    scheduler = None
+    try:
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler
+        from apscheduler.triggers.interval import IntervalTrigger
+        
+        scheduler = AsyncIOScheduler()
+        
+        # Schedule RAG pipeline to run every N seconds (configurable)
+        # coalesce=True: skip missed runs if job takes too long
+        # max_instances=1: prevent multiple concurrent runs
+        scheduler.add_job(
+            rag_pipeline.process_all_unprocessed,
+            trigger=IntervalTrigger(seconds=settings.CRON_INTERVAL_SECONDS),
+            id="rag_pipeline_watcher",
+            name="RAG Pipeline Watcher",
+            replace_existing=True,
+            coalesce=True,
+            max_instances=1,
+        )
+
+        # Notification poller — emits pending DB notifications to connected users
+        from app.websocket.notification_poller import get_notification_poller
+        scheduler.add_job(
+            get_notification_poller().poll,
+            trigger=IntervalTrigger(seconds=settings.NOTIFICATION_POLL_SECONDS),
+            id="notification_poller",
+            name="Notification Poller",
+            replace_existing=True,
+            coalesce=True,
+            max_instances=1,
+        )
+
+        scheduler.start()
+        logger.info(
+            f"✅ RAG Pipeline scheduler started "
+            f"(runs every {settings.CRON_INTERVAL_SECONDS} seconds)"
+        )
+    except ImportError:
+        logger.warning("⚠️ APScheduler not installed. RAG pipeline will not run automatically.")
+        logger.info("Run: pip install apscheduler")
+    except Exception as e:
+        logger.error(f"⚠️ Failed to start RAG scheduler: {e}")
+    
     yield
     
     # Shutdown
     logger.info("Shutting down application...")
+    
+    # Stop scheduler
+    if scheduler and scheduler.running:
+        scheduler.shutdown(wait=True)
+        logger.info("RAG scheduler shut down")
+    
     await Database.close_db()
     logger.info("Shutdown complete")
 
@@ -99,6 +180,12 @@ else:
 # Include chat routes
 app.include_router(chat_router)
 logger.info("✅ Chat routes registered at /api/chat")
+
+app.include_router(rag_router)
+logger.info("✅ RAG routes registered at /api/rag")
+
+app.include_router(import_router)
+logger.info("✅ Transaction import routes registered at /api/import")
 
 
 # Health check endpoints

@@ -3,7 +3,6 @@ import { io } from 'socket.io-client';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_SERVER_URL || 'http://localhost:5002';
 const PING_TIMEOUT = 60000;
 const PING_INTERVAL = 25000;
-const REQUEST_TIMEOUT = 30000;
 
 class ChatService {
   constructor() {
@@ -175,6 +174,11 @@ class ChatService {
       console.log('[chatService] Rating received:', data);
       this.emitToListeners('rating_received', data);
     });
+
+    this.socket.on('chat_history', (data) => {
+      console.log('[chatService] Chat history received:', data?.messages?.length, 'messages');
+      this.emitToListeners('chat_history', data);
+    });
   }
 
   authenticate(userId = null, token = null) {
@@ -215,7 +219,7 @@ class ChatService {
    * The Redux thunk (sendMessage in chatSlice) must NOT add any bot message
    * on its own — its only job is to trigger the emit and set loading state.
    */
-  sendMessage(message, conversationHistory = []) {
+  sendMessage(message, conversationHistory = [], vaultId = null) {
     return new Promise((resolve, reject) => {
       if (!this.socket?.connected) {
         console.error('[chatService] Cannot send message - socket not connected');
@@ -240,6 +244,7 @@ class ChatService {
       this.socket.emit('send_message', {
         message: message.trim(),
         conversationHistory: Array.isArray(conversationHistory) ? conversationHistory : [],
+        vault_id: vaultId || null,
         timestamp: new Date().toISOString(),
         requestId: reqId,
       });
@@ -361,7 +366,7 @@ class ChatService {
     const internalEvents = new Set([
       'connect', 'disconnect', 'authenticated', 'error',
       'bot_typing', 'bot_response', 'suggestions_update',
-      'chat_cleared', 'rating_received',
+      'chat_cleared', 'rating_received', 'chat_history',
     ]);
 
     console.log('[chatService] Rebinding external listeners');
@@ -392,6 +397,15 @@ class ChatService {
     this.isConnected = false;
     this.isAuthenticated = false;
     this.reconnectAttempts = 0;
+  }
+
+  getChatHistory() {
+    if (!this.socket?.connected) {
+      console.warn('[chatService] Cannot get chat history - socket not connected');
+      return;
+    }
+    console.log('[chatService] Requesting chat history');
+    this.socket.emit('get_chat_history', { timestamp: new Date().toISOString() });
   }
 
   isSocketConnected() {

@@ -71,6 +71,11 @@ class SocketServer:
             await self.handlers.handle_rate_message(sid, data)
         
         @self.sio.event
+        async def get_chat_history(sid, data=None):
+            """Return persisted chat history for authenticated user"""
+            await self.handlers.handle_get_chat_history(sid, data)
+
+        @self.sio.event
         async def clear_chat(sid, data):
             """Handle clear chat request"""
             await self.handlers.handle_clear_chat(sid, data)

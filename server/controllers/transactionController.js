@@ -352,6 +352,30 @@ async getCategoryAnalysis(req, res) {
       });
     }
   }
+  // Bulk insert transactions (from PDF / CSV / Excel import)
+  async bulkInsertTransactions(req, res) {
+    try {
+      const userId = req.userId;
+      const { transactions } = req.body;
+
+      if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'transactions array is required and must not be empty'
+        });
+      }
+
+      const result = await transactionService.bulkInsertTransactions(userId, transactions);
+
+      res.status(201).json(result);
+    } catch (error) {
+      console.error('Bulk insert transactions error:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Failed to bulk insert transactions'
+      });
+    }
+  }
 }
 
 module.exports = new TransactionController();

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { useSettings } from "../hooks/useSettings";
 
 import { 
@@ -42,8 +42,6 @@ export default function Dashboard() {
     console.log("Category Data:", categoryData);
   }, [categoryData]);
 
-  // Get Redux state for additional debugging
-  const transactionState = useSelector(state => state.transactions || {});
 
   // Enhanced useEffect with comprehensive error handling
 useEffect(() => {
@@ -388,19 +386,6 @@ You've saved {formatCurrency(dashboardData.monthly?.summary?.netSavings || 0)} t
                             <span className={`fw-bold ${transaction.type === 'Income' ? 'text-success' : 'text-danger'}`}>
                               {formatTransactionAmount(transaction)}
                             </span>
-                          </td>
-                          <td style={{ width: '40px' }}>
-                            <div className="dropdown">
-                              <button className="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
-                                <FaEllipsisV size={10} />
-                              </button>
-                              <ul className="dropdown-menu dropdown-menu-end">
-                                <li><button className="dropdown-item">View Details</button></li>
-                                <li><button className="dropdown-item">Edit</button></li>
-                                <li><hr className="dropdown-divider" /></li>
-                                <li><button className="dropdown-item text-danger">Delete</button></li>
-                              </ul>
-                            </div>
                           </td>
                         </tr>
                       ))

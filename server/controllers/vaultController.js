@@ -6,6 +6,16 @@ class VaultController {
       const { name, originalName, mimeType, size, data, tags, description } = req.body;
       if (!data || !originalName) return res.status(400).json({ success: false, message: 'File data required' });
 
+      const ALLOWED_TYPES = [
+        'application/pdf',
+        'text/csv',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ];
+      if (!ALLOWED_TYPES.includes(mimeType)) {
+        return res.status(400).json({ success: false, message: 'Only PDF, CSV, and Excel files are supported' });
+      }
+
       const result = await vaultService.uploadDocument(req.userId, {
         name: name || originalName, originalName, mimeType, size, data, tags, description
       });

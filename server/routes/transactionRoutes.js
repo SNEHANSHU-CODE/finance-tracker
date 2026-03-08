@@ -7,6 +7,7 @@ const {
   validateTransactionCreate,
   validateTransactionUpdate,
   validateBulkDelete,
+  validateBulkInsert,
   validateRecurringSetup,
   validateTransactionQuery,
   validateMonthlySummary
@@ -34,6 +35,7 @@ transactionRouter.delete('/:id', transactionController.deleteTransaction);
 
 // Bulk operations
 transactionRouter.post('/bulk-delete', validateBulkDelete, transactionController.bulkDeleteTransactions);
+transactionRouter.post('/bulk-insert', validateBulkInsert, transactionController.bulkInsertTransactions);
 
 // Recurring transactions
 transactionRouter.post('/:id/recurring', validateRecurringSetup, transactionController.setRecurring);

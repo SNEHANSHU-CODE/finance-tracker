@@ -38,7 +38,7 @@ class IntentClassifier:
     Fast, deterministic, no external dependencies.
     """
 
-    VALID_INTENTS = ["transactions", "goals", "reminders", "general"]
+    VALID_INTENTS = ["transactions", "goals", "reminders", "budgets", "general"]
 
     # Broad analytical phrases → fetch ALL data (transactions + goals + reminders).
     # These queries clearly need full context but contain no specific keywords.
@@ -72,7 +72,10 @@ class IntentClassifier:
         "reach my goal":            ["transactions", "goals"],
         "meet my goal":             ["transactions", "goals"],
         "achieve my goal":          ["transactions", "goals"],
-        "budget vs":                ["transactions", "goals"],
+        "budget vs":                ["transactions", "budgets"],
+        # needs budgets + transactions
+        "budget vs spending":       ["budgets", "transactions"],
+        "how much can i spend":     ["budgets", "transactions"],
         # needs goals + reminders
         "upcoming goals":           ["goals", "reminders"],
         "goal deadlines":           ["goals", "reminders"],
@@ -215,6 +218,34 @@ class IntentClassifier:
             ("recurring", 1.0),
             ("subscription", 1.0),
         ],
+        "budgets": [
+            # High-signal phrases
+            ("what is my budget", 3.0),
+            ("monthly budget", 3.0),
+            ("budget limit", 3.0),
+            ("budget for", 2.5),
+            ("budget allocation", 2.5),
+            ("category limit", 2.5),
+            ("spending limit", 2.5),
+            ("how much can i spend", 3.0),
+            ("budget vs spending", 3.0),
+            ("am i over budget", 3.0),
+            ("budget remaining", 2.5),
+            ("budget utilization", 2.5),
+            # Single keywords
+            ("budget", 1.5),
+            ("budgets", 1.5),
+            ("limit", 1.0),
+            ("limits", 1.0),
+            ("allocation", 1.0),
+            ("allocate", 1.0),
+            ("spend", 1.0),
+            ("spending", 0.9),
+            ("over budget", 1.5),
+            ("under budget", 1.5),
+            ("utilization", 1.2),
+            ("capacity", 0.8),
+        ],
     }
 
     def __init__(self) -> None:
@@ -222,6 +253,7 @@ class IntentClassifier:
             "transactions": True,
             "goals": True,
             "reminders": True,
+            "budgets": True,
         }
 
     def get_intents_for_fetch(self, query: str) -> Dict[str, bool]:
@@ -240,12 +272,12 @@ class IntentClassifier:
         # Priority 1: Broad analytical query → fetch all
         if any(phrase in q for phrase in self.FETCH_ALL_PHRASES):
             logger.info("Intent: FETCH_ALL (broad analytical phrase matched)")
-            return {"needs_transactions": True, "needs_goals": True, "needs_reminders": True}
+            return {"needs_transactions": True, "needs_goals": True, "needs_reminders": True, "needs_budgets": True}
 
         # Priority 2: Multi-intent phrase → fetch specific combination
         for phrase, intents in self.MULTI_INTENT_PHRASES.items():
             if phrase in q:
-                result = {"needs_transactions": False, "needs_goals": False, "needs_reminders": False}
+                result = {"needs_transactions": False, "needs_goals": False, "needs_reminders": False, "needs_budgets": False}
                 for intent in intents:
                     result[f"needs_{intent}"] = True
                 logger.info("Intent: MULTI (%s) for phrase '%s'", intents, phrase)
@@ -257,17 +289,25 @@ class IntentClassifier:
         if intent_result.primary_intent == "general":
             # No clear match — safe default is fetch everything for authenticated users
             logger.info("Intent: FETCH_ALL (general fallback for personal query)")
-            return {"needs_transactions": True, "needs_goals": True, "needs_reminders": True}
+            return {"needs_transactions": True, "needs_goals": True, "needs_reminders": True, "needs_budgets": True}
 
         # Build result from primary + any strong secondary intents
-        result = {"needs_transactions": False, "needs_goals": False, "needs_reminders": False}
+        result = {"needs_transactions": False, "needs_goals": False, "needs_reminders": False, "needs_budgets": False}
         result[f"needs_{intent_result.primary_intent}"] = True
 
         # Include secondary intents that are reasonably strong (>25% of signal)
+        # Budget data is small — include it with a lower threshold (>0.10) so it's
+        # shared freely whenever there's even a weak budget signal in the query.
         for secondary_intent, secondary_confidence in intent_result.secondary_intents:
-            if secondary_confidence > 0.25 and secondary_intent in ("transactions", "goals", "reminders"):
+            budget_threshold = 0.10 if secondary_intent == "budgets" else 0.25
+            if secondary_confidence > budget_threshold and secondary_intent in ("transactions", "goals", "reminders", "budgets"):
                 result[f"needs_{secondary_intent}"] = True
                 logger.info("Also fetching secondary intent: %s (confidence %.2f)", secondary_intent, secondary_confidence)
+
+        # Always include budgets if primary intent is transactions — spending questions
+        # almost always benefit from budget context and the data is lightweight.
+        if intent_result.primary_intent == "transactions":
+            result["needs_budgets"] = True
 
         return result
 
@@ -391,6 +431,7 @@ class IntentClassifier:
             "transactions": "30 days",
             "goals": "all",
             "reminders": "all",
+            "budgets": "current month",
         }
         return duration_map.get(intent, "30 days")
 

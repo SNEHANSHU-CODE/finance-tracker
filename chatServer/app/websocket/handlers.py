@@ -41,7 +41,6 @@ class SocketEventHandlers:
                 "user_id": None,
                 "is_authenticated": False,
                 "username": None,
-                "conversation_history": [],
                 "connected_at": datetime.utcnow().isoformat(),
             }
         return self.sessions[sid]
@@ -179,6 +178,7 @@ class SocketEventHandlers:
             message = data.get("message", "").strip()
             conversation_history = data.get("conversationHistory", [])
             request_id = data.get("requestId")
+            vault_id = data.get("vault_id") or None  # RAG mode if set
             
             # Validate message
             if not message:
@@ -203,7 +203,15 @@ class SocketEventHandlers:
             
             # Get response from handler
             try:
-                if is_authenticated:
+                if is_authenticated and vault_id:
+                    # RAG mode — user asking about a specific PDF
+                    response = await MessageResponseHandler.handle_rag_message(
+                        user_id=user_id,
+                        username=username,
+                        message=message,
+                        vault_id=vault_id,
+                    )
+                elif is_authenticated:
                     response = await MessageResponseHandler.handle_authenticated_message(
                         user_id=user_id,
                         username=username,
@@ -230,21 +238,7 @@ class SocketEventHandlers:
                 
                 await self.sio.emit('bot_response', response_data, room=sid)
                 
-                # Update conversation history
-                session["conversation_history"].append({
-                    "role": "user",
-                    "content": message,
-                    "timestamp": data.get("timestamp"),
-                })
-                session["conversation_history"].append({
-                    "role": "assistant",
-                    "content": response["text"],
-                    "timestamp": response_data["timestamp"],
-                })
-                
-                # Keep only last 20 messages
-                if len(session["conversation_history"]) > 20:
-                    session["conversation_history"] = session["conversation_history"][-20:]
+                # Chat history is persisted in MongoDB by ChatMemory — no RAM storage needed
                 
             except Exception as e:
                 logger.error(f"❌ Error generating response: {e}", exc_info=True)
@@ -269,6 +263,43 @@ class SocketEventHandlers:
     # ===== UTILITY HANDLERS =====
 
     
+    async def handle_get_chat_history(self, sid: str, data: dict = None):
+        """
+        Emit last 50 messages from DB to the requesting client.
+        Frontend calls this right after authentication to restore chat on page load.
+        """
+        try:
+            session = self.get_session(sid)
+            user_id = session.get("user_id")
+
+            if not user_id or not session.get("is_authenticated"):
+                await self.sio.emit("chat_history", {
+                    "messages": [],
+                    "timestamp": datetime.utcnow().isoformat(),
+                }, room=sid)
+                return
+
+            from app.ai.orchestrator import get_orchestrator
+            from app.core.database import Database
+            db = Database.get_db()
+            orchestrator = await get_orchestrator(db)
+            messages = await orchestrator.get_chat_history(user_id)
+
+            await self.sio.emit("chat_history", {
+                "messages": messages,
+                "timestamp": datetime.utcnow().isoformat(),
+            }, room=sid)
+
+            logger.info(f"📜 Sent {len(messages)} history messages to user {user_id}")
+
+        except Exception as e:
+            logger.error(f"❌ Error fetching chat history: {e}", exc_info=True)
+            await self.sio.emit("chat_history", {
+                "messages": [],
+                "error": "Failed to load history",
+                "timestamp": datetime.utcnow().isoformat(),
+            }, room=sid)
+
     async def handle_get_suggestions(self, sid: str, data: dict):
         """Handle request for smart suggestions"""
         try:
@@ -326,18 +357,24 @@ class SocketEventHandlers:
             logger.error(f"❌ Error handling rating: {e}", exc_info=True)
     
     async def handle_clear_chat(self, sid: str, data: dict):
-        """Handle clear chat history request"""
+        """Handle clear chat history request — clears DB messages array"""
         try:
             session = self.get_session(sid)
-            session["conversation_history"] = []
-            
-            logger.info(f"🗑️ Chat cleared for {sid}")
-            
+            user_id = session.get("user_id")
+
+            if user_id:
+                from app.ai.orchestrator import get_orchestrator
+                from app.core.database import Database
+                db = Database.get_db()
+                orchestrator = await get_orchestrator(db)
+                await orchestrator.clear_chat_history(user_id)
+                logger.info(f"🗑️ Chat history cleared in DB for user {user_id}")
+
             await self.sio.emit('chat_cleared', {
                 "success": True,
                 "timestamp": datetime.utcnow().isoformat(),
             }, room=sid)
-        
+
         except Exception as e:
             logger.error(f"❌ Error clearing chat: {e}", exc_info=True)
     

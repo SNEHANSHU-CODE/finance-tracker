@@ -1,45 +1,9 @@
-import axios from "axios";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-// Create a separate axios instance for auth service
-const apiClient = axios.create({
-    baseURL: API_BASE_URL,
-    timeout: 10000,
-    withCredentials: true,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
-
-// Store reference to get current token
-let getCurrentToken = null;
-
-// Method to set token getter (called from store setup)
-export const setTokenGetter = (tokenGetter) => {
-    getCurrentToken = tokenGetter;
-};
-
-
-// Request interceptor to add auth token
-apiClient.interceptors.request.use(
-    (config) => {
-        if (getCurrentToken) {
-            const token = getCurrentToken();
-            if (token) {
-                config.headers.Authorization = `Bearer ${token}`;
-            }
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
-
+import apiClient from '../utils/axiosConfigs';
+import chatServerClient from '../utils/chatServerAxiosConfig';
 
 const transactionService = {
   // Get all transactions with filters and pagination
   async getTransactions(params = {}) {
-    console.log('Getting transactions with params:', params);
     const queryString = new URLSearchParams(params).toString();
     const response = await apiClient.get(`/transaction/?${queryString}`);
     return response.data;
@@ -78,12 +42,6 @@ const transactionService = {
   // Get dashboard statistics
   async getDashboardStats() {
     const response = await apiClient.get('/transaction/dashboard');
-    return response.data;
-  },
-
-  //Get resent transaction
-  async getRecentTransactions() {
-    const response = await apiClient.get('transaction/recent');
     return response.data;
   },
 
@@ -127,6 +85,27 @@ const transactionService = {
   async exportTransactions(params = {}) {
     const queryString = new URLSearchParams(params).toString();
     const response = await apiClient.get(`/transaction/export?${queryString}`);
+    return response.data;
+  },
+
+  // Upload file to chatServer and get extracted transactions back
+  // format: 'pdf' | 'csv' | 'excel'
+  // password: optional string for encrypted PDFs
+  async uploadFileToExtract(file, format = 'pdf', password = null) {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (password) formData.append('password', password);
+    const response = await chatServerClient.post(
+      `/api/import/${format}`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data; // { success, count, transactions, message, needs_password }
+  },
+
+  // Bulk insert transactions into mainServer
+  async bulkInsertTransactions(transactions) {
+    const response = await apiClient.post('/transaction/bulk-insert', { transactions });
     return response.data;
   },
 

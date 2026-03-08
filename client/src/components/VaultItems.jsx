@@ -6,6 +6,17 @@ import vaultService from '../services/vaultService';
 
 const MAX_SIZE = 16 * 1024 * 1024;
 
+const ACCEPTED_TYPES = {
+  'application/pdf':                                                          { label: 'PDF',  color: '#c5221f', bg: 'linear-gradient(135deg, #fce8e6 0%, #fad2cf 100%)' },
+  'text/csv':                                                                 { label: 'CSV',  color: '#137333', bg: 'linear-gradient(135deg, #e6f4ea 0%, #ceead6 100%)' },
+  'application/vnd.ms-excel':                                                 { label: 'XLS',  color: '#1a6b3c', bg: 'linear-gradient(135deg, #e6f4ea 0%, #ceead6 100%)' },
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':        { label: 'XLSX', color: '#1a6b3c', bg: 'linear-gradient(135deg, #e6f4ea 0%, #ceead6 100%)' },
+};
+
+const ACCEPT_ATTR = Object.keys(ACCEPTED_TYPES).join(',');
+
+const getFileType = (mimeType) => ACCEPTED_TYPES[mimeType] || { label: 'FILE', color: '#5f6368', bg: '#f1f3f4' };
+
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600&display=swap');
 
@@ -124,13 +135,15 @@ export default function VaultItems({ onSelect }) {
 
   const handleFile = async (file) => {
     setUploadError('');
-    if (!file || file.type !== 'application/pdf') return setUploadError('Only PDF files are supported.');
+    if (!file || !ACCEPTED_TYPES[file.type]) return setUploadError('Only PDF, CSV, and Excel (.xls, .xlsx) files are supported.');
     if (file.size > MAX_SIZE) return setUploadError('File exceeds 16 MB limit.');
     try {
       const data = await vaultService.fileToBase64(file);
+      // Strip known extensions cleanly regardless of file type
+      const name = file.name.replace(/\.(pdf|csv|xlsx|xls)$/i, '');
       await dispatch(uploadDocument({
         originalName: file.name,
-        name: file.name.replace('.pdf', ''),
+        name,
         mimeType: file.type,
         size: file.size,
         data,
@@ -173,11 +186,11 @@ export default function VaultItems({ onSelect }) {
       const binary = atob(data);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const blob = new Blob([bytes], { type: doc.mimeType || 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = doc.originalName || `${doc.name}.pdf`;
+      a.download = doc.originalName || doc.name;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -212,7 +225,7 @@ export default function VaultItems({ onSelect }) {
           <input
             ref={fileRef}
             type="file"
-            accept="application/pdf"
+            accept={ACCEPT_ATTR}
             className="d-none"
             onChange={(e) => handleFile(e.target.files[0])}
           />
@@ -231,10 +244,10 @@ export default function VaultItems({ onSelect }) {
                 <FiUploadCloud size={24} color="#4285f4" />
               </div>
               <p style={{ margin: 0, fontWeight: 500, color: '#202124', fontSize: '14px' }}>
-                Upload a PDF
+                Upload a file
               </p>
               <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#80868b' }}>
-                Drag & drop or <span style={{ color: '#4285f4' }}>browse</span> · Max 16 MB
+                PDF, CSV or Excel · Drag & drop or <span style={{ color: '#4285f4' }}>browse</span> · Max 16 MB
               </p>
             </>
           )}
@@ -262,9 +275,11 @@ export default function VaultItems({ onSelect }) {
                   className={`vault-doc-card${activeDocument?._id === doc._id ? ' active' : ''}`}
                   onClick={() => handleSelect(doc)}
                 >
-                  {/* PDF icon */}
-                  <div className="vault-doc-icon">
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#c5221f', letterSpacing: '0.5px', zIndex: 1 }}>PDF</span>
+                  {/* File type icon */}
+                  <div className="vault-doc-icon" style={{ background: getFileType(doc.mimeType).bg }}>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: getFileType(doc.mimeType).color, letterSpacing: '0.5px', zIndex: 1 }}>
+                      {getFileType(doc.mimeType).label}
+                    </span>
                   </div>
 
                   {/* Info */}

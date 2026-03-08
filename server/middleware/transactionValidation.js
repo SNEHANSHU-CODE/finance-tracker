@@ -1,4 +1,3 @@
-// middleware/transactionValidation.js
 const { body, query, param, validationResult } = require('express-validator');
 
 // Helper function to handle validation errors
@@ -291,10 +290,63 @@ const validateCategoryAnalysis = [
 ];
 
 
+// Validation for bulk insert (PDF / CSV / Excel import)
+const validateBulkInsert = [
+  body('transactions')
+    .isArray({ min: 1 })
+    .withMessage('transactions must be a non-empty array'),
+
+  body('transactions.*.description')
+    .notEmpty()
+    .withMessage('Each transaction must have a description')
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Description must be between 1 and 100 characters')
+    .trim(),
+
+  body('transactions.*.amount')
+    .notEmpty()
+    .withMessage('Each transaction must have an amount')
+    .isNumeric()
+    .withMessage('Amount must be a number')
+    .custom((value) => {
+      if (Number(value) === 0) throw new Error('Amount cannot be zero');
+      return true;
+    }),
+
+  body('transactions.*.type')
+    .notEmpty()
+    .withMessage('Each transaction must have a type')
+    .isIn(['Income', 'Expense'])
+    .withMessage('Type must be Income or Expense'),
+
+  body('transactions.*.category')
+    .notEmpty()
+    .withMessage('Each transaction must have a category')
+    .isIn([
+      'Salary', 'Freelance', 'Bonus', 'Investment', 'Other Income',
+      'Food', 'Transportation', 'Shopping', 'Entertainment', 'Utilities',
+      'Healthcare', 'Education', 'Travel', 'Insurance', 'Rent', 'Other Expense'
+    ])
+    .withMessage('Invalid category'),
+
+  body('transactions.*.date')
+    .optional()
+    .isISO8601()
+    .withMessage('Date must be a valid ISO 8601 date string'),
+
+  body('transactions.*.paymentMethod')
+    .optional()
+    .isIn(['Cash', 'Credit Card', 'Debit Card', 'Bank Transfer', 'Digital Wallet', 'Other'])
+    .withMessage('Invalid payment method'),
+
+  handleValidationErrors
+];
+
 module.exports = {
   validateTransactionCreate,
   validateTransactionUpdate,
   validateBulkDelete,
+  validateBulkInsert,
   validateRecurringSetup,
   validateTransactionQuery,
   validateMonthlySummary,

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from 'react-router-dom';
 import { usePreferences } from '../hooks/usePreferences';
+import FileImportModal from '../components/FileImportModal';
 
 import {
   FaPlus,
@@ -15,7 +16,8 @@ import {
   FaSort,
   FaSortUp,
   FaSortDown,
-  FaSpinner
+  FaSpinner,
+  FaFileImport
 } from "react-icons/fa";
 import {
   fetchTransactions,
@@ -45,6 +47,7 @@ export default function Transactions() {
 
   // Local component state
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState(null);
@@ -340,14 +343,24 @@ export default function Transactions() {
               <h4 className="mb-1">Transactions</h4>
               <p className="text-muted mb-0">Manage your income and expenses</p>
             </div>
-            <button
-              className="btn btn-primary d-flex align-items-center gap-2"
-              onClick={() => setShowAddModal(true)}
-              disabled={loading}
-            >
-              <FaPlus size={14} />
-              Add Transaction
-            </button>
+            <div className="d-flex gap-2">
+              <button
+                className="btn btn-outline-secondary d-flex align-items-center gap-2"
+                onClick={() => setShowImportModal(true)}
+                disabled={loading}
+              >
+                <FaFileImport size={14} />
+                Import
+              </button>
+              <button
+                className="btn btn-primary d-flex align-items-center gap-2"
+                onClick={() => setShowAddModal(true)}
+                disabled={loading}
+              >
+                <FaPlus size={14} />
+                Add Transaction
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -797,6 +810,10 @@ export default function Transactions() {
             </div>
           </div>
         </div>
+      )}
+      {/* PDF / CSV / Excel Import Modal */}
+      {showImportModal && (
+        <FileImportModal onClose={() => setShowImportModal(false)} />
       )}
     </div>
   );

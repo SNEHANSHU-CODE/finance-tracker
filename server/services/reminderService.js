@@ -1,5 +1,6 @@
 const Reminder = require('../models/reminderModel');
 const emailService = require('./emailService');
+const notificationService = require('./notificationService');
 const { google } = require('googleapis');
 const { getGoogleTokens, saveGoogleTokens } = require('../utils/googleTokenCache');
 const User = require('../models/userModel');
@@ -233,6 +234,11 @@ class ReminderService {
       
       try {
         await emailService.sendReminderEmail(userId.email, { title, date, description });
+
+        // Fire in-app notification after successful email send
+        notificationService.createReminderNotification(userId._id, reminder).catch(err =>
+          console.error(`[reminderService] notification error for "${title}":`, err.message)
+        );
       } catch (error) {
         console.error(`Failed to send reminder email for "${title}":`, error);
       }

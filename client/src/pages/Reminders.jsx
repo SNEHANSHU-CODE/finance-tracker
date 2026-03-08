@@ -6,6 +6,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { FaSpinner, FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 
 import { createReminder, fetchReminders, googleConnect, updateReminder, deleteReminder } from '../app/reminderSlice';
+import LoadingSpinner from '../components/LodingSpinner';
 import { usePreferences } from '../hooks/usePreferences';
 
 export default function Reminders() {
@@ -200,12 +201,7 @@ export default function Reminders() {
           </div>
         )}
 
-        {loading && (
-          <div className="text-center py-5">
-            <FaSpinner className="fa-spin" size={48} />
-            <p className="mt-3 text-muted">Loading reminders</p>
-          </div>
-        )}
+        {loading && <LoadingSpinner />}
 
         <FullCalendar
           plugins={[dayGridPlugin, interactionPlugin]}

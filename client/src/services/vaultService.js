@@ -1,24 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000, // longer for file uploads
-  withCredentials: true,
-  headers: { 'Content-Type': 'application/json' },
-});
-
-let getCurrentToken = null;
-export const setTokenGetter = (getter) => { getCurrentToken = getter; };
-
-apiClient.interceptors.request.use((config) => {
-  if (getCurrentToken) {
-    const token = getCurrentToken();
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+import apiClient from '../utils/axiosConfigs';
 
 const vaultService = {
   async getAll() {
@@ -32,7 +12,7 @@ const vaultService = {
   },
 
   async upload(payload) {
-    const res = await apiClient.post('/vault/upload', payload);
+    const res = await apiClient.post('/vault/upload', payload, { timeout: 30000 });
     return res.data;
   },
 

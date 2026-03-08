@@ -1,6 +1,8 @@
 const Transaction = require('../models/transactionModel');
-const User = require('../models/userModel'); // Fixed import name
+const User = require('../models/userModel');
 const mongoose = require('mongoose');
+const notificationService = require('./notificationService');
+const Budget = require('../models/budgetModel');
 
 class TransactionService {
   // Create a new transaction
@@ -26,6 +28,13 @@ class TransactionService {
 
       await transaction.save();
       await transaction.populate('goalId', 'name category');
+
+      // Check budget alert if this is an expense
+      if (transaction.type === 'Expense') {
+        this._checkBudgetAlert(userId, transaction).catch(err =>
+          console.error('[transactionService] budget alert error:', err.message)
+        );
+      }
 
       return {
         success: true,
@@ -391,7 +400,56 @@ async getCategoryAnalysis(userId) {
     }
   }
 
-  // Get spending trends (last 6 months)
+  // Bulk insert transactions — used by PDF / CSV / Excel import flow
+  async bulkInsertTransactions(userId, transactionsData) {
+    try {
+      const userExists = await User.findById(userId);
+      if (!userExists) throw new Error('User not found');
+
+      // Fix amount sign and stamp every doc with userId + import source
+      const docs = transactionsData.map((t) => {
+        let amount = parseFloat(t.amount);
+        if (t.type === 'Expense' && amount > 0) amount = -Math.abs(amount);
+        if (t.type === 'Income'  && amount < 0) amount =  Math.abs(amount);
+
+        return {
+          userId,
+          description:   t.description,
+          amount,
+          type:          t.type,
+          category:      t.category,
+          date:          t.date ? new Date(t.date) : new Date(),
+          paymentMethod: t.paymentMethod || 'Other',
+          notes:         t.notes || '',
+          metadata:      { source: 'import' }
+        };
+      });
+
+      // ordered:false — continues on individual doc validation errors
+      const inserted = await Transaction.insertMany(docs, { ordered: false });
+
+      return {
+        success: true,
+        message: `${inserted.length} transactions imported successfully`,
+        insertedCount: inserted.length,
+        data: inserted
+      };
+    } catch (error) {
+      // BulkWriteError with ordered:false = partial success, still usable
+      if (error.name === 'BulkWriteError' && error.insertedDocs?.length > 0) {
+        return {
+          success: true,
+          message: `${error.insertedDocs.length} transactions imported (${error.writeErrors?.length || 0} skipped)`,
+          insertedCount: error.insertedDocs.length,
+          data: error.insertedDocs
+        };
+      }
+      console.error('Error bulk inserting transactions:', error);
+      throw error;
+    }
+  }
+
+
   async getSpendingTrends(userId) {
     try {
       const currentDate = new Date();
@@ -477,6 +535,79 @@ async getCategoryAnalysis(userId) {
     } catch (error) {
       console.error('Error migrating guest data:', error);
       throw error;
+    }
+  }
+  // Check if a new expense triggers a budget alert for its category
+  async _checkBudgetAlert(userId, transaction) {
+    try {
+      const date = new Date(transaction.date);
+      const month = date.getMonth() + 1;
+      const year = date.getFullYear();
+
+      const budget = await Budget.findOne({ userId, month, year });
+      if (!budget) return;
+
+      const categoryBudget = budget.categories.find(
+        c => c.name === transaction.category
+      );
+      if (!categoryBudget || !categoryBudget.limit) return;
+
+      // Sum all expenses in this category for the month
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59);
+
+      const [result] = await Transaction.aggregate([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(userId),
+            type: 'Expense',
+            category: transaction.category,
+            date: { $gte: startDate, $lte: endDate },
+          },
+        },
+        { $group: { _id: null, total: { $sum: { $abs: '$amount' } } } },
+      ]);
+
+      if (!result) return;
+
+      const spent = result.total;
+      const percentage = Math.round((spent / categoryBudget.limit) * 100);
+
+      // Notify at 80% warning and 100% exceeded — avoid duplicate spam
+      // by checking if we already sent this alert level this month
+      if (percentage >= 100) {
+        const recentAlert = await require('../models/notificationModel').findOne({
+          userId,
+          type: 'budget_exceeded',
+          'data.category': transaction.category,
+          createdAt: { $gte: startDate },
+        });
+        if (!recentAlert) {
+          await notificationService.createBudgetAlert(userId, {
+            _id: budget._id,
+            category: transaction.category,
+            spentAmount: spent,
+            alertThreshold: 100,
+          }, percentage);
+        }
+      } else if (percentage >= 80) {
+        const recentAlert = await require('../models/notificationModel').findOne({
+          userId,
+          type: 'budget_alert',
+          'data.category': transaction.category,
+          createdAt: { $gte: startDate },
+        });
+        if (!recentAlert) {
+          await notificationService.createBudgetAlert(userId, {
+            _id: budget._id,
+            category: transaction.category,
+            spentAmount: spent,
+            alertThreshold: 80,
+          }, percentage);
+        }
+      }
+    } catch (err) {
+      console.error('[transactionService] _checkBudgetAlert failed:', err.message);
     }
   }
 }
