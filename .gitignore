@@ -30,6 +30,9 @@ dev-dist
 node_modules
 .env
 
+#chat Server
+testMonthlyReports.js
+
 #Python Server
 # Virtual Environment
 venv/

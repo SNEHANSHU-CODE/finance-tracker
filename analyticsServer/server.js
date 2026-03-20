@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const mongoose = require('mongoose');
 const { ApolloServer } = require('@apollo/server');
 const { expressMiddleware } = require('@apollo/server/express4');
 const { json } = require('body-parser');
@@ -73,6 +74,10 @@ async function startServer() {
   });
 
   await server.start();
+
+  // Monthly report cron — sends financial report PDF to all users on the 1st of each month
+const monthlyReportCron = require('./services/monthlyReportCron');
+monthlyReportCron.start();
 
   // Apply Apollo Middleware with authentication
   app.use(

@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import workerSrc from "pdfjs-dist/build/pdf.worker.min?url";
-import { FiArrowLeft, FiZoomIn, FiZoomOut, FiDownload, FiFileText } from 'react-icons/fi';
+import { FiArrowLeft, FiZoomIn, FiZoomOut, FiDownload, FiFileText, FiLock } from 'react-icons/fi';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import * as XLSX from 'xlsx';
+import apiClient from '../utils/axiosConfigs';
+import PdfPasswordInput from './PdfPasswordInput';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -90,6 +92,13 @@ const styles = `
     .viewer-doc-name { display: none !important; }
     .viewer-download-label { display: none !important; }
     .viewer-download-btn { padding: 8px 10px; }
+  }
+
+  /* overlay backdrop for password modal */
+  .vault-pw-overlay {
+    position: absolute; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center; padding: 16px;
   }
 `;
 
@@ -214,18 +223,29 @@ function SpreadsheetViewer({ document }) {
 
 // ── Main VaultViewer ──────────────────────────────────────────────────────────
 export default function VaultViewer({ document, isLoading, onBack }) {
-  const [numPages, setNumPages] = useState(null);
-  const [scale, setScale] = useState(1.0);
-  const [pdfError, setPdfError] = useState(false);
+  const [numPages, setNumPages]     = useState(null);
+  const [scale, setScale]           = useState(1.0);
+  const [pdfError, setPdfError]     = useState(false);
+
+  // Password modal state
+  const [showPwModal, setShowPwModal]       = useState(false);
+  const [pwError, setPwError]               = useState('');
+  const [pwSaving, setPwSaving]             = useState(false);
+  // The password to pass to pdfjs — either from DB or entered by user this session
+  const [activePassword, setActivePassword] = useState('');
 
   const documentId = document?._id;
   const isSpreadsheet = document?.mimeType === 'text/csv' ||
     document?.mimeType === 'application/vnd.ms-excel' ||
     document?.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
+  // Reset state when document changes
   useEffect(() => {
     setPdfError(false);
     setNumPages(null);
+    setShowPwModal(false);
+    setPwError('');
+    setActivePassword(document?.pdfPassword || '');
   }, [documentId]);
 
   const pdfSrc = useMemo(() => {
@@ -234,27 +254,65 @@ export default function VaultViewer({ document, isLoading, onBack }) {
       const binary = atob(stripBase64Prefix(document.data));
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      return { data: bytes };
+      // Pass password to pdfjs if we have one
+      return activePassword
+        ? { data: bytes, password: activePassword }
+        : { data: bytes };
     } catch (e) {
       return null;
     }
-  }, [document?.data, isSpreadsheet]);
+  }, [document?.data, isSpreadsheet, activePassword]);
 
   useEffect(() => {
-    if (pdfSrc) {
-      setPdfError(false);
-      setNumPages(null);
-    }
+    if (pdfSrc) { setPdfError(false); setNumPages(null); }
   }, [pdfSrc]);
 
   const handleLoadSuccess = useCallback(({ numPages }) => {
     setPdfError(false);
     setNumPages(numPages);
+    setShowPwModal(false);
   }, []);
 
-  const handleLoadError = useCallback(() => {
-    if (pdfSrc) setPdfError(true);
-  }, [pdfSrc]);
+  // pdfjs fires onPassword callback when it needs a password
+  const handlePasswordRequest = useCallback((updatePassword, reason) => {
+    // If we already have a stored password and this is the first request,
+    // try it silently without showing the modal
+    if (reason === 1 && activePassword) {
+      updatePassword(activePassword);
+      return;
+    }
+    // reason 2 = wrong password (stored password failed), ask user
+    if (reason === 2) setPwError('Incorrect password, please try again.');
+    else setPwError('');
+    setShowPwModal(true);
+    handlePasswordRequest._update = updatePassword;
+  }, [activePassword]);
+
+  const handleLoadError = useCallback((err) => {
+    // If pdfjs triggers onPassword it handles it separately — only set error for other failures
+    if (err?.name !== 'PasswordException') setPdfError(true);
+  }, []);
+
+  // User submits password from PdfPasswordInput component
+  const handlePasswordSubmit = async (pwd) => {
+    setPwError('');
+
+    // 1. Tell pdfjs to try it — this re-triggers load
+    setActivePassword(pwd);
+    if (handlePasswordRequest._update) {
+      handlePasswordRequest._update(pwd);
+    }
+
+    // 2. Save to backend silently so cron can embed it
+    setPwSaving(true);
+    try {
+      await apiClient.put(`/vault/${documentId}/unlock`, { password: pwd });
+    } catch (e) {
+      console.warn('Failed to save PDF password to server:', e.message);
+    } finally {
+      setPwSaving(false);
+    }
+  };
 
   const handleDownload = () => {
     if (!document?.data) return;
@@ -278,9 +336,7 @@ export default function VaultViewer({ document, isLoading, onBack }) {
         <style>{styles}</style>
         {isLoading && (
           <div className="viewer-toolbar">
-            <button className="viewer-back-btn" onClick={onBack} title="Back to files">
-              <FiArrowLeft size={20} />
-            </button>
+            <button className="viewer-back-btn" onClick={onBack}><FiArrowLeft size={20} /></button>
           </div>
         )}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: isLoading ? '#525659' : '#f8f9fa', height: isLoading ? 'auto' : '100%' }}>
@@ -303,43 +359,44 @@ export default function VaultViewer({ document, isLoading, onBack }) {
   return (
     <>
       <style>{styles}</style>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
 
         <div className="viewer-toolbar">
-          <button className="viewer-back-btn" onClick={onBack} title="Back">
-            <FiArrowLeft size={20} />
-          </button>
+          <button className="viewer-back-btn" onClick={onBack}><FiArrowLeft size={20} /></button>
           <span className="viewer-doc-name" style={{ flex: 1, fontSize: '15px', fontWeight: 500, color: '#202124', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {document.name}
           </span>
-
-          {/* Page count — PDF only */}
-          {!isSpreadsheet && numPages && (
-            <span style={{ fontSize: '12px', color: '#80868b', flexShrink: 0 }}>
-              {numPages} {numPages === 1 ? 'page' : 'pages'}
-            </span>
+          {document.passwordProtected && (
+            <FiLock size={14} color="#80868b" title="Password protected" style={{ flexShrink: 0 }} />
           )}
-
-          {/* Zoom controls — PDF only */}
+          {!isSpreadsheet && numPages && (
+            <span style={{ fontSize: '12px', color: '#80868b', flexShrink: 0 }}>{numPages} {numPages === 1 ? 'page' : 'pages'}</span>
+          )}
           {!isSpreadsheet && (
             <div className="viewer-pill">
-              <button className="viewer-ctrl-btn" onClick={() => setScale(s => Math.max(0.5, +(s - 0.25).toFixed(2)))} title="Zoom out">
-                <FiZoomOut size={15} />
-              </button>
-              <span style={{ fontSize: '12px', fontWeight: 500, color: '#202124', minWidth: '36px', textAlign: 'center' }}>
-                {Math.round(scale * 100)}%
-              </span>
-              <button className="viewer-ctrl-btn" onClick={() => setScale(s => Math.min(2.5, +(s + 0.25).toFixed(2)))} title="Zoom in">
-                <FiZoomIn size={15} />
-              </button>
+              <button className="viewer-ctrl-btn" onClick={() => setScale(s => Math.max(0.5, +(s - 0.25).toFixed(2)))}><FiZoomOut size={15} /></button>
+              <span style={{ fontSize: '12px', fontWeight: 500, color: '#202124', minWidth: '36px', textAlign: 'center' }}>{Math.round(scale * 100)}%</span>
+              <button className="viewer-ctrl-btn" onClick={() => setScale(s => Math.min(2.5, +(s + 0.25).toFixed(2)))}><FiZoomIn size={15} /></button>
             </div>
           )}
-
           <button className="viewer-download-btn" onClick={handleDownload}>
-            <FiDownload size={15} />
-            <span className="viewer-download-label">Download</span>
+            <FiDownload size={15} /><span className="viewer-download-label">Download</span>
           </button>
         </div>
+
+        {/* ── Password modal overlay ── */}
+        {showPwModal && (
+          <div className="vault-pw-overlay">
+            <PdfPasswordInput
+              onSubmit={handlePasswordSubmit}
+              onCancel={onBack}
+              error={pwError}
+              loading={pwSaving}
+              fileName={document?.name}
+              cancelLabel="Close"
+            />
+          </div>
+        )}
 
         {/* ── Spreadsheet view ── */}
         {isSpreadsheet && <SpreadsheetViewer document={document} />}
@@ -356,6 +413,7 @@ export default function VaultViewer({ document, isLoading, onBack }) {
                 file={pdfSrc}
                 onLoadSuccess={handleLoadSuccess}
                 onLoadError={handleLoadError}
+                onPassword={handlePasswordRequest}
                 loading={<PDFLoadingSpinner />}
                 error={null}
               >

@@ -119,6 +119,68 @@ class ChatMemory:
             logger.error("ChatMemory.get_conversation_history failed: %s", e)
             return []
 
+    async def get_finance_history(self) -> List[BaseMessage]:
+        """
+        Return last N finance-only messages (isRag=False) for LLM context.
+        Called by process_authenticated_query() so RAG exchanges never
+        pollute the finance chat context window.
+        """
+        try:
+            col = Database.chat_history_collection()
+            # Fetch a larger slice so we still have LLM_CONTEXT_WINDOW
+            # finance messages after filtering out RAG ones.
+            doc = await col.find_one(
+                {"userId": self.user_id},
+                {"messages": {"$slice": -(LLM_CONTEXT_WINDOW * 3)}},
+            )
+            if not doc or not doc.get("messages"):
+                return []
+
+            finance_msgs = [m for m in doc["messages"] if not m.get("isRag", False)]
+            history: List[BaseMessage] = []
+            for m in finance_msgs[-LLM_CONTEXT_WINDOW:]:
+                if m["role"] == "human":
+                    history.append(HumanMessage(content=m["content"]))
+                else:
+                    history.append(AIMessage(content=m["content"]))
+            return history
+
+        except Exception as e:
+            logger.error("ChatMemory.get_finance_history failed: %s", e)
+            return []
+
+    async def get_rag_history(self, document_name: str, limit: int = 4) -> List[BaseMessage]:
+        """
+        Return last N RAG messages scoped to a specific document.
+        Called by process_rag_query() so finance exchanges never
+        pollute the document Q&A context window.
+
+        limit=4 covers 2 full exchanges — enough for pronoun follow-ups
+        (explain that, is that fixed or variable?) without adding noise.
+        """
+        try:
+            col = Database.chat_history_collection()
+            doc = await col.find_one({"userId": self.user_id})
+            if not doc or not doc.get("messages"):
+                return []
+
+            rag_msgs = [
+                m for m in doc["messages"]
+                if m.get("isRag") and m.get("documentName") == document_name
+            ]
+
+            history: List[BaseMessage] = []
+            for m in rag_msgs[-limit:]:
+                if m["role"] == "human":
+                    history.append(HumanMessage(content=m["content"]))
+                else:
+                    history.append(AIMessage(content=m["content"]))
+            return history
+
+        except Exception as e:
+            logger.error("ChatMemory.get_rag_history failed: %s", e)
+            return []
+
     async def get_recent_for_display(self, limit: int = DISPLAY_HISTORY_LIMIT) -> List[Dict[str, Any]]:
         """
         Return last N messages as plain dicts for frontend display.

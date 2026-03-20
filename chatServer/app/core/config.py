@@ -50,6 +50,8 @@ class Settings(BaseSettings):
 
     NOTIFICATION_POLL_SECONDS: int = 30
 
+    OCR_SPACE_API_KEY: str = "key"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

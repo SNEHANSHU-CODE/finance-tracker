@@ -372,10 +372,12 @@ Response Structure:
             # Step 3: Build system prompt with real data
             system_prompt = self._build_system_prompt(context, intent)
 
-            # Step 4: Get conversation memory
+            # Step 4: Load history FIRST — before saving current query.
+            # BUG FIX: previously query was saved before get_conversation_history(),
+            # causing the current query to appear TWICE in LLM messages:
+            # once inside *history and once as the final HumanMessage(query).
             memory = self.get_user_memory(user_id)
-            await memory.add_message(query, message_type="human")
-            history = await memory.get_conversation_history()
+            history = await memory.get_finance_history()
 
             # Step 5: Choose LLM
             if provider is None:
@@ -419,10 +421,12 @@ Response Structure:
                 else:
                     raise Exception(f"Gemini failed (ultimate fallback): {invoke_error}")
 
-            # Step 7: Extract and persist response
+            # Step 7: Extract response then persist BOTH messages in order.
+            # Saving AFTER the LLM call means no orphaned human message if LLM fails.
             response_text = (
                 response.content if hasattr(response, "content") else str(response)
             )
+            await memory.add_message(query, message_type="human")
             await memory.add_message(response_text, message_type="ai", metadata={"provider": provider})
 
             logger.info(f"✅ Response generated for authenticated user {user_id}")
@@ -492,10 +496,11 @@ Response Structure:
                 )
                 return await self.process_authenticated_query(user_id, query, provider)
 
-            # Step 3: Get conversation memory (shared with normal chat)
+            # Step 3: Load history FIRST — same fix as authenticated pipeline.
+            # BUG FIX: query was saved before get_conversation_history(),
+            # causing the current query to appear twice in the prompt.
             memory = self.get_user_memory(user_id)
-            await memory.add_message(query, message_type="human")
-            history = await memory.get_conversation_history()
+            history = await memory.get_rag_history(document_name)
 
             # Step 4: Build RAG prompt
             prompt_vars = RAGPromptBuilder.build(
@@ -523,6 +528,8 @@ Response Structure:
             response_text = (
                 response.content if hasattr(response, "content") else str(response)
             )
+            # Save both messages after successful LLM call (same fix as auth pipeline)
+            await memory.add_message(query, message_type="human")
             await memory.add_message(response_text, message_type="ai", metadata={"provider": provider, "is_rag": True})
 
             logger.info("✅ RAG response generated for user %s", user_id)

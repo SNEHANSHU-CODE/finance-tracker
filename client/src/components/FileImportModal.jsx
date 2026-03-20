@@ -27,8 +27,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   FaFilePdf, FaFileCsv, FaFileExcel,
   FaTimes, FaEdit, FaTrash, FaCheck, FaSpinner,
-  FaUpload, FaFileAlt, FaLock, FaEye, FaEyeSlash,
+  FaUpload, FaFileAlt, FaLock,
 } from 'react-icons/fa';
+import PdfPasswordInput from './PdfPasswordInput';
 import {
   extractTransactionsFromPDF,
   extractTransactionsFromCSV,
@@ -163,7 +164,6 @@ export default function FileImportModal({ onClose }) {
   const userId = useSelector(s => s.auth.user?.userId);
 
   const fileInputRef              = useRef(null);
-  const passwordInputRef          = useRef(null);
   const [step,        setStep]    = useState(STEP.UPLOAD);
   const [error,       setError]   = useState('');
   const [rows,        setRows]    = useState([]);
@@ -172,8 +172,6 @@ export default function FileImportModal({ onClose }) {
   const [fileInfo,    setFileInfo]= useState(null);
   const [fileObj,     setFileObj] = useState(null);   // kept for password retry
   const [dragging,    setDragging]= useState(false);
-  const [password,    setPassword]= useState('');
-  const [showPwd,     setShowPwd] = useState(false);
   const [pwdWrong,    setPwdWrong]= useState(false);  // shows "incorrect" hint
 
   // ── Core extract helper (used on first attempt and password retry) ──────────
@@ -187,10 +185,8 @@ export default function FileImportModal({ onClose }) {
 
       // Backend signals a locked PDF
       if (result.needs_password) {
-        setPwdWrong(!!pwd);        // if we sent a password and still got this, it was wrong
-        setPassword('');
+        setPwdWrong(!!pwd);
         setStep(STEP.PASSWORD);
-        setTimeout(() => passwordInputRef.current?.focus(), 100);
         return;
       }
 
@@ -215,7 +211,6 @@ export default function FileImportModal({ onClose }) {
     setFileInfo({ name: file.name, type: ft });
     setFileObj(file);
     setPwdWrong(false);
-    setPassword('');
     runExtract(file, ft, null);
   };
 
@@ -232,10 +227,7 @@ export default function FileImportModal({ onClose }) {
     if (f) processFile(f);
   };
 
-  // ── Password submit ────────────────────────────────────────────────────────
-  const handlePasswordSubmit = () => {
-    const pwd = password.trim();
-    if (!pwd) return;
+  const handlePasswordSubmit = (pwd) => {
     runExtract(fileObj, fileInfo.type, pwd);
   };
 
@@ -274,6 +266,7 @@ export default function FileImportModal({ onClose }) {
         }));
       }
       setStep(STEP.DONE);
+      setTimeout(() => onClose(), 1000);
     } catch (err) {
       setError(typeof err === 'string' ? err : 'Failed to save transactions.');
       setStep(STEP.REVIEW);
@@ -290,66 +283,7 @@ export default function FileImportModal({ onClose }) {
   const resetToUpload = () => {
     setStep(STEP.UPLOAD); setRows([]); setError('');
     setFileInfo(null); setFileObj(null);
-    setPassword(''); setPwdWrong(false);
-  };
-
-  // Inline edit row
-  const EditRow = () => {
-    const validCats = editData.type === 'Income' ? CATEGORIES_INCOME : CATEGORIES_EXPENSE;
-    return (
-      <tr style={{ background: '#fffef2' }}>
-        <td style={{ minWidth: 130 }}>
-          <input type="date" className="form-control form-control-sm"
-            value={editData.date || ''}
-            onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} />
-        </td>
-        <td style={{ minWidth: 155 }}>
-          <input type="text" className="form-control form-control-sm"
-            placeholder="Title *" maxLength={100}
-            value={editData.title || ''}
-            onChange={e => setEditData(d => ({ ...d, title: e.target.value }))} />
-        </td>
-        <td style={{ minWidth: 105 }}>
-          <input type="number" step="0.01" min="0.01" className="form-control form-control-sm"
-            value={editData.amount || ''}
-            onChange={e => setEditData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} />
-        </td>
-        <td style={{ minWidth: 100 }}>
-          <select className="form-select form-select-sm"
-            value={editData.type || 'Expense'}
-            onChange={e => setEditData(d => ({
-              ...d, type: e.target.value,
-              category: e.target.value === 'Income' ? 'Other Income' : 'Other Expense',
-            }))}>
-            <option value="Income">Income</option>
-            <option value="Expense">Expense</option>
-          </select>
-        </td>
-        <td style={{ minWidth: 148 }}>
-          <select className="form-select form-select-sm"
-            value={editData.category || validCats[0]}
-            onChange={e => setEditData(d => ({ ...d, category: e.target.value }))}>
-            {validCats.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </td>
-        <td style={{ minWidth: 148 }}>
-          <input type="text" className="form-control form-control-sm"
-            placeholder="Optional" maxLength={200}
-            value={editData.notes || ''}
-            onChange={e => setEditData(d => ({ ...d, notes: e.target.value }))} />
-        </td>
-        <td>
-          <div className="d-flex gap-1">
-            <button className="btn btn-sm btn-success" onClick={saveEdit} title="Save">
-              <FaCheck size={11} />
-            </button>
-            <button className="btn btn-sm btn-secondary" onClick={cancelEdit} title="Cancel">
-              <FaTimes size={11} />
-            </button>
-          </div>
-        </td>
-      </tr>
-    );
+    setPwdWrong(false);
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -361,7 +295,7 @@ export default function FileImportModal({ onClose }) {
     >
       <div
         className="modal-dialog modal-dialog-scrollable"
-        style={{ maxWidth: 860, width: '95vw', margin: '5.4rem auto 1.5rem' }}
+        style={{ maxWidth: 968, width: '95vw', margin: '5.4rem auto 1.5rem' }}
       >
         <div className="modal-content shadow">
 
@@ -454,93 +388,15 @@ export default function FileImportModal({ onClose }) {
 
             {/* ── PASSWORD ── */}
             {step === STEP.PASSWORD && (
-              <div className="d-flex flex-column align-items-center py-3">
-
-                {/* Lock icon */}
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center mb-3"
-                  style={{ width: 56, height: 56, background: '#fff8e1', border: '2px solid #ffe082' }}
-                >
-                  <FaLock style={{ color: '#f59e0b' }} size={22} />
-                </div>
-
-                <h6 className="fw-semibold mb-1" style={{ fontSize: '0.95rem' }}>
-                  PDF is password protected
-                </h6>
-                <p className="text-muted small mb-4 text-center" style={{ maxWidth: 340 }}>
-                  <span
-                    className="badge bg-light text-dark border me-1"
-                    style={{ fontSize: '0.72rem', fontWeight: 400 }}
-                  >
-                    <FaFilePdf size={9} style={{ color: '#e74c3c', marginRight: 3 }} />
-                    {fileInfo?.name}
-                  </span>
-                  requires a password to open.
-                </p>
-
-                {/* Wrong password alert */}
-                {pwdWrong && (
-                  <div
-                    className="d-flex align-items-center gap-2 rounded-3 px-3 py-2 mb-3 small"
-                    style={{
-                      background: '#fff3cd', border: '1px solid #ffc107',
-                      color: '#856404', width: '100%', maxWidth: 380,
-                    }}
-                  >
-                    <FaLock size={11} />
-                    Incorrect password — please try again.
-                  </div>
-                )}
-
-                {/* Password input — dummy hidden inputs prevent Chrome save-password dialog */}
-                <div
-                  className="rounded-3 p-3"
-                  style={{
-                    width: '100%', maxWidth: 380,
-                    background: '#f8f9fa', border: '1px solid #e9ecef',
-                  }}
-                >
-                  <label className="form-label small fw-semibold mb-2" style={{ color: '#495057' }}>
-                    Enter PDF Password
-                  </label>
-
-                  {/* aria-hidden decoys: Chrome needs BOTH a text + password decoy to stay quiet */}
-                  <div aria-hidden="true" style={{ position: 'absolute', opacity: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-                    <input type="text" name="prevent_autofill" tabIndex={-1} readOnly />
-                    <input type="password" name="prevent_autofill_pwd" tabIndex={-1} readOnly />
-                  </div>
-
-                  <div className="input-group">
-                    <input
-                      ref={passwordInputRef}
-                      type={showPwd ? 'text' : 'password'}
-                      className={`form-control${pwdWrong ? ' border-warning' : ''}`}
-                      placeholder="Enter password"
-                      value={password}
-                      name="pdf_document_password"
-                      autoComplete="new-password"
-                      autoCorrect="off"
-                      autoCapitalize="off"
-                      spellCheck={false}
-                      onChange={e => setPassword(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handlePasswordSubmit()}
-                    />
-                    <button
-                      className="btn btn-outline-secondary"
-                      type="button"
-                      tabIndex={-1}
-                      onClick={() => setShowPwd(v => !v)}
-                      title={showPwd ? 'Hide' : 'Show'}
-                    >
-                      {showPwd ? <FaEyeSlash size={13} /> : <FaEye size={13} />}
-                    </button>
-                  </div>
-
-                  <p className="text-muted mt-2 mb-0" style={{ fontSize: '0.73rem', lineHeight: 1.5 }}>
-                    Bank PDFs are commonly protected with your mobile number's last 4 digits,
-                    date of birth (DDMMYYYY), or account number.
-                  </p>
-                </div>
+              <div className="d-flex justify-content-center py-3">
+                <PdfPasswordInput
+                  onSubmit={handlePasswordSubmit}
+                  onCancel={resetToUpload}
+                  error={pwdWrong ? 'Incorrect password — please try again.' : ''}
+                  fileName={fileInfo?.name}
+                  submitLabel="Unlock & Import"
+                  cancelLabel="Back"
+                />
               </div>
             )}
 
@@ -590,19 +446,75 @@ export default function FileImportModal({ onClose }) {
                       style={{ fontSize: '0.82rem' }}>
                       <thead className="table-light sticky-top">
                         <tr>
-                          <th style={{ minWidth: 100 }}>Date</th>
-                          <th style={{ minWidth: 155 }}>Title</th>
-                          <th style={{ minWidth: 90  }}>Amount</th>
-                          <th style={{ minWidth: 88  }}>Type</th>
-                          <th style={{ minWidth: 132 }}>Category</th>
-                          <th style={{ minWidth: 140 }}>Description</th>
-                          <th style={{ minWidth: 70  }}>Actions</th>
+                          <th style={{ minWidth: 120 }}>Date</th>
+                          <th style={{ minWidth: 180 }}>Title</th>
+                          <th style={{ minWidth: 110 }}>Amount</th>
+                          <th style={{ minWidth: 100 }}>Type</th>
+                          <th style={{ minWidth: 155 }}>Category</th>
+                          <th style={{ minWidth: 160 }}>Description</th>
+                          <th style={{ minWidth: 80  }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {rows.map((row, idx) =>
                           editIdx === idx
-                            ? <EditRow key={row._localId} />
+                            ? (
+                              <tr key={row._localId} style={{ background: '#fffef2' }}>
+                                <td style={{ minWidth: 120 }}>
+                                  <input type="date" className="form-control form-control-sm"
+                                    value={editData.date || ''}
+                                    onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} />
+                                </td>
+                                <td style={{ minWidth: 180 }}>
+                                  <input type="text" className="form-control form-control-sm"
+                                    placeholder="Title *" maxLength={100}
+                                    value={editData.title || ''}
+                                    onChange={e => setEditData(d => ({ ...d, title: e.target.value }))} />
+                                </td>
+                                <td style={{ minWidth: 110 }}>
+                                  <input type="text" inputMode="decimal" className="form-control form-control-sm"
+                                    value={editData.amount ?? ''}
+                                    onChange={e => setEditData(d => ({ ...d, amount: e.target.value }))}
+                                    onBlur={e => setEditData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} />
+                                </td>
+                                <td style={{ minWidth: 100 }}>
+                                  <select className="form-select form-select-sm"
+                                    value={editData.type || 'Expense'}
+                                    onChange={e => setEditData(d => ({
+                                      ...d, type: e.target.value,
+                                      category: e.target.value === 'Income' ? 'Other Income' : 'Other Expense',
+                                    }))}>
+                                    <option value="Income">Income</option>
+                                    <option value="Expense">Expense</option>
+                                  </select>
+                                </td>
+                                <td style={{ minWidth: 155 }}>
+                                  <select className="form-select form-select-sm"
+                                    value={editData.category || (editData.type === 'Income' ? CATEGORIES_INCOME[0] : CATEGORIES_EXPENSE[0])}
+                                    onChange={e => setEditData(d => ({ ...d, category: e.target.value }))}>
+                                    {(editData.type === 'Income' ? CATEGORIES_INCOME : CATEGORIES_EXPENSE).map(c =>
+                                      <option key={c} value={c}>{c}</option>
+                                    )}
+                                  </select>
+                                </td>
+                                <td style={{ minWidth: 160 }}>
+                                  <input type="text" className="form-control form-control-sm"
+                                    placeholder="Optional" maxLength={200}
+                                    value={editData.notes || ''}
+                                    onChange={e => setEditData(d => ({ ...d, notes: e.target.value }))} />
+                                </td>
+                                <td>
+                                  <div className="d-flex gap-1">
+                                    <button className="btn btn-sm btn-success" onClick={saveEdit} title="Save">
+                                      <FaCheck size={11} />
+                                    </button>
+                                    <button className="btn btn-sm btn-secondary" onClick={cancelEdit} title="Cancel">
+                                      <FaTimes size={11} />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
                             : (
                               <tr key={row._localId}>
                                 <td className="text-muted">{row.date}</td>
@@ -685,22 +597,6 @@ export default function FileImportModal({ onClose }) {
           {/* Footer */}
           <div className="modal-footer py-2">
 
-            {step === STEP.PASSWORD && (
-              <>
-                <button className="btn btn-secondary btn-sm" onClick={resetToUpload}>
-                  ← Back
-                </button>
-                <button
-                  className="btn btn-primary btn-sm px-4"
-                  onClick={handlePasswordSubmit}
-                  disabled={!password.trim()}
-                >
-                  <FaLock size={11} style={{ marginRight: 6 }} />
-                  Unlock &amp; Import
-                </button>
-              </>
-            )}
-
             {step === STEP.REVIEW && (
               <>
                 <button className="btn btn-secondary btn-sm"
@@ -714,12 +610,6 @@ export default function FileImportModal({ onClose }) {
                   Import {rows.length} Transaction{rows.length !== 1 ? 's' : ''}
                 </button>
               </>
-            )}
-
-            {step === STEP.DONE && (
-              <button className="btn btn-success btn-sm px-4" onClick={onClose}>
-                Done
-              </button>
             )}
 
             {(step === STEP.UPLOAD || step === STEP.EXTRACTING) && (

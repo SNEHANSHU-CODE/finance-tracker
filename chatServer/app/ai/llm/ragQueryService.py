@@ -12,6 +12,7 @@ from app.core.database import Database
 from app.core.config import settings
 from app.ai.llm.embeddingService import EmbeddingService
 from app.models.embeddingModel import EmbeddingSearchResult
+from app.utils.piiMasker import PIIMasker
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +43,15 @@ class RAGQueryService:
             top_score is 0.0 if nothing found.
         """
         try:
-            # 1. Embed the query
-            query_vector = await EmbeddingService.embed_query(query)
+            # 1. Mask PII in query before embedding
+            masked_query, query_findings = PIIMasker.mask_with_report(query)
+            if query_findings:
+                logger.info(
+                    "🔒 PII masked in query — %s",
+                    ", ".join(f"{f.pii_type}×{f.count}" for f in query_findings),
+                )
+            # 1. Embed the masked query
+            query_vector = await EmbeddingService.embed_query(masked_query)
 
             # 2. Vector search in Atlas
             results = await cls._vector_search(
@@ -59,8 +67,14 @@ class RAGQueryService:
                 )
                 return "", "Unknown Document", 0.0
 
-            # 3. Format into context string
+            # 3. Format into context string and mask any residual PII
             context_str = cls._format_context(results)
+            context_str, ctx_findings = PIIMasker.mask_with_report(context_str)
+            if ctx_findings:
+                logger.info(
+                    "🔒 PII masked in retrieved context — %s",
+                    ", ".join(f"{f.pii_type}×{f.count}" for f in ctx_findings),
+                )
             document_name = results[0].source
             top_score = results[0].score  # already sorted by relevance from Atlas
 

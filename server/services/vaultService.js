@@ -31,6 +31,19 @@ class VaultService {
     return { success: true, data: doc };
   }
 
+  async saveDocumentPassword(documentId, userId, password) {
+    const doc = await Vault.findOne({ _id: documentId, userId });
+    if (!doc) throw new Error('Document not found');
+
+    doc.pdfPassword = password;
+    doc.passwordProtected = true;
+    // Reset so cron picks it up again now that we have the password
+    doc.isProcessedForRAG = false;
+    await doc.save();
+
+    return { success: true, message: 'Password saved — document will be processed shortly' };
+  }
+
   _sanitize(doc) {
     const obj = doc.toObject();
     delete obj.data;

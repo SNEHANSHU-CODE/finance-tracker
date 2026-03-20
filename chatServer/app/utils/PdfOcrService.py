@@ -36,6 +36,7 @@ from enum import Enum
 from typing import Optional
 
 import requests
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -98,15 +99,15 @@ class OCRConfig:
     All tunable parameters for the OCR service.
     Sensible defaults are pre-set for bank statement extraction.
     """
-    api_key:              str            = field(default_factory=lambda: os.environ.get("OCR_SPACE_API_KEY", ""))
-    api_url:              str            = "https://api.ocr.space/parse/document"
+    api_key:              str            = field(default_factory=lambda: settings.OCR_SPACE_API_KEY)
+    api_url:              str            = "https://api.ocr.space/parse/image"
     language:             OCRLanguage    = OCRLanguage.ENGLISH
-    engine:               OCREngine      = OCREngine.ENGINE_3
+    engine:               OCREngine      = OCREngine.ENGINE_2  # ENGINE_3 returns empty on free tier
     is_table:             bool           = True    # optimise for tabular bank data
     scale:                bool           = True    # auto-scale small images
     detect_orientation:   bool           = True    # handle rotated scans
     is_create_searchable_pdf: bool       = False   # we only need text
-    timeout_seconds:      int            = 60      # ocr.space can be slow on large PDFs
+    timeout_seconds:      int            = 120      # ocr.space can be slow on large PDFs
     max_retries:          int            = 3
     retry_backoff_seconds: float         = 2.0     # exponential base
 

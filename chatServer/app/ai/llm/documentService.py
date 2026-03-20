@@ -19,6 +19,7 @@ import openpyxl  # XLSX
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.core.config import settings
+from app.utils.piiMasker import PIIMasker
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,7 @@ class DocumentService:
         base64_data: str,
         original_name: str,
         mime_type: str = MIME_PDF,
+        password: str = "",
     ) -> List[TextChunk]:
         """
         Main entry point — replaces PDFService.process_vault_document().
@@ -92,7 +94,7 @@ class DocumentService:
             raw_bytes = cls._decode_base64(base64_data)
 
             if mime_type == MIME_PDF:
-                pages = cls._extract_pdf(raw_bytes, original_name)
+                pages = cls._extract_pdf(raw_bytes, original_name, password=password)
             elif mime_type == MIME_CSV:
                 pages = cls._extract_csv(raw_bytes, original_name)
             elif mime_type == MIME_XLSX:
@@ -128,7 +130,7 @@ class DocumentService:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _extract_pdf(pdf_bytes: bytes, source: str) -> List[dict]:
+    def _extract_pdf(pdf_bytes: bytes, source: str, password: str = "") -> List[dict]:
         """
         Extract text per page from a PDF.
 
@@ -150,6 +152,17 @@ class DocumentService:
             doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         except Exception as e:
             raise RuntimeError(f"pymupdf failed to open '{source}': {e}") from e
+
+        # Check if PDF is encrypted and we have no password
+        if doc.needs_pass:
+            if password:
+                authenticated = doc.authenticate(password)
+                if not authenticated:
+                    doc.close()
+                    raise ValueError("PDF_WRONG_PASSWORD")
+            else:
+                doc.close()
+                raise ValueError("PDF_PASSWORD_PROTECTED")
 
         try:
             for page_num in range(len(doc)):
@@ -298,12 +311,22 @@ class DocumentService:
         """
         Chunk each page/section and preserve page_number mapping.
         Uses langchain RecursiveCharacterTextSplitter.
+        PII is masked before chunking so no sensitive data is embedded.
         """
         chunks: List[TextChunk] = []
         chunk_index = 0
 
         for page in pages:
-            page_chunks = cls._splitter.split_text(page["text"])
+            # Mask PII before splitting — keeps placeholders intact across chunks
+            masked_text, findings = PIIMasker.mask_with_report(page["text"])
+            if findings:
+                logger.info(
+                    "🔒 PII masked in '%s' page %s — %s",
+                    source,
+                    page.get("page_number", "N/A"),
+                    ", ".join(f"{f.pii_type}×{f.count}" for f in findings),
+                )
+            page_chunks = cls._splitter.split_text(masked_text)
             for raw_chunk in page_chunks:
                 cleaned = raw_chunk.strip()
                 if not cleaned:

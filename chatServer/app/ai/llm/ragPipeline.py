@@ -17,6 +17,7 @@ from app.services.embeddingService import embedding_storage
 from app.ai.llm.documentService import DocumentService
 from app.ai.llm.embeddingService import EmbeddingService
 from app.models.embeddingModel import EmbeddingInsert
+from app.utils.piiMasker import PIIMasker
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ class RAGPipeline:
                     base64_data=vault.data,
                     original_name=vault.originalName,
                     mime_type=vault.mimeType,
+                    password=vault.pdfPassword or "",
                 )
                 if not chunks:
                     logger.warning("No text extracted from '%s' — marking processed anyway", vault.originalName)
@@ -48,6 +50,28 @@ class RAGPipeline:
                     return True
                 logger.info("✓ Extracted %d chunks from '%s'", len(chunks), vault.originalName)
             except ValueError as e:
+                error_msg = str(e)
+
+                if error_msg == "PDF_PASSWORD_PROTECTED":
+                    # No password stored yet — flag it and wait for user to unlock in viewer
+                    logger.warning("'%s' is password protected — flagging and skipping until password provided", vault.originalName)
+                    vault_col = Database.vault_collection()
+                    await vault_col.update_one(
+                        {"_id": ObjectId(vault_id)},
+                        {"$set": {"passwordProtected": True}}
+                    )
+                    return False  # don't mark processed — cron retries when password arrives
+
+                if error_msg == "PDF_WRONG_PASSWORD":
+                    # Stored password is wrong — clear it so user is asked again
+                    logger.warning("Wrong password for '%s' — clearing stored password", vault.originalName)
+                    vault_col = Database.vault_collection()
+                    await vault_col.update_one(
+                        {"_id": ObjectId(vault_id)},
+                        {"$set": {"pdfPassword": ""}}
+                    )
+                    return False
+
                 logger.error("Extraction failed (non-retryable): %s", e)
                 await vault_service.mark_as_processed(vault_id)
                 return False
@@ -55,7 +79,11 @@ class RAGPipeline:
                 logger.error("Extraction failed (retryable): %s", e)
                 return False
 
-            chunk_texts = [chunk.text for chunk in chunks]
+            # Mask PII in all chunks before embedding and storing
+            chunk_texts = PIIMasker.mask_chunks([chunk.text for chunk in chunks])
+            # Also update chunk objects so stored text matches embedded text
+            for chunk, masked_text in zip(chunks, chunk_texts):
+                chunk.text = masked_text
             try:
                 embeddings = await EmbeddingService.embed_chunks(chunk_texts)
                 if len(embeddings) != len(chunks):

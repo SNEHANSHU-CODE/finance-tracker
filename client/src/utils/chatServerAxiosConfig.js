@@ -16,7 +16,7 @@ const CHAT_SERVER_URL = import.meta.env.VITE_SOCKET_SERVER_URL || 'http://localh
 // Separate axios instance pointing at the Python chatServer
 const chatServerClient = axios.create({
     baseURL: CHAT_SERVER_URL,
-    timeout: 30000,         // longer timeout — PDF extraction can take a few seconds
+    timeout: 90000,         // longer timeout — PDF extraction can take a few seconds
     withCredentials: false, // chatServer doesn't use httpOnly cookies
     headers: {
         'Content-Type': 'application/json',

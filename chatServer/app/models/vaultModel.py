@@ -42,6 +42,11 @@ class VaultModel(BaseModel):
     # RAG pipeline flag — Python sets this True after embedding
     isProcessedForRAG: bool = False
 
+    # Password-protected PDF — cron sets passwordProtected=True when it can't parse
+    # Node server stores pdfPassword after user unlocks in the viewer
+    passwordProtected: bool = False
+    pdfPassword: str = ""
+
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
 

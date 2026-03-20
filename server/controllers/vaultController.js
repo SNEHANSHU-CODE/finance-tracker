@@ -60,6 +60,21 @@ class VaultController {
       res.status(400).json({ success: false, message: err.message });
     }
   }
+
+  // Called after user successfully opens a password-protected PDF in the viewer.
+  // Stores the password so the RAG cron can decrypt and embed the document.
+  async unlockDocument(req, res) {
+    try {
+      const { password } = req.body;
+      if (!password || typeof password !== 'string' || !password.trim()) {
+        return res.status(400).json({ success: false, message: 'Password is required' });
+      }
+      const result = await vaultService.saveDocumentPassword(req.params.id, req.userId, password.trim());
+      res.status(200).json(result);
+    } catch (err) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  }
 }
 
 module.exports = new VaultController();

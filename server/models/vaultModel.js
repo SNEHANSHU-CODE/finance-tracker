@@ -22,6 +22,12 @@ const vaultSchema = new mongoose.Schema(
 
     // Reserved for RAG pipeline (handled by Python server)
     isProcessedForRAG: { type: Boolean, default: false },
+
+    // Password-protected PDF handling
+    // cron sets passwordProtected=true when it fails to parse due to encryption
+    // user supplies password via unlock endpoint; cron uses it and clears it after embedding
+    passwordProtected: { type: Boolean, default: false },
+    pdfPassword:       { type: String,  default: '' },
   },
   { timestamps: true }
 );

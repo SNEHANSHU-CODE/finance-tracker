@@ -19,7 +19,8 @@
     "graphql": "^16.12.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.15.2",
+    "nodemon": "^3.1.11",
     "pdfmake": "^0.2.0",
-    "nodemon": "^3.1.11"
+    "resend": "^6.9.4"
   }
 }
