@@ -1,81 +1,180 @@
-⚠️ **Educational Portfolio Repository**
-This repository is publicly available for educational demonstration and portfolio purposes only. 
+⚠️ **Educational Portfolio Repository** — Publicly available for demonstration purposes only.
 Unauthorized copying, forking, or commercial use is strictly prohibited.
+© 2026 Snehanshu Sekhar Jena. All rights reserved.
 
-© 2025 Snehanshu Sekhar Jena. All rights reserved.
+---
 
+<div align="center">
+ 
 # 💰 Finance Tracker
+ 
+**A production-grade personal finance platform built with the MERN stack**
 
-A full-stack personal finance management web application built using the MERN stack, designed to help users track income, expenses, savings, and financial goals with precision and security.
-
-> 🚀 Built to mirror real-world production systems — with authentication, secure APIs, role-based workflows, and third-party integration — this project showcases the complete lifecycle of a scalable web app.
-
----
-
-## 🧠 Key Features
-
-- **📊 Interactive Dashboard:**  
-  Real-time visualization of income, expenses, and savings using dynamic charts.
-
-- **🔐 Secure Authentication:**  
-  Fully implemented JWT-based login with refresh token rotation, bcrypt hashing, and **Google OAuth 2.0** support. Tokens stored securely via **HTTP-only cookies**.
-
-- **📁 Smart Categorization:**  
-  Automatically and manually categorize transactions (e.g., Food, Rent, Bills). Learn spending patterns and optimize budgeting.
-
-- **🎯 Goal Management:**  
-  Create financial goals (e.g., save ₹1L in 6 months) and track real-time progress with intelligent suggestions.
-
-- **🔁 Recurring Transactions & Reminders:**  
-  Email reminders via **Nodemailer** for upcoming bills or savings targets.
-
-- **📆 Calendar Sync (Google API):**  
-  Sync financial reminders to your **Google Calendar**, mapping transactions to real-world schedules.
+![Landing Page](.screenshots/1.Landing_Page.png)
+ 
+</div>
 
 ---
 
-## 🏗️ Tech Stack
+## 📸 Overview
 
-### Frontend:
-- React.js
-- Redux Toolkit
-- Bootstrap 5
-- Axios
-- recharts.js
-
-### Backend:
-- Node.js
-- Express.js
-- MongoDB (Mongoose)
-- JWT & Bcrypt
-- Nodemailer
-- Google OAuth 2.0 & Calendar API
-
-### Deployment:
-- Frontend: Render 
-- Backend: Render  
-- Domain: [https://financetracker.space](https://financetracker.space)
+Finance Tracker is a full-stack web application that gives users a complete picture of their financial health — real-time dashboards, smart transaction imports, goal tracking, AI-powered insights, and automated monthly reports delivered to their inbox.
 
 ---
 
-## 📦 Architecture Highlights
+## ✨ Features
 
-- **Modular REST API Design** with controller-service-model separation.
-- **Secure Token Lifecycle** with HTTP-only cookies and refresh token rotation.
-- **Centralized Error Handling & Validation** using middleware.
-- **Environment-based Config** for production-ready deployment.
-- **Scalable MongoDB Schema** with user-linked transactions, goals, and preferences.
+### 💳 Transactions
+- Full CRUD with filters, search, pagination, and bulk operations
+- Smart auto-categorization (Food, Rent, Travel, etc.)
+- Import from **PDF bank statements**, **CSV**, and **Excel** — with AI extraction
+- Password-protected PDF support — unlock once, remembered permanently
+- Recurring transactions with configurable frequency
 
+### 📊 Dashboard & Analytics
+- Real-time income vs expense charts with **Recharts**
+- Monthly summaries, category breakdowns, spending trends
+- Budget performance tracking with over-budget alerts
+- Goals progress with deadline tracking
 
-🌐 Live Demo
+### 🤖 AI & RAG
+- **Context-aware AI chat** about your finances using Google Gemini
+- **RAG pipeline** — upload documents to your Vault, ask questions about them
+- Vault supports PDF, CSV, XLSX — embeddings auto-generated every 5 minutes
+- PII masking before embedding — sensitive data never stored in vector DB
+- OCR fallback for scanned PDFs (page-level, mixed documents handled correctly)
 
-🔗 Live Site: https://financetracker.space  
-🔗 GitHub: https://github.com/SNEHANSHU-CODE/finance-tracker
+### 📁 Document Vault
+- Secure base64 document storage with 16MB limit
+- In-browser PDF viewer with zoom, password unlock, spreadsheet renderer
+- Download, delete, tag documents
 
-👨‍💻 Author
+### 🔐 Authentication
+- JWT access + refresh token rotation via **HTTP-only cookies**
+- **Google OAuth 2.0** login
+- OTP email verification with expiry
+- MFA-ready token architecture
 
-Snehanshu Sekhar Jena
+### 📧 Automated Emails
+- **Monthly financial report** PDF emailed on the 1st of every month (like a bank statement)
+- Bill and goal reminders via scheduled jobs
+- OTP verification emails
+- Powered by **Resend**
 
-📧 Email: snehanshusekhar99@gmail.com
+### 📆 Google Calendar Sync
+- Sync financial reminders directly to Google Calendar
 
-🔗 LinkedIn: https://linkedin.com/in/snehanshu-sekhar-jena-5365841a1
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│   React Frontend │────▶│   Node.js Server  │────▶│     MongoDB      │
+│  Redux Toolkit   │     │  Express REST API │     │  Atlas (shared)  │
+│   Bootstrap 5    │     │  JWT + OAuth 2.0  │     └──────────────────┘
+└─────────────────┘     └──────────────────┘
+         │                       │
+         │               ┌───────────────────┐     ┌──────────────────┐
+         └──────────────▶│  Analytics Server │────▶│  MongoDB (same)  │
+                         │  GraphQL + Apollo │     └──────────────────┘
+                         │  PDF Report Cron  │
+                         └───────────────────┘
+                                  │
+                         ┌───────────────────┐     ┌──────────────────┐
+                         │   Python AI Server│────▶│  MongoDB Atlas   │
+                         │  FastAPI + RAG    │     │  Vector Search   │
+                         │  Gemini Embedding │     └──────────────────┘
+                         └───────────────────┘
+```
+
+**3 independent servers, 1 shared MongoDB Atlas cluster.**
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Frontend** | React 18, Redux Toolkit, Bootstrap 5, Recharts, Axios |
+| **Main Server** | Node.js, Express, Mongoose, JWT, Bcrypt, Resend |
+| **Analytics Server** | Node.js, Apollo Server, GraphQL, PDFMake |
+| **AI / RAG Server** | Python, FastAPI, LangChain, Google Gemini, Motor (async MongoDB) |
+| **Database** | MongoDB Atlas (Vector Search enabled) |
+| **Auth** | JWT (RS256), HTTP-only cookies, Google OAuth 2.0 |
+| **Email** | Resend |
+| **Deployment** | Render (all 4 services) |
+
+---
+
+## 📂 Project Structure
+
+```
+finance-tracker/
+├── client/                  # React frontend
+│   ├── src/
+│   │   ├── app/             # Redux slices
+│   │   ├── components/      # Reusable UI components
+│   │   ├── pages/           # Route-level pages
+│   │   ├── services/        # Axios service layer
+│   │   └── utils/           # Auth, session, config
+│
+├── server/                  # Main Node.js server
+│   ├── controllers/
+│   ├── services/
+│   ├── models/
+│   ├── routes/
+│   └── middleware/
+│
+├── analyticsServer/         # GraphQL + PDF report server
+│   ├── graphql/
+│   ├── services/            # Analytics, PDF, Email, Cron
+│   └── routes/
+│
+└── chatServer/              # Python RAG + AI server
+    ├── app/
+    │   ├── ai/              # Gemini, RAG pipeline, embeddings
+    │   ├── models/          # Pydantic schemas
+    │   ├── services/        # Vault, embedding storage
+    │   └── utils/           # PII masker, OCR
+    └── main.py
+```
+
+---
+
+## 🔑 Key Technical Decisions
+
+| Decision | Reason |
+|---|---|
+| 3 separate servers | Isolation of concerns — AI/ML heavy work doesn't block API responses |
+| Shared MongoDB Atlas | Single source of truth, Python reads what Node writes |
+| RAG with cron polling | No webhook dependency — works across any deployment platform |
+| Base64 vault storage | No S3 dependency for MVP, MongoDB 16MB doc limit enforced at schema level |
+| `type="text"` for PDF password | `type="password"` triggers Chrome save-password — CSS `-webkit-text-security: disc` used for masking |
+| Monthly report on analytics server | PDF generation is CPU-heavy — isolated from main API |
+
+---
+
+## 📡 API Overview
+
+| Server | Base URL | Protocol |
+|---|---|---|
+| Main API | `/api/` | REST |
+| Analytics | `/graphql` | GraphQL |
+| AI / Chat | `/api/chat`, `/api/rag`, `/api/import` | REST |
+
+---
+
+## 🌐 Live
+
+| | |
+|---|---|
+| 🔗 App | [https://financetracker.space](https://financetracker.space) |
+| 📧 Contact | snehanshusekhar99@gmail.com |
+| 💼 LinkedIn | [Snehanshu Sekhar Jena](https://linkedin.com/in/snehanshu-sekhar-jena-5365841a1) |
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ by <a href="https://linkedin.com/in/snehanshu-sekhar-jena-5365841a1">Snehanshu Sekhar Jena</a></sub>
+</div>
