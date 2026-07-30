@@ -168,27 +168,50 @@ userSchema.methods.toJSON = function() {
   delete userObject.__v;
   return userObject;
 };
+
 // Static method to upsert (find or create) a Google user
 userSchema.statics.upsertGoogleUser = async function(googleProfile, tokens) {
   if (!googleProfile.email) throw new Error('Google profile missing email');
   const email = googleProfile.email.toLowerCase();
 
-  // Prevent duplicate Google account linking
-  const existingGoogleUser = await this.findOne({
-    googleId: googleProfile.id,
-    email: { $ne: email }
-  });
-  if (existingGoogleUser) {
-    throw new Error('This Google account is already linked to another user');
+  // ── Step 1: Search by googleId FIRST (returning user fast path) ──────────
+  // googleId is Google's permanent unique identifier — it never changes.
+  // This correctly finds the user even if their email changed in Google.
+  // This is the fix for the ghost account bug.
+  let user = await this.findOne({ googleId: googleProfile.id });
+  if (user) {
+    console.log(`[upsertGoogleUser] Returning user found by googleId: ${user.email}`);
+    user = await this.findByIdAndUpdate(
+      user._id,
+      {
+        $set: {
+          googleRefreshToken: tokens.refresh_token || user.googleRefreshToken,
+          authProvider: 'google',
+          lastLoginProvider: 'google',
+          lastLoginAt: new Date()
+        },
+        $addToSet: { authMethods: 'google' }
+      },
+      { new: true }
+    );
+    return user;
   }
 
-  let user = await this.findOne({ email });
+  // ── Step 2: Search by email (first-time Google login / account linking) ──
+  // User exists with this email (e.g. signed up via email+password before)
+  // → Link Google to their existing account. Check they don't already have
+  //   a DIFFERENT Google account linked to avoid account takeover.
+  user = await this.findOne({ email });
   if (user) {
-    // Use findByIdAndUpdate instead of save() for better performance
-    // This avoids triggering pre-save hooks unnecessarily
-    if (!tokens.refresh_token) {
-      console.warn(`[upsertGoogleUser] No refresh token provided by Google for user ${email}. Keeping the old token.`);
+    if (user.googleId && user.googleId !== googleProfile.id) {
+      // Their email account is already linked to a different Google account.
+      // This is a genuine conflict — reject to prevent account takeover.
+      throw new Error('This email is already linked to a different Google account');
     }
+    if (!tokens.refresh_token) {
+      console.warn(`[upsertGoogleUser] No refresh token for ${email}. Keeping existing.`);
+    }
+    console.log(`[upsertGoogleUser] Linking Google to existing email account: ${email}`);
     user = await this.findByIdAndUpdate(
       user._id,
       {
@@ -204,28 +227,29 @@ userSchema.statics.upsertGoogleUser = async function(googleProfile, tokens) {
       { new: true }
     );
     return user;
-  } else {
-    // Generate a unique username if needed
-    let baseUsername = googleProfile.name?.replace(/\s+/g, '').toLowerCase() || email.split('@')[0];
-    let username = baseUsername;
-    let count = 0;
-    while (await this.exists({ username })) {
-      count++;
-      username = `${baseUsername}${count}`;
-    }
-    user = await this.create({
-      username,
-      email,
-      googleId: googleProfile.id,
-      googleRefreshToken: tokens.refresh_token,
-      authMethods: ['google'],
-      isActive: true,
-      authProvider: 'google',
-      lastLoginProvider: 'google',
-      lastLoginAt: new Date()
-    });
-    return user;
   }
+
+  // ── Step 3: Genuinely new user — create account ──────────────────────────
+  console.log(`[upsertGoogleUser] New user — creating account for: ${email}`);
+  let baseUsername = googleProfile.name?.replace(/\s+/g, '').toLowerCase() || email.split('@')[0];
+  let username = baseUsername;
+  let count = 0;
+  while (await this.exists({ username })) {
+    count++;
+    username = `${baseUsername}${count}`;
+  }
+  user = await this.create({
+    username,
+    email,
+    googleId: googleProfile.id,
+    googleRefreshToken: tokens.refresh_token,
+    authMethods: ['google'],
+    isActive: true,
+    authProvider: 'google',
+    lastLoginProvider: 'google',
+    lastLoginAt: new Date()
+  });
+  return user;
 };
 
 // Static method to find user by email or username
