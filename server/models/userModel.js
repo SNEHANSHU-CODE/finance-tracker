@@ -178,7 +178,7 @@ userSchema.statics.upsertGoogleUser = async function(googleProfile, tokens) {
   // googleId is Google's permanent unique identifier — it never changes.
   // This correctly finds the user even if their email changed in Google.
   // This is the fix for the ghost account bug.
-  let user = await this.findOne({ googleId: googleProfile.id });
+  let user = await this.findOne({ googleId: googleProfile.id }).select('+googleRefreshToken');
   if (user) {
     console.log(`[upsertGoogleUser] Returning user found by googleId: ${user.email}`);
     user = await this.findByIdAndUpdate(
@@ -201,7 +201,7 @@ userSchema.statics.upsertGoogleUser = async function(googleProfile, tokens) {
   // User exists with this email (e.g. signed up via email+password before)
   // → Link Google to their existing account. Check they don't already have
   //   a DIFFERENT Google account linked to avoid account takeover.
-  user = await this.findOne({ email });
+  user = await this.findOne({ email }).select('+googleRefreshToken');
   if (user) {
     if (user.googleId && user.googleId !== googleProfile.id) {
       // Their email account is already linked to a different Google account.
