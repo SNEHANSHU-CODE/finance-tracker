@@ -61,6 +61,26 @@ const AppPrivacy = () => {
                       </ul>
                     </div>
                   </div>
+                  <div className="col-md-6">
+                    <div className="border-start border-warning border-4 ps-3">
+                      <h4 className="h5 text-dark">Uploaded Documents (Vault)</h4>
+                      <ul className="text-muted">
+                        <li>PDF bank statements you upload</li>
+                        <li>CSV and Excel financial files</li>
+                        <li>Document embeddings for AI search (stored securely)</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="border-start border-info border-4 ps-3">
+                      <h4 className="h5 text-dark">AI Chat Data</h4>
+                      <ul className="text-muted">
+                        <li>Chat messages submitted to the AI assistant</li>
+                        <li>Message ratings (upvote/downvote for quality improvement)</li>
+                        <li>Session context used to personalize AI responses</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </section>
 
@@ -75,7 +95,7 @@ const AppPrivacy = () => {
                   <div className="row g-3">
                     <div className="col-12 col-md-6">
                       <div className="d-flex align-items-start">
-                        <div className="bg-primary rounded-circle p-2 me-3 flex-shrink-0">
+                        <div className="bg-primary rounded-circle me-3 flex-shrink-0 d-flex align-items-center justify-content-center" style={{ width: '38px', height: '38px' }}>
                           <FaCalendarAlt className="text-white" size={16} />
                         </div>
                         <div>
@@ -86,7 +106,7 @@ const AppPrivacy = () => {
                     </div>
                     <div className="col-12 col-md-6">
                       <div className="d-flex align-items-start">
-                        <div className="bg-success rounded-circle p-2 me-3 flex-shrink-0">
+                        <div className="bg-success rounded-circle me-3 flex-shrink-0 d-flex align-items-center justify-content-center" style={{ width: '38px', height: '38px' }}>
                           <FaDollarSign className="text-white" size={16} />
                         </div>
                         <div>
@@ -97,7 +117,7 @@ const AppPrivacy = () => {
                     </div>
                     <div className="col-12 col-md-6">
                       <div className="d-flex align-items-start">
-                        <div className="bg-warning rounded-circle p-2 me-3 flex-shrink-0">
+                        <div className="bg-warning rounded-circle me-3 flex-shrink-0 d-flex align-items-center justify-content-center" style={{ width: '38px', height: '38px' }}>
                           <FaUserShield className="text-white" size={16} />
                         </div>
                         <div>
@@ -108,12 +128,34 @@ const AppPrivacy = () => {
                     </div>
                     <div className="col-12 col-md-6">
                       <div className="d-flex align-items-start">
-                        <div className="bg-info rounded-circle p-2 me-3 flex-shrink-0">
+                        <div className="bg-info rounded-circle me-3 flex-shrink-0 d-flex align-items-center justify-content-center" style={{ width: '38px', height: '38px' }}>
                           <FaLock className="text-white" size={16} />
                         </div>
                         <div>
                           <h5 className="h6 text-dark mb-1">Service Improvement</h5>
                           <small className="text-muted">Enhance our application features and user experience</small>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <div className="d-flex align-items-start">
+                        <div className="bg-secondary rounded-circle me-3 flex-shrink-0 d-flex align-items-center justify-content-center" style={{ width: '38px', height: '38px' }}>
+                          <FaShieldAlt className="text-white" size={16} />
+                        </div>
+                        <div>
+                          <h5 className="h6 text-dark mb-1">AI-Powered Insights</h5>
+                          <small className="text-muted">Process your financial data to power the AI Assistant's personalised responses. PII is masked before any data is sent to third-party AI providers.</small>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <div className="d-flex align-items-start">
+                        <div className="bg-danger rounded-circle me-3 flex-shrink-0 d-flex align-items-center justify-content-center" style={{ width: '38px', height: '38px' }}>
+                          <FaLock className="text-white" size={16} />
+                        </div>
+                        <div>
+                          <h5 className="h6 text-dark mb-1">Document Processing (Vault)</h5>
+                          <small className="text-muted">Parse and embed uploaded financial documents to enable AI-driven document search and insights.</small>
                         </div>
                       </div>
                     </div>
@@ -151,6 +193,7 @@ const AppPrivacy = () => {
                     <li><strong>With your consent:</strong> When you explicitly authorize us to share specific information</li>
                     <li><strong>Legal requirements:</strong> When required by law, court order, or government request</li>
                     <li><strong>Service providers:</strong> With trusted third-party services that help us operate our application</li>
+                    <li><strong>Third-Party AI Providers (Groq &amp; Google Gemini):</strong> When you use the AI Assistant, your query and relevant financial context are sent to Groq or Google Gemini to generate a response. <strong>All Personally Identifiable Information (PII) is automatically masked and removed before transmission.</strong> Raw account numbers, full names, and sensitive identifiers are never shared with these providers.</li>
                   </ul>
                 </div>
               </section>

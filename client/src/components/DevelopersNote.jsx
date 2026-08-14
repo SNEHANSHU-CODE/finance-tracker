@@ -32,17 +32,19 @@ const DevelopersNote = () => {
 
   const techStack = [
     'React.js', 'Redux Toolkit', 'Bootstrap 5', 'React Router',
-    'React Icons', 'CSS3 Animations', 'Responsive Design', 'Node.js', 'Express.js', 'Redis', 'MongoDB',
-    'fastAPI', 'Langchain', 'LLM API Integration'
+    'React Icons', 'CSS3 Animations', 'Responsive Design',
+    'Node.js', 'Express.js', 'Redis', 'MongoDB',
+    'FastAPI', 'LangChain', 'Socket.io', 'Apollo GraphQL',
+    'Groq API', 'Google Gemini API', 'text-embedding-004'
   ];
 
   const features = [
     'Enterprise-grade UI/UX design',
-    'Smooth animations and transitions',
+    'Real-time AI chat with streaming responses',
+    'Multi-LLM orchestration (Groq + Gemini fallback)',
+    'Document Vault with RAG pipeline integration',
     'Mobile-first responsive layout',
-    'Accessibility-compliant components',
-    'Modern CSS techniques',
-    'Performance optimized',
+    'Performance optimized with Redis caching',
     'Cross-browser compatibility',
     'SEO-friendly structure'
   ];
@@ -83,13 +85,13 @@ const DevelopersNote = () => {
     },
     {
       icon: <FaMobileAlt className="text-warning" />,
-      title: "PWA Features",
-      description: "Progressive web app capabilities with offline functionality",
+      title: "Mobile App",
+      description: "Native mobile application built with React Native for iOS and Android",
     },
     {
       icon: <FaChartBar className="text-info" />,
-      title: "Advanced Analytics",
-      description: "Real user monitoring with detailed performance insights",
+      title: "OpenBanking API",
+      description: "Direct bank account integration for automatic transaction syncing",
     },
     {
       icon: <FaGlobe className="text-danger" />,
@@ -98,18 +100,18 @@ const DevelopersNote = () => {
     },
     {
       icon: <FaRobot className="text-secondary" />,
-      title: "AI Integration",
-      description: "Smart content suggestions and personalized user experiences",
+      title: "Custom AI Fine-tuning",
+      description: "Fine-tune a dedicated financial AI model on anonymized spending patterns",
     },
     {
       icon: <FaBolt className="text-warning" />,
-      title: "Performance Boost",
-      description: "Advanced caching strategies and code splitting optimization",
+      title: "PWA & Offline Mode",
+      description: "Progressive web app with full offline capability and background sync",
     },
     {
       icon: <FaDatabase className="text-success" />,
-      title: "Real-time Features",
-      description: "WebSocket integration for live updates and collaboration",
+      title: "Multi-currency Real-time Sync",
+      description: "Live exchange rates with automatic multi-currency portfolio tracking",
     }
   ];
 
@@ -165,13 +167,12 @@ return (
                 <div className="col-md-6">
                   <h4 className="mb-2 fw-bold text-dark">Snehanshu Sekhar Jena</h4>
                   <p className="text-muted mb-3">
-                    Full-Stack Developer specializing in modern web applications with a passion for creating
-                    exceptional user experiences through thoughtful design and robust architecture.
+                    Full Stack AI Developer specializing in AI-powered web applications, combining modern frontend design with scalable backend architecture and cutting-edge Generative AI to deliver exceptional user experiences.
                   </p>
                   <div className="d-flex flex-wrap gap-2">
                     <span className="badge bg-primary">React Developer</span>
-                    <span className="badge bg-success">Full Stack Developer</span>
-                    <span className="badge bg-info">UI Developer</span>
+                    <span className="badge bg-success">Full Stack AI Developer</span>
+                    <span className="badge bg-info">Agentic AI Developer</span>
                   </div>
                 </div>
                 <div className="col-md-4">
@@ -211,10 +212,11 @@ return (
               <div className="row">
                 <div className="col-lg-8">
                   <p className="lead text-muted mb-4">
-                    This landing page represents my commitment to creating exceptional user experiences
-                    that combine modern design principles with practical functionality. Every animation,
-                    color choice, and interaction has been carefully crafted to engage users while
-                    maintaining accessibility and performance.
+                    ArthFlow represents my most ambitious project — a full-stack AI-powered financial
+                    platform built on a microservice architecture. It integrates a React frontend with
+                    three separate backends: a Node.js REST API, a Python FastAPI AI server with
+                    real-time Socket.io streaming, and a GraphQL analytics engine. Every design
+                    decision was made to balance performance, security, and an exceptional user experience.
                   </p>
 
                   {!isExpanded && (

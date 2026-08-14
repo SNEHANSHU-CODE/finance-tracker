@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaArrowRight, FaChartLine, FaTachometerAlt, FaShieldAlt, FaChartBar, FaGift, FaLock, FaMobileAlt, FaSyncAlt, FaCog, FaHeadset, FaArrowUp, FaArrowDown, FaChartPie } from 'react-icons/fa';
+import { FaArrowRight, FaChartLine, FaRobot, FaFolderOpen, FaShieldAlt, FaGift, FaLock, FaMobileAlt, FaSyncAlt, FaCog, FaHeadset, FaArrowUp, FaArrowDown, FaChartPie } from 'react-icons/fa';
 import "./styles/LandingPage.css";
 import DashboardPreview from '../components/DashboardPreview';
 
@@ -38,8 +38,8 @@ const HeroSection = () => (
               <span className="d-block text-warning">Financial Future</span>
             </h1>
             <p className="lead mb-4 opacity-75">
-              Experience intelligent financial management with real-time analytics, enterprise-grade security,
-              and powerful insights - completely free with your data always secure.
+              Chat with your finances using our AI Assistant, automatically parse bank statements,
+              and gain deep insights — all secured with enterprise-grade encryption and completely free.
             </p>
 
             <div className="d-flex flex-column flex-sm-row gap-3 mb-5">
@@ -51,12 +51,12 @@ const HeroSection = () => (
 
             <div className="row text-center">
               <div className="col-3">
-                <div className="fw-bold fs-4">50K+</div>
+                <div className="fw-bold fs-4">8K+</div>
                 <div className="small opacity-75">Active Users</div>
               </div>
               <div className="col-3">
-                <div className="fw-bold fs-4">$2.5B+</div>
-                <div className="small opacity-75">Tracked Transactions</div>
+                <div className="fw-bold fs-4">$12M+</div>
+                <div className="small opacity-75">Tracked</div>
               </div>
               <div className="col-3">
                 <div className="fw-bold fs-4">99.9%</div>
@@ -109,6 +109,21 @@ const HeroSection = () => (
                   </div>
                 </div>
               </div>
+              <div className="mt-3 pt-3 border-top">
+                <div className="d-flex align-items-start gap-2 mb-2">
+                  <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '28px', height: '28px' }}>
+                    <FaRobot className="text-white" size={11} />
+                  </div>
+                  <div className="bg-light rounded-3 px-3 py-2 small text-dark" style={{ fontSize: '0.72rem' }}>
+                    Top spend: <strong>Food & Dining</strong> ₹8,200 this month 🍕
+                  </div>
+                </div>
+                <div className="d-flex justify-content-end">
+                  <div className="rounded-3 px-3 py-2 small text-white" style={{ fontSize: '0.72rem', background: 'linear-gradient(135deg, #6c63ff 0%, #3d52a0 100%)' }}>
+                    How can I save more? 💬
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -143,11 +158,11 @@ const FeaturesSection = () => (
         <div className="col-lg-6">
           <div className="card h-100 border-0 shadow-lg transition-all duration-500 hover-lift" style={{ borderRadius: '1rem' }}>
             <div className="card-body p-4">
-              <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-3 text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
-                <FaTachometerAlt size={32} />
+              <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-3 text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #6c63ff 0%, #3d52a0 100%)' }}>
+                <FaRobot size={32} />
               </div>
-              <h3 className="fw-bold mb-3">Real-time Analytics</h3>
-              <p className="text-muted mb-0">Monitor your financial health with live dashboards and instant notifications for better control over your money.</p>
+              <h3 className="fw-bold mb-3">AI Financial Assistant</h3>
+              <p className="text-muted mb-0">Chat with your finances in plain English. Ask questions, get instant AI-powered insights on your spending and goals — powered by Groq and Google Gemini with automatic fallback.</p>
             </div>
           </div>
         </div>
@@ -166,10 +181,10 @@ const FeaturesSection = () => (
           <div className="card h-100 border-0 shadow-lg transition-all duration-500 hover-lift" style={{ borderRadius: '1rem' }}>
             <div className="card-body p-4">
               <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-3 text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' }}>
-                <FaChartBar size={32} />
+                <FaFolderOpen size={32} />
               </div>
-              <h3 className="fw-bold mb-3">Advanced Reporting</h3>
-              <p className="text-muted mb-0">Generate comprehensive financial reports with customizable charts and detailed insights to track your progress.</p>
+              <h3 className="fw-bold mb-3">Smart Document Vault</h3>
+              <p className="text-muted mb-0">Upload bank statements in PDF, CSV, or Excel. The AI extracts transactions automatically and embeds your documents so you can ask questions directly about your own financial files.</p>
             </div>
           </div>
         </div>
@@ -225,8 +240,8 @@ const BenefitsSection = () => (
             <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-circle text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' }}>
               <FaSyncAlt size={32} />
             </div>
-            <h3 className="fw-bold mb-3">Real-time Updates</h3>
-            <p className="text-muted">Get instant updates on your financial status with real-time synchronization across all your accounts.</p>
+            <h3 className="fw-bold mb-3">Real-time AI Streaming</h3>
+            <p className="text-muted">Get instant AI responses streamed live via WebSocket. Your dashboard, chat, and notifications update in real-time — no refresh needed.</p>
           </div>
         </div>
         <div className="col-lg-4">
@@ -243,8 +258,8 @@ const BenefitsSection = () => (
             <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-circle text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' }}>
               <FaHeadset size={32} />
             </div>
-            <h3 className="fw-bold mb-3">24/7 Support</h3>
-            <p className="text-muted">Our dedicated support team is always here to help you make the most of your financial management.</p>
+            <h3 className="fw-bold mb-3">24/7 AI Support</h3>
+            <p className="text-muted">The ArthFlow AI Assistant is always on — ask anything about your finances at any hour and get an instant, personalised response.</p>
           </div>
         </div>
       </div>
@@ -260,8 +275,8 @@ const CTASection = () => (
         <div className="col-lg-8">
           <h2 className="display-5 fw-bold mb-4">Ready to Transform Your Financial Future?</h2>
           <p className="lead mb-5 opacity-75">
-            Join thousands of users who trust ArthFlow to manage their finances securely and intelligently.
-            Start your journey today - completely free!
+            Join users who trust ArthFlow to manage their finances with the power of Generative AI.
+            Smart insights, real-time chat, and automated statement parsing — completely free.
           </p>
           <div className="d-flex flex-column flex-sm-row gap-3 justify-content-center">
             <a href="/signup" className="btn btn-warning btn-lg px-5 py-3 fw-semibold" style={{ borderRadius: '50px' }}>
